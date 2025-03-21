@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Bell, Users, MessageSquare, BarChart3, Settings, User } from "lucide-react";
@@ -20,12 +20,12 @@ const StartupDashboard = () => {
   const location = useLocation();
   
   // Set active tab based on hash if present
-  useState(() => {
+  useEffect(() => {
     const hash = location.hash.replace('#', '');
     if (hash && ['overview', 'matches', 'messages', 'settings', 'profile'].includes(hash)) {
       setActiveTab(hash);
     }
-  });
+  }, [location.hash]); // Added dependency on location.hash
   
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);

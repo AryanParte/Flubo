@@ -33,12 +33,12 @@ export function Navbar() {
   // Don't show navbar on auth page
   if (isAuthPage) return null;
 
-  // Navigation items
+  // Navigation items - Using hash links for dashboard tabs
   const navItems = isDashboard
     ? [
         { name: "Dashboard", href: isStartupDashboard ? "/startup" : "/investor" },
-        { name: "Profile", href: `${isStartupDashboard ? "/startup" : "/investor"}/profile` },
-        { name: "Messages", href: `${isStartupDashboard ? "/startup" : "/investor"}/messages` },
+        { name: "Profile", href: `${isStartupDashboard ? "/startup" : "/investor"}#profile` },
+        { name: "Messages", href: `${isStartupDashboard ? "/startup" : "/investor"}#messages` },
       ]
     : [
         { name: "Home", href: "/" },
@@ -66,20 +66,29 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={cn(
-                "text-sm font-medium transition-colors duration-200",
-                location.pathname === item.href
-                  ? "text-accent"
-                  : "text-foreground/80 hover:text-foreground"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            // Check if this is an active link - account for hash in URL
+            const isActive = isDashboard 
+              ? location.pathname === item.href.split('#')[0] && 
+                (location.hash === '' && !item.href.includes('#') || 
+                 location.hash === '#' + item.href.split('#')[1])
+              : location.pathname === item.href;
+            
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "text-sm font-medium transition-colors duration-200",
+                  isActive
+                    ? "text-accent"
+                    : "text-foreground/80 hover:text-foreground"
+                )}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right side - Auth / Theme toggle */}
@@ -122,20 +131,29 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden glass-nav h-screen animate-fade-in">
           <nav className="container mx-auto px-4 py-8 flex flex-col space-y-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  "text-base font-medium py-2 transition-colors duration-200",
-                  location.pathname === item.href
-                    ? "text-accent"
-                    : "text-foreground/80 hover:text-foreground"
-                )}
-              >
-                {item.name}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              // Check if this is an active link - account for hash in URL
+              const isActive = isDashboard 
+                ? location.pathname === item.href.split('#')[0] && 
+                  (location.hash === '' && !item.href.includes('#') || 
+                  location.hash === '#' + item.href.split('#')[1])
+                : location.pathname === item.href;
+                
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "text-base font-medium py-2 transition-colors duration-200",
+                    isActive
+                      ? "text-accent"
+                      : "text-foreground/80 hover:text-foreground"
+                  )}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
             
             {!isDashboard && (
               <Link
