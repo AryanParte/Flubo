@@ -42,7 +42,7 @@ export function Features() {
       <div className="absolute inset-0 bg-gradient-to-b from-background via-green-500/5 to-background pointer-events-none"></div>
       <div className="container mx-auto max-w-6xl relative">
         <div className="text-center mb-16">
-          <span className="text-gold-600 font-medium">PLATFORM FEATURES</span>
+          <span className="text-teal-600 font-medium">PLATFORM FEATURES</span>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 mt-2">AI-Powered Matchmaking</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Our platform leverages artificial intelligence to create meaningful connections between startups and investors,
@@ -65,7 +65,7 @@ export function Features() {
             description="Startups can test their pitch with an AI that simulates investor questioning patterns."
             className="animate-fade-in"
             style={{ animationDelay: "200ms" }}
-            iconClass="bg-gold-500/10 text-gold-600"
+            iconClass="bg-teal-500/10 text-teal-600"
           />
           
           <FeatureCard
@@ -82,7 +82,7 @@ export function Features() {
             description="Discover opportunities from emerging markets and underrepresented regions worldwide."
             className="animate-fade-in"
             style={{ animationDelay: "400ms" }}
-            iconClass="bg-gold-500/10 text-gold-600"
+            iconClass="bg-teal-500/10 text-teal-600"
           />
           
           <FeatureCard
@@ -99,7 +99,7 @@ export function Features() {
             description="Communication is only enabled when both parties express interest, respecting everyone's time."
             className="animate-fade-in"
             style={{ animationDelay: "600ms" }}
-            iconClass="bg-gold-500/10 text-gold-600"
+            iconClass="bg-teal-500/10 text-teal-600"
           />
 
           <FeatureCard
@@ -116,7 +116,7 @@ export function Features() {
             description="Automate the discovery process so you can focus on the startups that matter most to you."
             className="animate-fade-in"
             style={{ animationDelay: "800ms" }}
-            iconClass="bg-gold-500/10 text-gold-600"
+            iconClass="bg-teal-500/10 text-teal-600"
           />
           
           <FeatureCard

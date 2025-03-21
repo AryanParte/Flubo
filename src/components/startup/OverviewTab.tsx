@@ -61,7 +61,7 @@ export const OverviewTab = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-medium">Recent Investor Matches</h2>
             <button 
-              className="text-sm text-gold-600 hover:text-gold-700 transition-colors"
+              className="text-sm text-teal-600 hover:text-teal-700 transition-colors"
               onClick={handleViewAllMatches}
             >
               View All
@@ -79,14 +79,14 @@ export const OverviewTab = () => {
                 className="flex items-center p-3 rounded-md bg-background/50 border border-border/40 transition-transform hover:translate-x-1 cursor-pointer"
                 onClick={() => handleContactClick(investor.name)}
               >
-                <div className={`w-10 h-10 rounded-full ${index % 2 === 0 ? 'bg-accent/10 text-accent' : 'bg-gold-500/10 text-gold-600'} flex items-center justify-center mr-4`}>
+                <div className={`w-10 h-10 rounded-full ${index % 2 === 0 ? 'bg-accent/10 text-accent' : 'bg-teal-500/10 text-teal-600'} flex items-center justify-center mr-4`}>
                   {investor.name.charAt(0)}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-medium text-sm">{investor.name}</h3>
                   <p className="text-xs text-muted-foreground mt-1">{investor.region} • {investor.focus}</p>
                 </div>
-                <div className={`${index % 2 === 0 ? 'bg-accent/10 text-accent' : 'bg-gold-500/10 text-gold-600'} text-xs font-medium rounded-full px-2.5 py-1 flex items-center`}>
+                <div className={`${index % 2 === 0 ? 'bg-accent/10 text-accent' : 'bg-teal-500/10 text-teal-600'} text-xs font-medium rounded-full px-2.5 py-1 flex items-center`}>
                   {investor.score}% Match
                 </div>
               </div>
@@ -120,7 +120,7 @@ export const OverviewTab = () => {
               >
                 <div 
                   className={`w-5 h-5 rounded-full mr-3 flex items-center justify-center ${
-                    item.completed ? (index % 2 === 0 ? "bg-accent text-white" : "bg-gold-500 text-white") : "bg-secondary border border-border"
+                    item.completed ? (index % 2 === 0 ? "bg-accent text-white" : "bg-teal-500 text-white") : "bg-secondary border border-border"
                   }`}
                 >
                   {item.completed && (
@@ -142,13 +142,13 @@ export const OverviewTab = () => {
           
           <div className="mt-6">
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-accent to-gold-500 w-[60%]"></div>
+              <div className="h-full bg-gradient-to-r from-accent to-teal-500 w-[60%]"></div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">3 of 5 tasks completed</p>
           </div>
           
           <button 
-            className="w-full mt-6 py-2 rounded-md bg-gradient-to-r from-accent to-gold-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            className="w-full mt-6 py-2 rounded-md bg-gradient-to-r from-accent to-teal-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
             onClick={() => {
               toast({
                 title: "Continue Setup",
