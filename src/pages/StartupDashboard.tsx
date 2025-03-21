@@ -1,36 +1,23 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Bell, Users, MessageSquare, BarChart3, Settings, User } from "lucide-react";
+import { Bell, Users, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-// Import tab components
+// Import tab components (except profile and messages)
 import { OverviewTab } from "@/components/startup/OverviewTab";
 import { MatchesTab } from "@/components/startup/MatchesTab";
-import { MessagesTab } from "@/components/startup/MessagesTab";
 import { SettingsTab } from "@/components/startup/SettingsTab";
-import { ProfileTab } from "@/components/startup/ProfileTab";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Set active tab based on hash if present
-  useEffect(() => {
-    const hash = location.hash.replace('#', '');
-    if (hash && ['overview', 'matches', 'messages', 'settings', 'profile'].includes(hash)) {
-      setActiveTab(hash);
-    }
-  }, [location.hash]); // Added dependency on location.hash
   
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    // Update URL hash when tab changes
-    navigate(`/startup#${tab}`, { replace: true });
   };
 
   const handleNotificationClick = () => {
@@ -41,8 +28,7 @@ const StartupDashboard = () => {
   };
 
   const handleCompleteProfileClick = () => {
-    setActiveTab("profile");
-    navigate('/startup#profile', { replace: true });
+    navigate('/startup/profile');
   };
   
   // Render the appropriate tab content based on activeTab
@@ -52,12 +38,8 @@ const StartupDashboard = () => {
         return <OverviewTab />;
       case "matches":
         return <MatchesTab />;
-      case "messages":
-        return <MessagesTab />;
       case "settings":
         return <SettingsTab />;
-      case "profile":
-        return <ProfileTab />;
       default:
         return <OverviewTab />;
     }
@@ -99,8 +81,6 @@ const StartupDashboard = () => {
               {[
                 { id: "overview", label: "Overview", icon: <BarChart3 size={16} /> },
                 { id: "matches", label: "Investor Matches", icon: <Users size={16} /> },
-                { id: "messages", label: "Messages", icon: <MessageSquare size={16} /> },
-                { id: "profile", label: "Company Profile", icon: <User size={16} /> },
                 { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button

@@ -33,12 +33,12 @@ export function Navbar() {
   // Don't show navbar on auth page
   if (isAuthPage) return null;
 
-  // Navigation items - Using hash links for dashboard tabs
+  // Navigation items - using direct routes for profile and messages
   const navItems = isDashboard
     ? [
         { name: "Dashboard", href: isStartupDashboard ? "/startup" : "/investor" },
-        { name: "Profile", href: `${isStartupDashboard ? "/startup" : "/investor"}#profile` },
-        { name: "Messages", href: `${isStartupDashboard ? "/startup" : "/investor"}#messages` },
+        { name: "Profile", href: isStartupDashboard ? "/startup/profile" : "/investor/profile" },
+        { name: "Messages", href: isStartupDashboard ? "/startup/messages" : "/investor/messages" },
       ]
     : [
         { name: "Home", href: "/" },
@@ -67,12 +67,7 @@ export function Navbar() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           {navItems.map((item) => {
-            // Check if this is an active link - account for hash in URL
-            const isActive = isDashboard 
-              ? location.pathname === item.href.split('#')[0] && 
-                (location.hash === '' && !item.href.includes('#') || 
-                 location.hash === '#' + item.href.split('#')[1])
-              : location.pathname === item.href;
+            const isActive = location.pathname === item.href;
             
             return (
               <Link
@@ -132,12 +127,7 @@ export function Navbar() {
         <div className="md:hidden glass-nav h-screen animate-fade-in">
           <nav className="container mx-auto px-4 py-8 flex flex-col space-y-6">
             {navItems.map((item) => {
-              // Check if this is an active link - account for hash in URL
-              const isActive = isDashboard 
-                ? location.pathname === item.href.split('#')[0] && 
-                  (location.hash === '' && !item.href.includes('#') || 
-                  location.hash === '#' + item.href.split('#')[1])
-                : location.pathname === item.href;
+              const isActive = location.pathname === item.href;
                 
               return (
                 <Link

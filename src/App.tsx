@@ -9,6 +9,10 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import StartupDashboard from "./pages/StartupDashboard";
 import InvestorDashboard from "./pages/InvestorDashboard";
+import StartupProfile from "./pages/StartupProfile";
+import InvestorProfile from "./pages/InvestorProfile";
+import StartupMessages from "./pages/StartupMessages";
+import InvestorMessages from "./pages/InvestorMessages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +29,10 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/startup" element={<StartupDashboard />} />
             <Route path="/investor" element={<InvestorDashboard />} />
+            <Route path="/startup/profile" element={<StartupProfile />} />
+            <Route path="/investor/profile" element={<InvestorProfile />} />
+            <Route path="/startup/messages" element={<StartupMessages />} />
+            <Route path="/investor/messages" element={<InvestorMessages />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
