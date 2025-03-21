@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -62,8 +61,7 @@ export function Navbar() {
           to="/" 
           className="flex items-center space-x-2 font-semibold text-lg"
         >
-          <span className="text-accent">Venture</span>
-          <span>Match</span>
+          <span className="text-accent">Flubo</span>
         </Link>
 
         {/* Desktop Navigation */}

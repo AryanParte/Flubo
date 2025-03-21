@@ -10,8 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
             <Link to="/" className="flex items-center space-x-2 font-semibold text-lg">
-              <span className="text-accent">Venture</span>
-              <span>Match</span>
+              <span className="text-accent">Flubo</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Empowering startups and investors with AI-driven matching for better connections.
@@ -84,7 +83,7 @@ export function Footer() {
         
         <div className="mt-12 border-t border-border/40 pt-6 flex flex-col md:flex-row justify-between items-center">
           <p className="text-xs text-muted-foreground">
-            © {currentYear} VentureMatch. All rights reserved.
+            © {currentYear} Flubo. All rights reserved.
           </p>
           <div className="flex space-x-4 mt-4 md:mt-0">
             <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
