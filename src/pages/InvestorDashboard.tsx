@@ -2,13 +2,15 @@
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp } from "lucide-react";
+import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, User, MessageSquare } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
 import { PortfolioTab } from "@/components/investor/PortfolioTab";
 import { AnalyticsTab } from "@/components/investor/AnalyticsTab";
 import { SettingsTab } from "@/components/investor/SettingsTab";
+import { MessagesTab } from "@/components/investor/MessagesTab";
+import { ProfileTab } from "@/components/investor/ProfileTab";
 
 const InvestorDashboard = () => {
   const [activeTab, setActiveTab] = useState("discover");
@@ -91,8 +93,10 @@ const InvestorDashboard = () => {
               {[
                 { id: "discover", label: "Discover Startups", icon: <Globe size={16} /> },
                 { id: "matches", label: "My Matches", icon: <ThumbsUp size={16} /> },
+                { id: "messages", label: "Messages", icon: <MessageSquare size={16} /> },
                 { id: "portfolio", label: "Portfolio", icon: <Briefcase size={16} /> },
                 { id: "analytics", label: "Analytics", icon: <BarChart3 size={16} /> },
+                { id: "profile", label: "My Profile", icon: <User size={16} /> },
                 { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button
@@ -116,8 +120,10 @@ const InvestorDashboard = () => {
           <div>
             {activeTab === "discover" && <DiscoverTab />}
             {activeTab === "matches" && <MatchesTab />}
+            {activeTab === "messages" && <MessagesTab />}
             {activeTab === "portfolio" && <PortfolioTab />}
             {activeTab === "analytics" && <AnalyticsTab />}
+            {activeTab === "profile" && <ProfileTab />}
             {activeTab === "settings" && <SettingsTab />}
           </div>
         </div>

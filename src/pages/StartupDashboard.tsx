@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Bell, Users, MessageSquare, BarChart3, Settings } from "lucide-react";
+import { Bell, Users, MessageSquare, BarChart3, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import { OverviewTab } from "@/components/startup/OverviewTab";
 import { MatchesTab } from "@/components/startup/MatchesTab";
 import { MessagesTab } from "@/components/startup/MessagesTab";
 import { SettingsTab } from "@/components/startup/SettingsTab";
+import { ProfileTab } from "@/components/startup/ProfileTab";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -29,7 +30,7 @@ const StartupDashboard = () => {
   };
 
   const handleCompleteProfileClick = () => {
-    setActiveTab("settings");
+    setActiveTab("profile");
   };
   
   // Render the appropriate tab content based on activeTab
@@ -43,6 +44,8 @@ const StartupDashboard = () => {
         return <MessagesTab />;
       case "settings":
         return <SettingsTab />;
+      case "profile":
+        return <ProfileTab />;
       default:
         return <OverviewTab />;
     }
@@ -85,6 +88,7 @@ const StartupDashboard = () => {
                 { id: "overview", label: "Overview", icon: <BarChart3 size={16} /> },
                 { id: "matches", label: "Investor Matches", icon: <Users size={16} /> },
                 { id: "messages", label: "Messages", icon: <MessageSquare size={16} /> },
+                { id: "profile", label: "Company Profile", icon: <User size={16} /> },
                 { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button

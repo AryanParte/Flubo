@@ -7,11 +7,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 
 export const MessagesTab = () => {
-  const [selectedChat, setSelectedChat] = useState<string | null>("Blue Venture Capital");
+  const [selectedChat, setSelectedChat] = useState<string | null>("TechNova");
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Filter chats based on search query
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
@@ -55,41 +54,39 @@ export const MessagesTab = () => {
 
   const [chats, setChats] = useState([
     { 
-      name: "Blue Venture Capital", 
-      lastMessage: "Looking forward to our meeting next week!", 
-      time: "10:30 AM", 
-      unread: 0, 
-      avatar: "B",
-      messages: [
-        { sender: "them", text: "Hi TechNova! We're impressed with your pitch.", time: "Yesterday" },
-        { sender: "them", text: "Would you be available for a call next week?", time: "Yesterday" },
-        { sender: "you", text: "Thank you! Yes, I'm available on Tuesday or Thursday.", time: "10:15 AM" },
-        { sender: "them", text: "Looking forward to our meeting next week!", time: "10:30 AM" },
-      ]
-    },
-    { 
-      name: "Global Impact Fund", 
-      lastMessage: "Let me know if you have any questions about the term sheet.", 
-      time: "Yesterday", 
-      unread: 2,
-      avatar: "G",
-      messages: [
-        { sender: "them", text: "Hello, we'd like to discuss your funding requirements.", time: "2 days ago" },
-        { sender: "you", text: "That would be great. We're looking to raise $2M.", time: "2 days ago" },
-        { sender: "them", text: "Let me know if you have any questions about the term sheet.", time: "Yesterday" },
-      ]
-    },
-    { 
-      name: "Tech Accelerator Group", 
-      lastMessage: "We'll review your application and get back to you soon.", 
-      time: "Mar 15", 
-      unread: 0,
+      name: "TechNova", 
+      lastMessage: "We're excited to discuss our AI healthcare platform with you.", 
+      time: "11:30 AM", 
+      unread: 1, 
       avatar: "T",
       messages: [
-        { sender: "you", text: "Hi, I'm interested in your accelerator program.", time: "Mar 14" },
-        { sender: "them", text: "Thanks for reaching out! Could you share more details about your startup?", time: "Mar 14" },
-        { sender: "you", text: "We're building an AI-powered health platform. I've attached our deck.", time: "Mar 15" },
-        { sender: "them", text: "We'll review your application and get back to you soon.", time: "Mar 15" },
+        { sender: "them", text: "Hi! We're TechNova, developing AI diagnostic tools for healthcare.", time: "Yesterday" },
+        { sender: "you", text: "Thanks for reaching out. Your project sounds interesting.", time: "Yesterday" },
+        { sender: "them", text: "We're excited to discuss our AI healthcare platform with you.", time: "11:30 AM" },
+      ]
+    },
+    { 
+      name: "EcoSolutions", 
+      lastMessage: "Let me know if you'd like to schedule a demo.", 
+      time: "Yesterday", 
+      unread: 0,
+      avatar: "E",
+      messages: [
+        { sender: "them", text: "Hello, we're looking for investors for our green tech solution.", time: "3 days ago" },
+        { sender: "you", text: "What's your current traction and market size?", time: "2 days ago" },
+        { sender: "them", text: "We've gained 5,000 users in our beta. Market size is $2B. Let me know if you'd like to schedule a demo.", time: "Yesterday" },
+      ]
+    },
+    { 
+      name: "FinTech Innovations", 
+      lastMessage: "Our pitch deck is attached.", 
+      time: "Mar 10", 
+      unread: 0,
+      avatar: "F",
+      messages: [
+        { sender: "them", text: "We're building a financial inclusion platform for underbanked communities.", time: "Mar 9" },
+        { sender: "you", text: "Can you share more details about your business model?", time: "Mar 10" },
+        { sender: "them", text: "Our pitch deck is attached.", time: "Mar 10" },
       ]
     },
   ]);
