@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Bell, Users, MessageSquare, BarChart3, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Import tab components
 import { OverviewTab } from "@/components/startup/OverviewTab";
@@ -17,9 +17,20 @@ import { ProfileTab } from "@/components/startup/ProfileTab";
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Set active tab based on hash if present
+  useState(() => {
+    const hash = location.hash.replace('#', '');
+    if (hash && ['overview', 'matches', 'messages', 'settings', 'profile'].includes(hash)) {
+      setActiveTab(hash);
+    }
+  });
   
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    // Update URL hash when tab changes
+    navigate(`/startup#${tab}`, { replace: true });
   };
 
   const handleNotificationClick = () => {
@@ -31,6 +42,7 @@ const StartupDashboard = () => {
 
   const handleCompleteProfileClick = () => {
     setActiveTab("profile");
+    navigate('/startup#profile', { replace: true });
   };
   
   // Render the appropriate tab content based on activeTab

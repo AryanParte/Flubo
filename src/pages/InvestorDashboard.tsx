@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, User, MessageSquare } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { useNavigate, useLocation } from "react-router-dom";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
 import { PortfolioTab } from "@/components/investor/PortfolioTab";
@@ -15,6 +16,16 @@ import { ProfileTab } from "@/components/investor/ProfileTab";
 const InvestorDashboard = () => {
   const [activeTab, setActiveTab] = useState("discover");
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Set active tab based on hash if present
+  useEffect(() => {
+    const hash = location.hash.replace('#', '');
+    if (hash && ['discover', 'matches', 'messages', 'portfolio', 'analytics', 'profile', 'settings'].includes(hash)) {
+      setActiveTab(hash);
+    }
+  }, [location]);
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +53,8 @@ const InvestorDashboard = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    // Update URL hash when tab changes
+    navigate(`/investor#${tab}`, { replace: true });
   };
   
   return (
