@@ -20,7 +20,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
     if (!session) return null;
     
     // Get additional user data from profiles table
-    // Use type assertion to bypass TypeScript's type checking
+    // Use explicit type assertion to bypass TypeScript's type checking
     const { data } = await supabase
       .from('profiles' as any)
       .select('*')
@@ -29,18 +29,21 @@ export const getCurrentUser = async (): Promise<User | null> => {
       
     if (!data) return null;
     
-    // Fix the type issue by adding type assertions or validation
-    const userType = data.user_type as 'startup' | 'investor';
+    // Explicitly cast the data to an any type first, then extract properties safely
+    const dataAny = data as any;
+    
+    // Validate user_type to ensure it's one of the expected values
+    const userType = dataAny.user_type as string;
     if (userType !== 'startup' && userType !== 'investor') {
-      console.error('Invalid user type detected:', data.user_type);
+      console.error('Invalid user type detected:', dataAny.user_type);
       return null;
     }
     
     return {
       id: session.user.id,
       email: session.user.email || '',
-      user_type: userType,
-      created_at: data.created_at as string,
+      user_type: userType as 'startup' | 'investor',
+      created_at: dataAny.created_at as string || new Date().toISOString(),
     };
   } catch (error) {
     console.error('Error getting current user:', error);
