@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -33,21 +32,25 @@ const StartupDashboard = () => {
   const fetchStartupData = async () => {
     try {
       // First check if we have a startup_profile
-      const { data: startupProfile } = await supabase
+      const { data: startupProfile, error: startupError } = await supabase
         .from('startup_profiles')
         .select('name')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+      
+      if (startupError) throw startupError;
       
       if (startupProfile?.name) {
         setStartupName(startupProfile.name);
       } else {
         // Fallback to the regular profile
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+        
+        if (profileError) throw profileError;
         
         if (profile?.name) {
           setStartupName(profile.name);
@@ -63,9 +66,11 @@ const StartupDashboard = () => {
       // Check if we have at least a startup profile
       const { data: startupProfile, error } = await supabase
         .from('startup_profiles')
-        .select('*')
+        .select('bio')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+      
+      if (error) throw error;
       
       // Consider profile complete if we have a startup profile with bio
       setProfileComplete(!!startupProfile?.bio);
@@ -75,9 +80,22 @@ const StartupDashboard = () => {
   };
 
   const countUnreadNotifications = async () => {
-    // This would be replaced with actual notification logic
-    // For now, just simulate 2 unread notifications
-    setUnreadNotifications(2);
+    try {
+      // Count unread messages
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('recipient_id', user.id)
+        .is('read_at', null);
+        
+      if (error) throw error;
+      
+      setUnreadNotifications(data?.length || 0);
+    } catch (error) {
+      console.error("Error counting notifications:", error);
+      // If there's an error, set a default value
+      setUnreadNotifications(0);
+    }
   };
 
   const handleTabChange = (tab: string) => {
@@ -95,7 +113,6 @@ const StartupDashboard = () => {
     navigate('/startup/profile');
   };
   
-  // Render the appropriate tab content based on activeTab
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
@@ -114,7 +131,6 @@ const StartupDashboard = () => {
       <Navbar />
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
-          {/* Dashboard Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
               <h1 className="text-2xl font-bold">Startup Dashboard</h1>
@@ -143,7 +159,6 @@ const StartupDashboard = () => {
             </div>
           </div>
           
-          {/* Dashboard Tabs */}
           <div className="border-b border-border/60 mb-8">
             <div className="flex overflow-x-auto pb-1">
               {[
@@ -168,7 +183,6 @@ const StartupDashboard = () => {
             </div>
           </div>
           
-          {/* Dashboard Content - Render the appropriate tab */}
           {renderTabContent()}
         </div>
       </main>

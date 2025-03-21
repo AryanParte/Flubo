@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -40,7 +39,10 @@ export const OverviewTab = () => {
       // Fetch investor matches
       const { data: investorMatches, error: matchesError } = await supabase
         .from('investor_matches')
-        .select('*, profiles:investor_id(*)')
+        .select(`
+          *,
+          investor:investor_id(id, name)
+        `)
         .eq('startup_id', user.id)
         .order('match_score', { ascending: false })
         .limit(3);
@@ -64,7 +66,7 @@ export const OverviewTab = () => {
       if (tasksError) throw tasksError;
       
       // If no tasks exist yet, create default tasks
-      if (completionTasks.length === 0) {
+      if (!completionTasks || completionTasks.length === 0) {
         await createDefaultTasks();
         const { data: newTasks } = await supabase
           .from('profile_completion_tasks')
@@ -84,27 +86,28 @@ export const OverviewTab = () => {
         setTotalTasksCount(completionTasks.length);
       }
       
-      // Update stats
+      // Calculate completion percentage
       const completionPercentage = totalTasksCount > 0 
         ? Math.round((completedTasksCount / totalTasksCount) * 100) 
         : 0;
       
+      // Update stats
       setStats([
         { 
           label: "Profile Views", 
-          value: profileViews.length, 
+          value: profileViews?.length || 0, 
           trend: "up", 
           percent: 0 
         },
         { 
           label: "Investor Matches", 
-          value: investorMatches.length, 
+          value: investorMatches?.length || 0, 
           trend: "up", 
           percent: 0 
         },
         { 
           label: "Messages", 
-          value: messages.length, 
+          value: messages?.length || 0, 
           trend: "neutral", 
           percent: 0 
         },
@@ -117,15 +120,17 @@ export const OverviewTab = () => {
       ]);
       
       // Format matches data
-      const formattedMatches = investorMatches.map(match => ({
-        name: match.profiles?.name || "Unknown Investor",
-        score: match.match_score,
-        region: "Global", // This would come from the investor profile in a real app
-        focus: "Various Industries", // This would come from the investor profile in a real app
-        status: match.status
-      }));
-      
-      setMatches(formattedMatches);
+      if (investorMatches && investorMatches.length > 0) {
+        const formattedMatches = investorMatches.map(match => ({
+          name: match.investor?.name || "Unknown Investor",
+          score: match.match_score,
+          region: "Global", // This would come from the investor profile in a real app
+          focus: "Various Industries", // This would come from the investor profile in a real app
+          status: match.status
+        }));
+        
+        setMatches(formattedMatches);
+      }
       
     } catch (error) {
       console.error("Error fetching dashboard data:", error);

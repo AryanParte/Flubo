@@ -35,7 +35,10 @@ export const MatchesTab = () => {
       // Fetch all investor matches for the startup
       const { data, error } = await supabase
         .from('investor_matches')
-        .select('*, profiles:investor_id(*)')
+        .select(`
+          *,
+          investor:investor_id(id, name)
+        `)
         .eq('startup_id', user.id);
       
       if (error) throw error;
@@ -46,7 +49,10 @@ export const MatchesTab = () => {
           await createSampleMatches();
           const { data: newMatches, error: newError } = await supabase
             .from('investor_matches')
-            .select('*, profiles:investor_id(*)')
+            .select(`
+              *,
+              investor:investor_id(id, name)
+            `)
             .eq('startup_id', user.id);
           
           if (newError) throw newError;
@@ -73,7 +79,7 @@ export const MatchesTab = () => {
   const formatMatchesData = (data: any[]) => {
     const formattedMatches = data.map(match => ({
       id: match.id,
-      name: match.profiles?.name || "Unknown Investor",
+      name: match.investor?.name || "Unknown Investor",
       score: match.match_score,
       region: "Global", // This would come from the investor profile in a real app
       focus: "Various Industries", // This would come from the investor profile in a real app
@@ -106,10 +112,14 @@ export const MatchesTab = () => {
       if (existingInvestor) {
         investorIds.push(existingInvestor.id);
       } else {
-        // Create a new sample investor
+        // Generate a UUID for the new sample investor
+        const newId = crypto.randomUUID();
+        
+        // Create a new sample investor with explicit ID
         const { data: newInvestor, error: investorError } = await supabase
           .from('profiles')
           .insert({
+            id: newId,
             name: investor.name,
             user_type: investor.user_type
           })
