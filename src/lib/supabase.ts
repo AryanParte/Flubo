@@ -17,12 +17,16 @@ export const getCurrentUser = async (): Promise<User | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (!session) return null;
+    if (!session) {
+      console.log('No active session found');
+      return null;
+    }
     
     // Debugging the session
     console.log('Session user ID:', session.user.id);
     
-    // Get additional user data from profiles table with proper query format
+    // Get additional user data from profiles table
+    // Using the correct query pattern for Supabase
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
