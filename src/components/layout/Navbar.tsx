@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Menu, X, User, MessageSquare, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 import {
   Tooltip,
   TooltipContent,
@@ -15,6 +16,7 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   // Check if we're on an authenticated page
   const isAuthPage = location.pathname.includes("/auth");
@@ -158,22 +160,17 @@ export function Navbar() {
             </TooltipProvider>
           )}
           
-          {!isDashboard && (
+          {!user ? (
             <Link
               to="/auth"
               className="hidden md:inline-flex h-9 px-4 items-center justify-center rounded-md bg-accent text-accent-foreground text-sm font-medium transition-colors duration-200 hover:bg-accent/90"
             >
               Sign In
             </Link>
-          )}
-
-          {isDashboard && (
+          ) : (
             <button 
               className="hidden md:inline-flex h-9 px-4 items-center justify-center rounded-md bg-secondary text-secondary-foreground text-sm font-medium transition-colors hover:bg-secondary/80"
-              onClick={() => {
-                console.log("Sign out");
-                // Sign out logic would go here
-              }}
+              onClick={signOut}
             >
               Sign Out
             </button>
@@ -241,22 +238,17 @@ export function Navbar() {
               </>
             )}
             
-            {!isDashboard && (
+            {!user ? (
               <Link
                 to="/auth"
                 className="inline-flex h-10 px-4 items-center justify-center rounded-md bg-accent text-accent-foreground text-sm font-medium transition-colors hover:bg-accent/90"
               >
                 Sign In
               </Link>
-            )}
-
-            {isDashboard && (
+            ) : (
               <button 
                 className="inline-flex h-10 px-4 items-center justify-center rounded-md bg-secondary text-secondary-foreground text-sm font-medium transition-colors hover:bg-secondary/80"
-                onClick={() => {
-                  console.log("Sign out");
-                  // Sign out logic would go here
-                }}
+                onClick={signOut}
               >
                 Sign Out
               </button>
