@@ -2,8 +2,14 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -33,12 +39,10 @@ export function Navbar() {
   // Don't show navbar on auth page
   if (isAuthPage) return null;
 
-  // Navigation items - using direct routes for profile and messages
+  // Navigation items
   const navItems = isDashboard
     ? [
         { name: "Dashboard", href: isStartupDashboard ? "/startup" : "/investor" },
-        { name: "Profile", href: isStartupDashboard ? "/startup/profile" : "/investor/profile" },
-        { name: "Messages", href: isStartupDashboard ? "/startup/messages" : "/investor/messages" },
       ]
     : [
         { name: "Home", href: "/" },
@@ -86,9 +90,53 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right side - Auth / Theme toggle */}
+        {/* Right side - Auth / Theme toggle / Profile & Messages icons */}
         <div className="flex items-center space-x-4">
           <ThemeToggle />
+          
+          {isDashboard && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                      location.pathname.includes("/profile") 
+                        ? "bg-accent/20 text-accent" 
+                        : "text-foreground/80 hover:text-foreground hover:bg-background/80"
+                    )}
+                    aria-label="Profile"
+                  >
+                    <User size={18} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Profile</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
+          {isDashboard && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={isStartupDashboard ? "/startup/messages" : "/investor/messages"}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                      location.pathname.includes("/messages") 
+                        ? "bg-accent/20 text-accent" 
+                        : "text-foreground/80 hover:text-foreground hover:bg-background/80"
+                    )}
+                    aria-label="Messages"
+                  >
+                    <MessageSquare size={18} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Messages</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           
           {!isDashboard && (
             <Link
@@ -144,6 +192,26 @@ export function Navbar() {
                 </Link>
               );
             })}
+            
+            {isDashboard && (
+              <>
+                <Link
+                  to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
+                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
+                >
+                  <User size={18} />
+                  <span>Profile</span>
+                </Link>
+                
+                <Link
+                  to={isStartupDashboard ? "/startup/messages" : "/investor/messages"}
+                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
+                >
+                  <MessageSquare size={18} />
+                  <span>Messages</span>
+                </Link>
+              </>
+            )}
             
             {!isDashboard && (
               <Link
