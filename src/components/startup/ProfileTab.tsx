@@ -1,49 +1,303 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { Edit, Upload, Trash, Check } from "lucide-react";
+import { Edit, Upload, Trash, Check, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export const ProfileTab = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [startup, setStartup] = useState({
-    name: "TechNova",
-    tagline: "AI-Powered Healthcare Diagnostics for All",
-    website: "https://technova.ai",
-    location: "San Francisco, CA",
-    founded: "2021",
-    employees: "12",
-    stage: "Series A",
-    industry: "Healthcare, Artificial Intelligence",
-    bio: "TechNova is revolutionizing healthcare with AI-driven diagnostic tools focused on underserved markets. Our technology helps clinicians make faster, more accurate diagnoses at a fraction of the cost of traditional methods.",
+    name: "",
+    tagline: "",
+    website: "",
+    location: "",
+    founded: "",
+    employees: "",
+    stage: "",
+    industry: "",
+    bio: "",
     fundraising: {
-      target: "$2,000,000",
-      raised: "$500,000",
-      minInvestment: "$50,000",
-      equity: "8%"
+      target: "",
+      raised: "",
+      minInvestment: "",
+      equity: ""
     },
-    team: [
-      { name: "Alex Johnson", role: "CEO & Co-Founder", bio: "Ex-Google, Stanford MBA" },
-      { name: "Sam Rodriguez", role: "CTO & Co-Founder", bio: "MIT AI Lab, 3 previous startups" },
-      { name: "Jamie Chen", role: "Chief Medical Officer", bio: "Johns Hopkins MD, 15 years in diagnostics" }
-    ],
+    team: [],
     metrics: {
-      users: "5,200",
-      mrr: "$18,500",
-      growth: "22%",
-      partnerships: "3"
+      users: "",
+      mrr: "",
+      growth: "",
+      partnerships: ""
     }
   });
 
-  const handleEditToggle = () => {
+  useEffect(() => {
+    if (user) {
+      fetchStartupProfile();
+    }
+  }, [user]);
+
+  const fetchStartupProfile = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if we have a startup profile
+      const { data: startupProfile, error: profileError } = await supabase
+        .from('startup_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      // If we don't have a startup profile yet, we'll create one with default values
+      if (profileError && profileError.code === 'PGRST116') {
+        await createDefaultStartupProfile();
+        await fetchStartupProfile();
+        return;
+      }
+      
+      if (profileError) throw profileError;
+      
+      // Get the metrics
+      const { data: metricsData, error: metricsError } = await supabase
+        .from('startup_metrics')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (metricsError && metricsError.code !== 'PGRST116') throw metricsError;
+      
+      // Get team members
+      const { data: teamData, error: teamError } = await supabase
+        .from('startup_team_members')
+        .select('*')
+        .eq('startup_id', user.id);
+      
+      if (teamError) throw teamError;
+      
+      // Build the complete startup object
+      setStartup({
+        name: startupProfile?.name || "",
+        tagline: startupProfile?.tagline || "",
+        website: startupProfile?.website || "",
+        location: startupProfile?.location || "",
+        founded: startupProfile?.founded || "",
+        employees: startupProfile?.employees || "",
+        stage: startupProfile?.stage || "",
+        industry: startupProfile?.industry || "",
+        bio: startupProfile?.bio || "",
+        fundraising: {
+          target: startupProfile?.target_amount || "",
+          raised: startupProfile?.raised_amount || "",
+          minInvestment: startupProfile?.min_investment || "",
+          equity: startupProfile?.equity_offered || ""
+        },
+        team: teamData || [],
+        metrics: {
+          users: metricsData?.users || "",
+          mrr: metricsData?.mrr || "",
+          growth: metricsData?.growth || "",
+          partnerships: metricsData?.partnerships || ""
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error fetching startup profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load startup profile",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createDefaultStartupProfile = async () => {
+    // Get the user's name from the profiles table first
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', user.id)
+      .single();
+    
+    // Create a default startup profile
+    const defaultName = profile?.name || "Your Startup";
+    
+    await supabase
+      .from('startup_profiles')
+      .insert({
+        id: user.id,
+        name: defaultName,
+        tagline: "AI-Powered Healthcare Diagnostics for All",
+        website: "https://example.com",
+        location: "San Francisco, CA",
+        founded: "2021",
+        employees: "12",
+        stage: "Series A",
+        industry: "Healthcare, Artificial Intelligence",
+        bio: "Your startup is revolutionizing healthcare with AI-driven diagnostic tools focused on underserved markets. Our technology helps clinicians make faster, more accurate diagnoses at a fraction of the cost of traditional methods.",
+        target_amount: "$2,000,000",
+        raised_amount: "$500,000",
+        min_investment: "$50,000",
+        equity_offered: "8%"
+      });
+    
+    // Create default metrics
+    await supabase
+      .from('startup_metrics')
+      .insert({
+        id: user.id,
+        users: "5,200",
+        mrr: "$18,500",
+        growth: "22%",
+        partnerships: "3"
+      });
+    
+    // Create default team members
+    const defaultTeam = [
+      { name: "Alex Johnson", role: "CEO & Co-Founder", bio: "Ex-Google, Stanford MBA" },
+      { name: "Sam Rodriguez", role: "CTO & Co-Founder", bio: "MIT AI Lab, 3 previous startups" },
+      { name: "Jamie Chen", role: "Chief Medical Officer", bio: "Johns Hopkins MD, 15 years in diagnostics" }
+    ];
+    
+    for (const member of defaultTeam) {
+      await supabase
+        .from('startup_team_members')
+        .insert({
+          startup_id: user.id,
+          name: member.name,
+          role: member.role,
+          bio: member.bio
+        });
+    }
+    
+    // Also create default completion tasks if they don't exist yet
+    const { data: tasks } = await supabase
+      .from('profile_completion_tasks')
+      .select('*')
+      .eq('startup_id', user.id);
+    
+    if (!tasks || tasks.length === 0) {
+      const defaultTasks = [
+        { task_name: "Add company details", completed: false },
+        { task_name: "Upload pitch deck", completed: false },
+        { task_name: "Connect team members", completed: false },
+        { task_name: "Add product information", completed: false },
+        { task_name: "Set funding requirements", completed: false }
+      ];
+      
+      for (const task of defaultTasks) {
+        await supabase
+          .from('profile_completion_tasks')
+          .insert({
+            startup_id: user.id,
+            task_name: task.task_name,
+            completed: task.completed
+          });
+      }
+    }
+  };
+
+  const handleEditToggle = async () => {
     if (editing) {
       // Save changes
-      toast({
-        title: "Profile updated",
-        description: "Your company profile has been saved",
-      });
+      try {
+        setSaving(true);
+        
+        // Update startup_profiles table
+        const { error: profileError } = await supabase
+          .from('startup_profiles')
+          .update({
+            name: startup.name,
+            tagline: startup.tagline,
+            website: startup.website,
+            location: startup.location,
+            founded: startup.founded,
+            employees: startup.employees,
+            stage: startup.stage,
+            industry: startup.industry,
+            bio: startup.bio,
+            target_amount: startup.fundraising.target,
+            raised_amount: startup.fundraising.raised,
+            min_investment: startup.fundraising.minInvestment,
+            equity_offered: startup.fundraising.equity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        
+        if (profileError) throw profileError;
+        
+        // Update metrics
+        const { error: metricsError } = await supabase
+          .from('startup_metrics')
+          .update({
+            users: startup.metrics.users,
+            mrr: startup.metrics.mrr,
+            growth: startup.metrics.growth,
+            partnerships: startup.metrics.partnerships,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        
+        if (metricsError) throw metricsError;
+        
+        // Update company details task to completed if not already
+        const { data: companyDetailsTask } = await supabase
+          .from('profile_completion_tasks')
+          .select('*')
+          .eq('startup_id', user.id)
+          .eq('task_name', 'Add company details')
+          .single();
+        
+        if (companyDetailsTask && !companyDetailsTask.completed) {
+          await supabase
+            .from('profile_completion_tasks')
+            .update({ 
+              completed: true,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', companyDetailsTask.id);
+        }
+        
+        // Update funding task to completed if not already
+        const { data: fundingTask } = await supabase
+          .from('profile_completion_tasks')
+          .select('*')
+          .eq('startup_id', user.id)
+          .eq('task_name', 'Set funding requirements')
+          .single();
+        
+        if (fundingTask && !fundingTask.completed) {
+          await supabase
+            .from('profile_completion_tasks')
+            .update({ 
+              completed: true,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', fundingTask.id);
+        }
+        
+        toast({
+          title: "Profile updated",
+          description: "Your company profile has been saved",
+        });
+      } catch (error) {
+        console.error("Error saving profile:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save profile",
+          variant: "destructive"
+        });
+      } finally {
+        setSaving(false);
+      }
     }
     setEditing(!editing);
   };
@@ -82,6 +336,99 @@ export const ProfileTab = () => {
     });
   };
 
+  const handleDeleteTeamMember = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('startup_team_members')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setStartup(prev => ({
+        ...prev,
+        team: prev.team.filter(member => member.id !== id)
+      }));
+      
+      toast({
+        title: "Team member removed",
+        description: "The team member has been removed from your startup",
+      });
+    } catch (error) {
+      console.error("Error deleting team member:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove team member",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddTeamMember = async () => {
+    toast({
+      title: "Add team member",
+      description: "Team member addition functionality coming soon",
+    });
+    
+    // For now, let's add a placeholder team member
+    try {
+      const newMember = {
+        name: "New Team Member",
+        role: "Product Manager",
+        bio: "Experience at top tech companies"
+      };
+      
+      const { data, error } = await supabase
+        .from('startup_team_members')
+        .insert({
+          startup_id: user.id,
+          name: newMember.name,
+          role: newMember.role,
+          bio: newMember.bio
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Update local state
+      setStartup(prev => ({
+        ...prev,
+        team: [...prev.team, data]
+      }));
+      
+      // Update team members task to completed
+      const { data: teamTask } = await supabase
+        .from('profile_completion_tasks')
+        .select('*')
+        .eq('startup_id', user.id)
+        .eq('task_name', 'Connect team members')
+        .single();
+      
+      if (teamTask && !teamTask.completed) {
+        await supabase
+          .from('profile_completion_tasks')
+          .update({ 
+            completed: true,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', teamTask.id);
+      }
+      
+    } catch (error) {
+      console.error("Error adding team member:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header with avatar and edit button */}
@@ -90,7 +437,7 @@ export const ProfileTab = () => {
           <div className="relative group">
             <Avatar className="h-24 w-24 border-2 border-border">
               <AvatarFallback className="text-2xl font-bold bg-accent/10 text-accent">
-                TN
+                {startup.name ? startup.name.charAt(0) : "?"}
               </AvatarFallback>
             </Avatar>
             {editing && (
@@ -128,15 +475,23 @@ export const ProfileTab = () => {
           size="sm" 
           className="mt-4 md:mt-0"
           onClick={handleEditToggle}
+          disabled={saving}
         >
           {editing ? (
-            <>
-              <Check size={16} />
-              <span>Save Profile</span>
-            </>
+            saving ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Check size={16} className="mr-2" />
+                <span>Save Profile</span>
+              </>
+            )
           ) : (
             <>
-              <Edit size={16} />
+              <Edit size={16} className="mr-2" />
               <span>Edit Profile</span>
             </>
           )}
@@ -349,7 +704,24 @@ export const ProfileTab = () => {
             <span>{startup.fundraising.target} goal</span>
           </div>
           <div className="w-full bg-secondary/50 rounded-full h-2.5">
-            <div className="bg-accent h-2.5 rounded-full" style={{ width: "25%" }}></div>
+            <div 
+              className="bg-accent h-2.5 rounded-full" 
+              style={{ 
+                width: (() => {
+                  // Parse the values and calculate percentage
+                  try {
+                    const raised = parseFloat(startup.fundraising.raised.replace(/[^0-9.]/g, ''));
+                    const target = parseFloat(startup.fundraising.target.replace(/[^0-9.]/g, ''));
+                    if (!isNaN(raised) && !isNaN(target) && target > 0) {
+                      return `${Math.min(100, (raised / target) * 100)}%`;
+                    }
+                    return "25%"; // Default fallback
+                  } catch (e) {
+                    return "25%"; // Default fallback
+                  }
+                })()
+              }}
+            ></div>
           </div>
         </div>
       </div>
@@ -358,8 +730,8 @@ export const ProfileTab = () => {
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Team</h2>
         <div className="space-y-4">
-          {startup.team.map((member, index) => (
-            <div key={index} className="p-4 border border-border rounded-md bg-background/40">
+          {startup.team.map((member) => (
+            <div key={member.id} className="p-4 border border-border rounded-md bg-background/40">
               <div className="flex justify-between items-start">
                 <div className="flex items-center">
                   <Avatar className="h-10 w-10 mr-3">
@@ -378,12 +750,7 @@ export const ProfileTab = () => {
                     variant="ghost" 
                     size="icon"
                     className="text-destructive"
-                    onClick={() => {
-                      toast({
-                        title: "Remove team member",
-                        description: `${member.name} would be removed from the team`,
-                      });
-                    }}
+                    onClick={() => handleDeleteTeamMember(member.id)}
                   >
                     <Trash size={16} />
                   </Button>
@@ -395,12 +762,7 @@ export const ProfileTab = () => {
             <Button 
               variant="outline" 
               className="w-full mt-2"
-              onClick={() => {
-                toast({
-                  title: "Add team member",
-                  description: "Team member addition functionality coming soon",
-                });
-              }}
+              onClick={handleAddTeamMember}
             >
               + Add Team Member
             </Button>

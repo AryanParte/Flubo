@@ -9,6 +9,161 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      investor_matches: {
+        Row: {
+          created_at: string | null
+          id: string
+          investor_id: string | null
+          match_score: number | null
+          startup_id: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          investor_id?: string | null
+          match_score?: number | null
+          startup_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          investor_id?: string | null
+          match_score?: number | null
+          startup_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_matches_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_matches_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          id: string
+          read_at: string | null
+          recipient_id: string | null
+          sender_id: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          content: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          content?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_completion_tasks: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          startup_id: string | null
+          task_name: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          startup_id?: string | null
+          task_name: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          startup_id?: string | null
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_completion_tasks_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_views: {
+        Row: {
+          id: string
+          startup_id: string | null
+          viewed_at: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          id?: string
+          startup_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          id?: string
+          startup_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_views_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -32,6 +187,141 @@ export type Database = {
           user_type?: string
         }
         Relationships: []
+      }
+      startup_metrics: {
+        Row: {
+          growth: string | null
+          id: string
+          mrr: string | null
+          partnerships: string | null
+          updated_at: string | null
+          users: string | null
+        }
+        Insert: {
+          growth?: string | null
+          id: string
+          mrr?: string | null
+          partnerships?: string | null
+          updated_at?: string | null
+          users?: string | null
+        }
+        Update: {
+          growth?: string | null
+          id?: string
+          mrr?: string | null
+          partnerships?: string | null
+          updated_at?: string | null
+          users?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "startup_metrics_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      startup_profiles: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          employees: string | null
+          equity_offered: string | null
+          founded: string | null
+          id: string
+          industry: string | null
+          location: string | null
+          min_investment: string | null
+          name: string | null
+          raised_amount: string | null
+          stage: string | null
+          tagline: string | null
+          target_amount: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          employees?: string | null
+          equity_offered?: string | null
+          founded?: string | null
+          id: string
+          industry?: string | null
+          location?: string | null
+          min_investment?: string | null
+          name?: string | null
+          raised_amount?: string | null
+          stage?: string | null
+          tagline?: string | null
+          target_amount?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          employees?: string | null
+          equity_offered?: string | null
+          founded?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          min_investment?: string | null
+          name?: string | null
+          raised_amount?: string | null
+          stage?: string | null
+          tagline?: string | null
+          target_amount?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "startup_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      startup_team_members: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          id: string
+          name: string
+          role: string | null
+          startup_id: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          role?: string | null
+          startup_id?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          role?: string | null
+          startup_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "startup_team_members_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
