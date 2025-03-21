@@ -90,15 +90,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       
       // Create the user in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            user_type: userType,
+            name: name
+          }
+        }
+      });
       
       if (error) throw error;
       if (!data.user) throw new Error('Failed to create user');
       
       // Add the user profile with additional data
-      // Use type assertion to bypass TypeScript's type checking
       const { error: profileError } = await supabase
-        .from('profiles' as any)
+        .from('profiles')
         .insert([
           { 
             id: data.user.id, 
@@ -107,9 +115,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             email: email,
             created_at: new Date().toISOString()
           }
-        ] as any);
+        ]);
       
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        throw new Error(`Error creating profile: ${profileError.message}`);
+      }
       
       // If using email confirmation, notify user
       toast({
