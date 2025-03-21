@@ -23,10 +23,10 @@ function FeatureCard({ icon, title, description, className, style }: FeatureCard
     >
       <CardContent className="p-6">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent mb-5 transition-transform duration-300 group-hover:scale-110">
+          <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 mb-5 transition-transform duration-300 group-hover:scale-110">
             {icon}
           </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/2 filter blur-xl"></div>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 filter blur-xl"></div>
         </div>
         <h3 className="text-lg font-semibold mb-2">{title}</h3>
         <p className="text-muted-foreground text-sm">{description}</p>
@@ -38,10 +38,10 @@ function FeatureCard({ icon, title, description, className, style }: FeatureCard
 export function Features() {
   return (
     <section className="section-padding overflow-hidden relative" id="features">
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-accent/5 to-background pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-green-500/5 to-background pointer-events-none"></div>
       <div className="container mx-auto max-w-6xl relative">
         <div className="text-center mb-16">
-          <span className="text-accent font-medium">PLATFORM FEATURES</span>
+          <span className="text-green-600 font-medium">PLATFORM FEATURES</span>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 mt-2">AI-Powered Matchmaking</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Our platform leverages artificial intelligence to create meaningful connections between startups and investors,
