@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, !!session);
       if (event === 'SIGNED_IN' && session) {
         const user = await getCurrentUser();
         setUser(user);
@@ -55,32 +56,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) throw error;
       
-      const user = await getCurrentUser();
-      
-      if (!user) throw new Error('User not found');
-      
-      // Check if user type matches
-      if (user.user_type !== userType) {
-        await supabase.auth.signOut();
-        throw new Error(`Incorrect account type. Please sign in as a ${userType}.`);
-      }
-      
-      setUser(user);
-      
-      // Redirect based on user type
-      navigate(userType === 'startup' ? '/startup' : '/investor');
-      
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in.',
-      });
+      // Give a little time for the auth state to update
+      setTimeout(async () => {
+        const user = await getCurrentUser();
+        
+        if (!user) {
+          throw new Error('User not found');
+        }
+        
+        // Check if user type matches
+        if (user.user_type !== userType) {
+          await supabase.auth.signOut();
+          throw new Error(`Incorrect account type. Please sign in as a ${userType}.`);
+        }
+        
+        setUser(user);
+        
+        // Redirect based on user type
+        navigate(userType === 'startup' ? '/startup' : '/investor');
+        
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully signed in.',
+        });
+      }, 500);
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Authentication error',
         description: error.message || 'Failed to sign in',
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -140,13 +145,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           description: 'Please check your email to confirm your account. The profile will be created once you confirm your email.',
         });
       }
+      setLoading(false);
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Registration error',
         description: error.message || 'Failed to sign up',
       });
-    } finally {
       setLoading(false);
     }
   };

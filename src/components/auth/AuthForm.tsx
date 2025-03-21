@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
 
 type UserType = "startup" | "investor";
 type AuthMode = "signin" | "signup";
@@ -22,10 +23,12 @@ export function AuthForm() {
   const [name, setName] = useState("");
   
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent multiple submissions
+    
     setIsSubmitting(true);
     
     try {
@@ -37,7 +40,11 @@ export function AuthForm() {
     } catch (error) {
       console.error("Auth error:", error);
     } finally {
-      setIsSubmitting(false);
+      // Only reset submitting state if auth context is not still loading
+      // This prevents the button from flickering between states
+      if (!loading) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -69,6 +76,7 @@ export function AuthForm() {
       <div className="bg-background/50 p-1 rounded-lg border border-border mb-6">
         <div className="grid grid-cols-2 gap-1">
           <button
+            type="button"
             onClick={() => setUserType("startup")}
             className={cn(
               "py-2.5 px-4 text-sm font-medium rounded-md transition-all",
@@ -80,6 +88,7 @@ export function AuthForm() {
             Startup
           </button>
           <button
+            type="button"
             onClick={() => setUserType("investor")}
             className={cn(
               "py-2.5 px-4 text-sm font-medium rounded-md transition-all",
@@ -108,6 +117,7 @@ export function AuthForm() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                disabled={isSubmitting || loading}
               />
             </div>
           </>
@@ -125,6 +135,7 @@ export function AuthForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isSubmitting || loading}
           />
         </div>
         
@@ -148,26 +159,26 @@ export function AuthForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isSubmitting || loading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              disabled={isSubmitting || loading}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
         
-        <button
+        <Button
           type="submit"
-          disabled={isSubmitting}
-          className={cn(
-            "w-full h-10 rounded-md bg-accent text-accent-foreground text-sm font-medium transition-transform hover:scale-[1.02]",
-            isSubmitting && "opacity-70 cursor-not-allowed"
-          )}
+          variant="accent"
+          className="w-full"
+          disabled={isSubmitting || loading}
         >
-          {isSubmitting ? (
+          {(isSubmitting || loading) ? (
             <span className="flex items-center justify-center">
               <span className="mr-2 h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin" />
               {authMode === "signin" ? "Signing In..." : "Creating Account..."}
@@ -175,7 +186,7 @@ export function AuthForm() {
           ) : (
             <>{authMode === "signin" ? "Sign In" : "Create Account"}</>
           )}
-        </button>
+        </Button>
       </form>
       
       <div className="mt-6 text-center text-sm">
@@ -183,8 +194,10 @@ export function AuthForm() {
           {authMode === "signin" ? "Don't have an account? " : "Already have an account? "}
         </span>
         <button
+          type="button"
           onClick={() => setAuthMode(authMode === "signin" ? "signup" : "signin")}
           className="text-accent hover:underline"
+          disabled={isSubmitting || loading}
         >
           {authMode === "signin" ? "Sign up" : "Sign in"}
         </button>

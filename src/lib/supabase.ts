@@ -22,11 +22,9 @@ export const getCurrentUser = async (): Promise<User | null> => {
       return null;
     }
     
-    // Debugging the session
-    console.log('Session user ID:', session.user.id);
+    console.log('Session found with user ID:', session.user.id);
     
-    // Get additional user data from profiles table
-    // Using the correct query pattern for Supabase
+    // Get additional user data from profiles table using proper query format
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -34,7 +32,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
       .single();
     
     if (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error fetching profile:', error.message);
       return null;
     }
     
@@ -58,8 +56,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
       user_type: userType as 'startup' | 'investor',
       created_at: data.created_at as string || new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('Error getting current user:', error);
+  } catch (error: any) {
+    console.error('Error getting current user:', error.message || error);
     return null;
   }
 };
