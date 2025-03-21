@@ -77,11 +77,18 @@ export const getCurrentUser = async (): Promise<User | null> => {
       
     if (!data) return null;
     
+    // Fix the type issue by adding type assertions or validation
+    const userType = data.user_type as 'startup' | 'investor';
+    if (userType !== 'startup' && userType !== 'investor') {
+      console.error('Invalid user type detected:', data.user_type);
+      return null;
+    }
+    
     return {
       id: session.user.id,
       email: session.user.email || '',
-      user_type: data.user_type,
-      created_at: data.created_at,
+      user_type: userType,
+      created_at: data.created_at as string,
     };
   } catch (error) {
     console.error('Error getting current user:', error);
