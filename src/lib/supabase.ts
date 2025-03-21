@@ -19,7 +19,10 @@ export const getCurrentUser = async (): Promise<User | null> => {
     
     if (!session) return null;
     
-    // Get additional user data from profiles table - fixing the query format
+    // Debugging the session
+    console.log('Session user ID:', session.user.id);
+    
+    // Get additional user data from profiles table with proper query format
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -31,7 +34,12 @@ export const getCurrentUser = async (): Promise<User | null> => {
       return null;
     }
     
-    if (!data) return null;
+    if (!data) {
+      console.error('No profile data found for user:', session.user.id);
+      return null;
+    }
+    
+    console.log('Profile data retrieved:', data);
     
     // Validate user_type to ensure it's one of the expected values
     const userType = data.user_type as string;
