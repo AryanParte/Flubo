@@ -1,20 +1,25 @@
 
 import { Search, MessageSquare, Sparkles, Globe, ChartBar, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import React from "react";
 
 interface FeatureCardProps {
   icon: React.ReactNode;
   title: string;
   description: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-function FeatureCard({ icon, title, description, className }: FeatureCardProps) {
+function FeatureCard({ icon, title, description, className, style }: FeatureCardProps) {
   return (
-    <div className={cn(
-      "glass-card rounded-xl p-6 transition-all duration-300 hover:translate-y-[-5px] group",
-      className
-    )}>
+    <div 
+      className={cn(
+        "glass-card rounded-xl p-6 transition-all duration-300 hover:translate-y-[-5px] group",
+        className
+      )}
+      style={style}
+    >
       <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent mb-5 transition-transform duration-300 group-hover:scale-110">
         {icon}
       </div>
