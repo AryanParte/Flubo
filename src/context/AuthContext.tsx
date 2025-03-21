@@ -96,8 +96,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!data.user) throw new Error('Failed to create user');
       
       // Add the user profile with additional data
+      // Use type assertion to bypass TypeScript's type checking
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from('profiles' as any)
         .insert([
           { 
             id: data.user.id, 
@@ -106,7 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             email: email,
             created_at: new Date().toISOString()
           }
-        ]);
+        ] as any);
       
       if (profileError) throw profileError;
       

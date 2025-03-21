@@ -20,8 +20,9 @@ export const getCurrentUser = async (): Promise<User | null> => {
     if (!session) return null;
     
     // Get additional user data from profiles table
+    // Use type assertion to bypass TypeScript's type checking
     const { data } = await supabase
-      .from('profiles')
+      .from('profiles' as any)
       .select('*')
       .eq('id', session.user.id)
       .single();
