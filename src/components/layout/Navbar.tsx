@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { Menu, X, User, MessageSquare } from "lucide-react";
+import { Menu, X, User, MessageSquare, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -41,9 +41,7 @@ export function Navbar() {
 
   // Navigation items
   const navItems = isDashboard
-    ? [
-        { name: "Dashboard", href: isStartupDashboard ? "/startup" : "/investor" },
-      ]
+    ? []
     : [
         { name: "Home", href: "/" },
         { name: "Startups", href: "/startups" },
@@ -90,9 +88,31 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right side - Auth / Theme toggle / Profile & Messages icons */}
+        {/* Right side - Auth / Theme toggle / Dashboard/Profile/Messages icons */}
         <div className="flex items-center space-x-4">
           <ThemeToggle />
+          
+          {isDashboard && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={isStartupDashboard ? "/startup" : "/investor"}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                      (location.pathname === "/startup" || location.pathname === "/investor")
+                        ? "bg-accent/20 text-accent" 
+                        : "text-foreground/80 hover:text-foreground hover:bg-background/80"
+                    )}
+                    aria-label="Dashboard"
+                  >
+                    <LayoutDashboard size={18} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Dashboard</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           
           {isDashboard && (
             <TooltipProvider>
@@ -195,6 +215,14 @@ export function Navbar() {
             
             {isDashboard && (
               <>
+                <Link
+                  to={isStartupDashboard ? "/startup" : "/investor"}
+                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
+                >
+                  <LayoutDashboard size={18} />
+                  <span>Dashboard</span>
+                </Link>
+                
                 <Link
                   to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
