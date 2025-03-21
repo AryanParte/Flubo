@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
 
 type UserType = "startup" | "investor";
 type AuthMode = "signin" | "signup";
@@ -14,31 +13,15 @@ export function AuthForm() {
   const [userType, setUserType] = useState<UserType>(initialType);
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form fields
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    // This would normally connect to Supabase for authentication
+    console.log("Auth form submitted:", { userType, authMode });
     
-    try {
-      if (authMode === "signin") {
-        await signIn(email, password, userType);
-      } else {
-        await signUp(email, password, userType, name);
-      }
-    } catch (error) {
-      console.error("Auth error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Redirect to appropriate dashboard based on user type
+    navigate(userType === "startup" ? "/startup" : "/investor");
   };
 
   return (
@@ -105,8 +88,6 @@ export function AuthForm() {
                 type="text"
                 className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
                 placeholder={userType === "startup" ? "Your startup name" : "Your name"}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
@@ -122,8 +103,6 @@ export function AuthForm() {
             type="email"
             className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
             placeholder="email@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
@@ -145,8 +124,6 @@ export function AuthForm() {
               type={showPassword ? "text" : "password"}
               className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               required
             />
             <button
@@ -161,20 +138,9 @@ export function AuthForm() {
         
         <button
           type="submit"
-          disabled={isSubmitting}
-          className={cn(
-            "w-full h-10 rounded-md bg-accent text-accent-foreground text-sm font-medium transition-transform hover:scale-[1.02]",
-            isSubmitting && "opacity-70 cursor-not-allowed"
-          )}
+          className="w-full h-10 rounded-md bg-accent text-accent-foreground text-sm font-medium transition-transform hover:scale-[1.02]"
         >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center">
-              <span className="mr-2 h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin" />
-              {authMode === "signin" ? "Signing In..." : "Creating Account..."}
-            </span>
-          ) : (
-            <>{authMode === "signin" ? "Sign In" : "Create Account"}</>
-          )}
+          {authMode === "signin" ? "Sign In" : "Create Account"}
         </button>
       </form>
       
