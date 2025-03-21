@@ -1,10 +1,18 @@
 
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const SettingsTab = () => {
   const [companyName, setCompanyName] = useState("TechNova");
@@ -12,6 +20,11 @@ export const SettingsTab = () => {
   const [industry, setIndustry] = useState("Artificial Intelligence");
   const [fundingStage, setFundingStage] = useState("Series A");
   const [bio, setBio] = useState("TechNova is revolutionizing healthcare with AI-driven diagnostic tools for underserved markets.");
+  
+  const profileForm = useForm();
+  const teamForm = useForm();
+  const fundingForm = useForm();
+  const notificationsForm = useForm();
   
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,71 +74,66 @@ export const SettingsTab = () => {
             <h2 className="text-lg font-medium mb-6">Company Information</h2>
             
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <FormItem>
-                <FormLabel>Company Name</FormLabel>
-                <FormControl>
-                  <Input 
-                    value={companyName} 
-                    onChange={(e) => setCompanyName(e.target.value)} 
-                    placeholder="Enter your company name"
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="companyName" className="text-sm font-medium">Company Name</label>
+                <Input 
+                  id="companyName"
+                  value={companyName} 
+                  onChange={(e) => setCompanyName(e.target.value)} 
+                  placeholder="Enter your company name"
+                />
+              </div>
               
-              <FormItem>
-                <FormLabel>Website</FormLabel>
-                <FormControl>
-                  <Input 
-                    value={website} 
-                    onChange={(e) => setWebsite(e.target.value)} 
-                    placeholder="https://example.com"
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="website" className="text-sm font-medium">Website</label>
+                <Input 
+                  id="website"
+                  value={website} 
+                  onChange={(e) => setWebsite(e.target.value)} 
+                  placeholder="https://example.com"
+                />
+              </div>
               
-              <FormItem>
-                <FormLabel>Industry</FormLabel>
-                <FormControl>
-                  <Input 
-                    value={industry} 
-                    onChange={(e) => setIndustry(e.target.value)} 
-                    placeholder="e.g. Fintech, Healthcare, etc."
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="industry" className="text-sm font-medium">Industry</label>
+                <Input 
+                  id="industry"
+                  value={industry} 
+                  onChange={(e) => setIndustry(e.target.value)} 
+                  placeholder="e.g. Fintech, Healthcare, etc."
+                />
+              </div>
               
-              <FormItem>
-                <FormLabel>Funding Stage</FormLabel>
-                <FormControl>
-                  <select 
-                    value={fundingStage}
-                    onChange={(e) => setFundingStage(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="Pre-seed">Pre-seed</option>
-                    <option value="Seed">Seed</option>
-                    <option value="Series A">Series A</option>
-                    <option value="Series B">Series B</option>
-                    <option value="Series C">Series C</option>
-                    <option value="Series D+">Series D+</option>
-                  </select>
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="fundingStage" className="text-sm font-medium">Funding Stage</label>
+                <Select value={fundingStage} onValueChange={setFundingStage}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a funding stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pre-seed">Pre-seed</SelectItem>
+                    <SelectItem value="Seed">Seed</SelectItem>
+                    <SelectItem value="Series A">Series A</SelectItem>
+                    <SelectItem value="Series B">Series B</SelectItem>
+                    <SelectItem value="Series C">Series C</SelectItem>
+                    <SelectItem value="Series D+">Series D+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
-              <FormItem>
-                <FormLabel>Company Bio</FormLabel>
-                <FormControl>
-                  <textarea 
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Brief description of your company"
-                  />
-                </FormControl>
-                <FormDescription>
+              <div className="space-y-2">
+                <label htmlFor="bio" className="text-sm font-medium">Company Bio</label>
+                <textarea 
+                  id="bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Brief description of your company"
+                />
+                <p className="text-sm text-muted-foreground">
                   This will be visible to potential investors
-                </FormDescription>
-              </FormItem>
+                </p>
+              </div>
               
               <Button type="submit" className="mt-2">Save Changes</Button>
             </form>
@@ -188,41 +196,38 @@ export const SettingsTab = () => {
             <h2 className="text-lg font-medium mb-6">Funding Requirements</h2>
             
             <form onSubmit={handleSaveFunding} className="space-y-4">
-              <FormItem>
-                <FormLabel>Amount Raising</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="text" 
-                    defaultValue="$2,000,000" 
-                    placeholder="e.g. $1,000,000"
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="amountRaising" className="text-sm font-medium">Amount Raising</label>
+                <Input 
+                  id="amountRaising"
+                  type="text" 
+                  defaultValue="$2,000,000" 
+                  placeholder="e.g. $1,000,000"
+                />
+              </div>
               
-              <FormItem>
-                <FormLabel>Minimum Investment</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="text" 
-                    defaultValue="$50,000" 
-                    placeholder="e.g. $25,000"
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="minInvestment" className="text-sm font-medium">Minimum Investment</label>
+                <Input 
+                  id="minInvestment"
+                  type="text" 
+                  defaultValue="$50,000" 
+                  placeholder="e.g. $25,000"
+                />
+              </div>
               
-              <FormItem>
-                <FormLabel>Use of Funds</FormLabel>
-                <FormControl>
-                  <textarea 
-                    defaultValue="Product development (40%), Market expansion (30%), Team growth (20%), Operations (10%)"
-                    className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Explain how you plan to use the funds"
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="useOfFunds" className="text-sm font-medium">Use of Funds</label>
+                <textarea 
+                  id="useOfFunds"
+                  defaultValue="Product development (40%), Market expansion (30%), Team growth (20%), Operations (10%)"
+                  className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Explain how you plan to use the funds"
+                />
+              </div>
               
-              <FormItem>
-                <FormLabel>Previous Funding</FormLabel>
+              <div className="space-y-2">
+                <label htmlFor="previousFunding" className="text-sm font-medium">Previous Funding</label>
                 <div className="space-y-2">
                   {[
                     { round: "Seed", amount: "$500,000", date: "Jan 2022", investors: "Angel Investors" },
@@ -245,7 +250,7 @@ export const SettingsTab = () => {
                     + Add Funding Round
                   </Button>
                 </div>
-              </FormItem>
+              </div>
               
               <Button type="submit" className="mt-2">Save Funding Info</Button>
             </form>
