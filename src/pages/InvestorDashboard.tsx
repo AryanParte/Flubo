@@ -4,15 +4,81 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Bell, Search, ThumbsUp, ThumbsDown, MessageSquare, Filter, Globe, Briefcase, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const InvestorDashboard = () => {
   const [activeTab, setActiveTab] = useState("discover");
   const [searchQuery, setSearchQuery] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState(["AI & ML", "Fintech", "Africa"]);
+  const navigate = useNavigate();
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Searching for:", searchQuery);
-    // This would normally call the OpenAI API to process the natural language query
+    if (searchQuery.trim()) {
+      toast({
+        title: "Search initiated",
+        description: `Searching for: ${searchQuery}`,
+      });
+      // This would normally call the OpenAI API to process the natural language query
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Search query empty",
+        description: "Please enter a search term",
+      });
+    }
+  };
+
+  const handleNotificationClick = () => {
+    toast({
+      title: "Notifications",
+      description: "You have 3 unread notifications",
+    });
+  };
+
+  const handleFilterClick = () => {
+    toast({
+      title: "Filters",
+      description: "Filter options would open here",
+    });
+  };
+
+  const handleRemoveFilter = (filterToRemove: string) => {
+    setAppliedFilters(appliedFilters.filter(filter => filter !== filterToRemove));
+    toast({
+      title: "Filter removed",
+      description: `Removed "${filterToRemove}" filter`,
+    });
+  };
+
+  const handleInterestedClick = (startupName: string) => {
+    toast({
+      title: "Interest registered",
+      description: `You've shown interest in ${startupName}`,
+    });
+  };
+
+  const handleSkipClick = (startupName: string) => {
+    toast({
+      title: "Startup skipped",
+      description: `You've skipped ${startupName}`,
+    });
+  };
+
+  const handleLoadMore = () => {
+    toast({
+      title: "Loading more startups",
+      description: "Fetching additional startup profiles",
+    });
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    toast({
+      title: "Tab changed",
+      description: `Switched to ${tab} tab`,
+    });
   };
   
   return (
@@ -28,7 +94,10 @@ const InvestorDashboard = () => {
             </div>
             
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
-              <button className="relative p-2 rounded-full bg-background border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
+              <button 
+                className="relative p-2 rounded-full bg-background border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleNotificationClick}
+              >
                 <Bell size={20} />
                 <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-accent"></span>
               </button>
@@ -67,7 +136,7 @@ const InvestorDashboard = () => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={cn(
                     "flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors",
                     activeTab === tab.id
@@ -87,16 +156,24 @@ const InvestorDashboard = () => {
             {/* Filters and Sort */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
               <div className="flex items-center space-x-2 mb-4 sm:mb-0">
-                <button className="inline-flex items-center space-x-1 px-3 py-1.5 bg-background border border-border rounded-md text-sm">
+                <button 
+                  className="inline-flex items-center space-x-1 px-3 py-1.5 bg-background border border-border rounded-md text-sm"
+                  onClick={handleFilterClick}
+                >
                   <Filter size={14} />
                   <span>Filters</span>
                 </button>
                 
                 <div className="flex space-x-2">
-                  {["AI & ML", "Fintech", "Africa"].map((filter, index) => (
+                  {appliedFilters.map((filter, index) => (
                     <div key={index} className="flex items-center space-x-1 px-2 py-1 bg-accent/10 text-accent rounded-md text-xs">
                       <span>{filter}</span>
-                      <button className="text-accent/70 hover:text-accent">×</button>
+                      <button 
+                        className="text-accent/70 hover:text-accent"
+                        onClick={() => handleRemoveFilter(filter)}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -174,11 +251,17 @@ const InvestorDashboard = () => {
                     </div>
                     
                     <div className="mt-auto flex space-x-2">
-                      <button className="flex-1 flex justify-center items-center h-9 rounded-md bg-secondary text-secondary-foreground text-sm">
+                      <button 
+                        className="flex-1 flex justify-center items-center h-9 rounded-md bg-secondary text-secondary-foreground text-sm"
+                        onClick={() => handleSkipClick(startup.name)}
+                      >
                         <ThumbsDown size={14} className="mr-1" />
                         <span>Skip</span>
                       </button>
-                      <button className="flex-1 flex justify-center items-center h-9 rounded-md bg-accent text-accent-foreground text-sm">
+                      <button 
+                        className="flex-1 flex justify-center items-center h-9 rounded-md bg-accent text-accent-foreground text-sm"
+                        onClick={() => handleInterestedClick(startup.name)}
+                      >
                         <ThumbsUp size={14} className="mr-1" />
                         <span>Interested</span>
                       </button>
@@ -190,7 +273,10 @@ const InvestorDashboard = () => {
             
             {/* Load More */}
             <div className="mt-8 text-center">
-              <button className="inline-flex items-center justify-center h-10 px-6 rounded-md border border-border bg-background hover:bg-secondary transition-colors text-sm font-medium">
+              <button 
+                className="inline-flex items-center justify-center h-10 px-6 rounded-md border border-border bg-background hover:bg-secondary transition-colors text-sm font-medium"
+                onClick={handleLoadMore}
+              >
                 Load More Startups
               </button>
             </div>

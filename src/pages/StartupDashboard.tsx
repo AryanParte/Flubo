@@ -4,9 +4,12 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Bell, Users, MessageSquare, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const navigate = useNavigate();
   
   // Simulated data
   const stats = [
@@ -15,6 +18,45 @@ const StartupDashboard = () => {
     { label: "Messages", value: 7, trend: "down", percent: 3 },
     { label: "Completion", value: "75%", trend: "neutral", percent: 0 },
   ];
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    toast({
+      title: "Tab changed",
+      description: `Switched to ${tab} tab`,
+    });
+  };
+
+  const handleNotificationClick = () => {
+    toast({
+      title: "Notifications",
+      description: "You have 2 unread notifications",
+    });
+  };
+
+  const handleCompleteProfileClick = () => {
+    toast({
+      title: "Profile completion",
+      description: "Let's complete your profile",
+    });
+    setActiveTab("settings");
+  };
+
+  const handleViewAllMatches = () => {
+    toast({
+      title: "View all matches",
+      description: "Navigating to all investor matches",
+    });
+    setActiveTab("matches");
+  };
+
+  const handleContinueSetup = () => {
+    toast({
+      title: "Continue Setup",
+      description: "Let's finish setting up your profile",
+    });
+    setActiveTab("settings");
+  };
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,12 +71,18 @@ const StartupDashboard = () => {
             </div>
             
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
-              <button className="relative p-2 rounded-full bg-background border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
+              <button 
+                className="relative p-2 rounded-full bg-background border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleNotificationClick}
+              >
                 <Bell size={20} />
                 <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-accent"></span>
               </button>
               
-              <button className="flex items-center space-x-2 py-2 px-4 rounded-md bg-secondary text-secondary-foreground text-sm">
+              <button 
+                className="flex items-center space-x-2 py-2 px-4 rounded-md bg-secondary text-secondary-foreground text-sm"
+                onClick={handleCompleteProfileClick}
+              >
                 <span>Complete Your Profile</span>
               </button>
             </div>
@@ -51,7 +99,7 @@ const StartupDashboard = () => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={cn(
                     "flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors",
                     activeTab === tab.id
@@ -102,7 +150,12 @@ const StartupDashboard = () => {
               <div className="lg:col-span-2 glass-card rounded-lg p-6 animate-fade-in" style={{ animationDelay: "400ms" }}>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="font-medium">Recent Investor Matches</h2>
-                  <button className="text-sm text-accent">View All</button>
+                  <button 
+                    className="text-sm text-accent"
+                    onClick={handleViewAllMatches}
+                  >
+                    View All
+                  </button>
                 </div>
                 
                 <div className="space-y-4">
@@ -111,7 +164,16 @@ const StartupDashboard = () => {
                     { name: "Global Impact Fund", score: 87, region: "Europe", focus: "Sustainability" },
                     { name: "Tech Accelerator Group", score: 84, region: "Asia", focus: "SaaS" },
                   ].map((investor, index) => (
-                    <div key={index} className="flex items-center p-3 rounded-md bg-background/50 border border-border/40 transition-transform hover:translate-x-1">
+                    <div 
+                      key={index} 
+                      className="flex items-center p-3 rounded-md bg-background/50 border border-border/40 transition-transform hover:translate-x-1 cursor-pointer"
+                      onClick={() => {
+                        toast({
+                          title: "Investor profile",
+                          description: `Viewing ${investor.name} details`,
+                        });
+                      }}
+                    >
                       <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent mr-4">
                         {investor.name.charAt(0)}
                       </div>
@@ -139,7 +201,18 @@ const StartupDashboard = () => {
                     { task: "Add product information", completed: true },
                     { task: "Set funding requirements", completed: false },
                   ].map((item, index) => (
-                    <div key={index} className="flex items-center">
+                    <div 
+                      key={index} 
+                      className="flex items-center cursor-pointer"
+                      onClick={() => {
+                        if (!item.completed) {
+                          toast({
+                            title: "Task selected",
+                            description: `Let's complete: ${item.task}`,
+                          });
+                        }
+                      }}
+                    >
                       <div 
                         className={cn(
                           "w-5 h-5 rounded-full mr-3 flex items-center justify-center",
@@ -171,7 +244,10 @@ const StartupDashboard = () => {
                   <p className="text-xs text-muted-foreground mt-2">3 of 5 tasks completed</p>
                 </div>
                 
-                <button className="w-full mt-6 py-2 rounded-md bg-accent text-accent-foreground text-sm font-medium">
+                <button 
+                  className="w-full mt-6 py-2 rounded-md bg-accent text-accent-foreground text-sm font-medium"
+                  onClick={handleContinueSetup}
+                >
                   Continue Setup
                 </button>
               </div>
