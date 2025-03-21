@@ -1,10 +1,11 @@
 
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type UserType = "startup" | "investor";
 type AuthMode = "signin" | "signup";
@@ -23,12 +24,12 @@ export function AuthForm() {
   const [name, setName] = useState("");
   
   const navigate = useNavigate();
-  const { signIn, signUp, loading } = useAuth();
+  const { signIn, signUp, loading, supabaseConfigured } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSubmitting) return;
+    if (isSubmitting || !supabaseConfigured) return;
     
     try {
       setIsSubmitting(true);
@@ -64,6 +65,15 @@ export function AuthForm() {
           Back to Home
         </button>
       </div>
+      
+      {!supabaseConfigured && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Supabase is not properly configured. Authentication will not work until environment variables are set.
+          </AlertDescription>
+        </Alert>
+      )}
       
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">
@@ -109,22 +119,20 @@ export function AuthForm() {
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {authMode === "signup" && (
-          <>
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                {userType === "startup" ? "Company Name" : "Full Name"}
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
-                placeholder={userType === "startup" ? "Your startup name" : "Your name"}
-                required
-              />
-            </div>
-          </>
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-medium">
+              {userType === "startup" ? "Company Name" : "Full Name"}
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+              placeholder={userType === "startup" ? "Your startup name" : "Your name"}
+              required
+            />
+          </div>
         )}
         
         <div className="space-y-2">
@@ -175,10 +183,10 @@ export function AuthForm() {
         
         <button
           type="submit"
-          disabled={loading || isSubmitting}
+          disabled={loading || isSubmitting || !supabaseConfigured}
           className={cn(
             "w-full h-10 rounded-md bg-accent text-accent-foreground text-sm font-medium transition-transform hover:scale-[1.02]",
-            (loading || isSubmitting) && "opacity-70 cursor-not-allowed"
+            (loading || isSubmitting || !supabaseConfigured) && "opacity-70 cursor-not-allowed"
           )}
         >
           {loading || isSubmitting ? (
