@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -63,7 +62,19 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// New cold/green color palette
+				gold: {
+					50: '#fff9e6',
+					100: '#fff0c2',
+					200: '#ffe799',
+					300: '#ffdc6b',
+					400: '#ffd754',
+					500: '#ffc619',
+					600: '#e6aa00',
+					700: '#cc9600',
+					800: '#b38300',
+					900: '#9a7000',
+					950: '#805c00',
+				},
 				green: {
 					50: '#f0fdf4',
 					100: '#dcfce7',

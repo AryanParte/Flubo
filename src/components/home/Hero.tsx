@@ -8,14 +8,14 @@ export function Hero() {
     <section className="section-padding pt-32 md:pt-40 overflow-hidden">
       <div className="container mx-auto max-w-6xl">
         <div className="flex flex-col items-center text-center">
-          <span className="inline-flex items-center rounded-full border border-border/60 bg-background px-3 py-1 text-sm font-medium text-foreground/80 mb-6 animate-fade-in">
-            <span className="flex h-2 w-2 rounded-full bg-accent mr-2"></span>
+          <span className="inline-flex items-center rounded-full border border-gold-300/60 bg-gold-50/30 px-3 py-1 text-sm font-medium text-foreground/80 mb-6 animate-fade-in">
+            <span className="flex h-2 w-2 rounded-full bg-gold-500 mr-2"></span>
             Revolutionizing startup and investor connections
           </span>
           
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight animate-slide-up" style={{ animationDelay: "100ms" }}>
             <span className="block">Connect Startups and Investors</span>
-            <span className="bg-gradient-to-r from-green-500 to-teal-500 bg-clip-text text-transparent">With AI-Powered Matching</span>
+            <span className="bg-gradient-to-r from-green-500 via-gold-500 to-teal-500 bg-clip-text text-transparent">With AI-Powered Matching</span>
           </h1>
           
           <p className="mt-6 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl animate-slide-up" style={{ animationDelay: "200ms" }}>
@@ -29,7 +29,7 @@ export function Hero() {
                 Join as Startup
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full sm:w-auto border-accent text-accent hover:bg-accent/10">
+            <Button asChild variant="outline" className="w-full sm:w-auto border-gold-500 text-gold-600 hover:bg-gold-50/30">
               <Link to="/auth?type=investor">
                 Join as Investor
               </Link>
@@ -38,8 +38,8 @@ export function Hero() {
           
           <div className="mt-24 max-w-5xl w-full">
             <div className="relative w-full h-[350px] sm:h-[450px] md:h-[500px] rounded-2xl overflow-hidden animate-scale-in">
-              {/* Dashboard Background - Enhanced for light mode visibility */}
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-teal-500/20 dark:bg-gradient-to-br dark:from-green-500/20 dark:to-teal-500/20 border border-green-500/20 dark:border-white/10"></div>
+              {/* Dashboard Background - Enhanced with gold accents */}
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 via-gold-300/10 to-teal-500/20 dark:bg-gradient-to-br dark:from-green-500/20 dark:via-gold-300/10 dark:to-teal-500/20 border border-green-500/20 dark:border-white/10"></div>
               <div className="absolute inset-0 backdrop-blur-sm bg-white/70 dark:bg-black/30 shadow-lg">
                 <div className="relative h-full w-full flex flex-col items-center p-8">
                   {/* Browser-like Top Bar */}
@@ -86,7 +86,7 @@ export function Hero() {
                       <div className="flex flex-col h-full justify-between">
                         <div className="flex justify-between items-start">
                           <span className="text-gray-500 dark:text-gray-300 text-xs font-medium">TRENDING</span>
-                          <LineChart size={18} className="text-green-600" />
+                          <LineChart size={18} className="text-gold-500" />
                         </div>
                         <div>
                           <h3 className="text-2xl font-bold text-gray-800 dark:text-white">AI Health</h3>
@@ -115,18 +115,18 @@ export function Hero() {
                         <div className="flex gap-2 mt-auto">
                           <span className="text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full">Healthcare</span>
                           <span className="text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400 px-2 py-1 rounded-full">AI</span>
-                          <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-full">Mobile</span>
+                          <span className="text-xs bg-gold-500/10 text-gold-600 dark:text-gold-400 px-2 py-1 rounded-full">Mobile</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="bg-white dark:bg-white/10 rounded-lg p-4 h-48 border border-gray-100 dark:border-white/5">
                       <div className="h-full flex flex-col justify-center items-center space-y-4">
-                        <div className="w-16 h-16 rounded-full bg-green-500/20 dark:bg-green-500/30 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500/30 to-gold-500/30 dark:from-green-500/30 dark:to-gold-500/30 flex items-center justify-center">
                           <span className="text-2xl font-bold text-green-600 dark:text-white">85%</span>
                         </div>
                         <span className="text-gray-700 dark:text-white/70 text-sm font-medium">Match Score</span>
-                        <Button variant="outline" size="sm" className="text-xs border-green-600 text-green-600 hover:bg-green-500/10 mt-2">
+                        <Button variant="outline" size="sm" className="text-xs border-gold-500 text-gold-600 hover:bg-gold-500/10 mt-2">
                           View Details <ArrowRight size={12} className="ml-1" />
                         </Button>
                       </div>

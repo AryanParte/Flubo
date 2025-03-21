@@ -10,9 +10,10 @@ interface FeatureCardProps {
   description: string;
   className?: string;
   style?: React.CSSProperties;
+  iconClass?: string;
 }
 
-function FeatureCard({ icon, title, description, className, style }: FeatureCardProps) {
+function FeatureCard({ icon, title, description, className, style, iconClass }: FeatureCardProps) {
   return (
     <Card 
       className={cn(
@@ -23,7 +24,7 @@ function FeatureCard({ icon, title, description, className, style }: FeatureCard
     >
       <CardContent className="p-6">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 mb-5 transition-transform duration-300 group-hover:scale-110">
+          <div className={cn("w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 mb-5 transition-transform duration-300 group-hover:scale-110", iconClass)}>
             {icon}
           </div>
           <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 filter blur-xl"></div>
@@ -41,7 +42,7 @@ export function Features() {
       <div className="absolute inset-0 bg-gradient-to-b from-background via-green-500/5 to-background pointer-events-none"></div>
       <div className="container mx-auto max-w-6xl relative">
         <div className="text-center mb-16">
-          <span className="text-green-600 font-medium">PLATFORM FEATURES</span>
+          <span className="text-gold-600 font-medium">PLATFORM FEATURES</span>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 mt-2">AI-Powered Matchmaking</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Our platform leverages artificial intelligence to create meaningful connections between startups and investors,
@@ -64,6 +65,7 @@ export function Features() {
             description="Startups can test their pitch with an AI that simulates investor questioning patterns."
             className="animate-fade-in"
             style={{ animationDelay: "200ms" }}
+            iconClass="bg-gold-500/10 text-gold-600"
           />
           
           <FeatureCard
@@ -80,6 +82,7 @@ export function Features() {
             description="Discover opportunities from emerging markets and underrepresented regions worldwide."
             className="animate-fade-in"
             style={{ animationDelay: "400ms" }}
+            iconClass="bg-gold-500/10 text-gold-600"
           />
           
           <FeatureCard
@@ -96,6 +99,7 @@ export function Features() {
             description="Communication is only enabled when both parties express interest, respecting everyone's time."
             className="animate-fade-in"
             style={{ animationDelay: "600ms" }}
+            iconClass="bg-gold-500/10 text-gold-600"
           />
 
           <FeatureCard
@@ -112,6 +116,7 @@ export function Features() {
             description="Automate the discovery process so you can focus on the startups that matter most to you."
             className="animate-fade-in"
             style={{ animationDelay: "800ms" }}
+            iconClass="bg-gold-500/10 text-gold-600"
           />
           
           <FeatureCard
