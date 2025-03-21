@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, !!session);
       if (event === 'SIGNED_IN' && session) {
         const user = await getCurrentUser();
         setUser(user);
@@ -56,36 +55,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) throw error;
       
-      // Give a little time for the auth state to update
-      setTimeout(async () => {
-        const user = await getCurrentUser();
-        
-        if (!user) {
-          throw new Error('User not found');
-        }
-        
-        // Check if user type matches
-        if (user.user_type !== userType) {
-          await supabase.auth.signOut();
-          throw new Error(`Incorrect account type. Please sign in as a ${userType}.`);
-        }
-        
-        setUser(user);
-        
-        // Redirect based on user type
-        navigate(userType === 'startup' ? '/startup' : '/investor');
-        
-        toast({
-          title: 'Welcome back!',
-          description: 'You have successfully signed in.',
-        });
-      }, 500);
+      const user = await getCurrentUser();
+      
+      if (!user) throw new Error('User not found');
+      
+      // Check if user type matches
+      if (user.user_type !== userType) {
+        await supabase.auth.signOut();
+        throw new Error(`Incorrect account type. Please sign in as a ${userType}.`);
+      }
+      
+      setUser(user);
+      
+      // Redirect based on user type
+      navigate(userType === 'startup' ? '/startup' : '/investor');
+      
+      toast({
+        title: 'Welcome back!',
+        description: 'You have successfully signed in.',
+      });
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Authentication error',
         description: error.message || 'Failed to sign in',
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -94,64 +89,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       
-      // Create the user in Supabase Auth with metadata
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            user_type: userType,
-            name: name
-          }
-        }
-      });
+      // Create the user in Supabase Auth
+      const { data, error } = await supabase.auth.signUp({ email, password });
       
       if (error) throw error;
       if (!data.user) throw new Error('Failed to create user');
       
-      // Important: With email confirmation enabled, we need to check if the user is confirmed
-      // before trying to insert into profiles
-      if (data.session) {
-        // User is immediately confirmed (email confirmation is disabled)
-        // We can safely create the profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            { 
-              id: data.user.id, 
-              user_type: userType,
-              name: name,
-              email: email,
-              created_at: new Date().toISOString()
-            }
-          ]);
-        
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          throw new Error(`Error creating profile: ${profileError.message}`);
-        }
-        
-        // Get user and redirect
-        const user = await getCurrentUser();
-        setUser(user);
-        
-        if (user) {
-          navigate(userType === 'startup' ? '/startup' : '/investor');
-        }
-      } else {
-        // Email confirmation is required, so we just show a message
-        toast({
-          title: 'Registration successful!',
-          description: 'Please check your email to confirm your account. The profile will be created once you confirm your email.',
-        });
+      // Add the user profile with additional data
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          { 
+            id: data.user.id, 
+            user_type: userType,
+            name: name,
+            email: email,
+            created_at: new Date().toISOString()
+          }
+        ]);
+      
+      if (profileError) throw profileError;
+      
+      // If using email confirmation, notify user
+      toast({
+        title: 'Registration successful!',
+        description: 'Please check your email to confirm your account.',
+      });
+      
+      // If using auto sign-in, get user and redirect
+      const user = await getCurrentUser();
+      setUser(user);
+      
+      if (user) {
+        navigate(userType === 'startup' ? '/startup' : '/investor');
       }
-      setLoading(false);
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Registration error',
         description: error.message || 'Failed to sign up',
       });
+    } finally {
       setLoading(false);
     }
   };
