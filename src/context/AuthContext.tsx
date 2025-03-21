@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       
-      // Create the user in Supabase Auth
+      // Create the user in Supabase Auth with metadata
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
@@ -104,36 +104,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) throw error;
       if (!data.user) throw new Error('Failed to create user');
       
-      // Add the user profile with additional data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          { 
-            id: data.user.id, 
-            user_type: userType,
-            name: name,
-            email: email,
-            created_at: new Date().toISOString()
-          }
-        ]);
-      
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        throw new Error(`Error creating profile: ${profileError.message}`);
-      }
-      
-      // If using email confirmation, notify user
-      toast({
-        title: 'Registration successful!',
-        description: 'Please check your email to confirm your account.',
-      });
-      
-      // If using auto sign-in, get user and redirect
-      const user = await getCurrentUser();
-      setUser(user);
-      
-      if (user) {
-        navigate(userType === 'startup' ? '/startup' : '/investor');
+      // Important: With email confirmation enabled, we need to check if the user is confirmed
+      // before trying to insert into profiles
+      if (data.session) {
+        // User is immediately confirmed (email confirmation is disabled)
+        // We can safely create the profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            { 
+              id: data.user.id, 
+              user_type: userType,
+              name: name,
+              email: email,
+              created_at: new Date().toISOString()
+            }
+          ]);
+        
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          throw new Error(`Error creating profile: ${profileError.message}`);
+        }
+        
+        // Get user and redirect
+        const user = await getCurrentUser();
+        setUser(user);
+        
+        if (user) {
+          navigate(userType === 'startup' ? '/startup' : '/investor');
+        }
+      } else {
+        // Email confirmation is required, so we just show a message
+        toast({
+          title: 'Registration successful!',
+          description: 'Please check your email to confirm your account. The profile will be created once you confirm your email.',
+        });
       }
     } catch (error: any) {
       toast({
