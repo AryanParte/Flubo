@@ -17,6 +17,8 @@ export const ProfileTab = () => {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [profileCreated, setProfileCreated] = useState(false);
   const [startup, setStartup] = useState({
     name: "",
     tagline: "",
@@ -51,10 +53,15 @@ export const ProfileTab = () => {
       setLoading(false);
       setError("No profile ID available");
     }
-  }, [profileId]);
+  }, [profileId, profileCreated]);
 
   const fetchStartupProfile = async () => {
     try {
+      if (creatingProfile) {
+        console.log("Already creating profile, skipping fetch");
+        return;
+      }
+      
       setLoading(true);
       setError(null);
       console.log("Fetching startup profile...");
@@ -74,8 +81,10 @@ export const ProfileTab = () => {
           console.log("No profile found, will create default");
           // Only create default if viewing own profile
           if (user && user.id === profileId) {
+            setCreatingProfile(true);
             await createDefaultStartupProfile();
-            await fetchStartupProfile();
+            setProfileCreated(true);
+            setCreatingProfile(false);
             return;
           } else {
             throw new Error("Profile not found");
@@ -152,88 +161,100 @@ export const ProfileTab = () => {
   };
 
   const createDefaultStartupProfile = async () => {
-    // Get the user's name from the profiles table first
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('name')
-      .eq('id', user.id)
-      .single();
-    
-    // Create a default startup profile
-    const defaultName = profile?.name || "Your Startup";
-    
-    await supabase
-      .from('startup_profiles')
-      .insert({
-        id: user.id,
-        name: defaultName,
-        tagline: "AI-Powered Healthcare Diagnostics for All",
-        website: "https://example.com",
-        location: "San Francisco, CA",
-        founded: "2021",
-        employees: "12",
-        stage: "Series A",
-        industry: "Healthcare, Artificial Intelligence",
-        bio: "Your startup is revolutionizing healthcare with AI-driven diagnostic tools focused on underserved markets. Our technology helps clinicians make faster, more accurate diagnoses at a fraction of the cost of traditional methods.",
-        target_amount: "$2,000,000",
-        raised_amount: "$500,000",
-        min_investment: "$50,000",
-        equity_offered: "8%"
-      });
-    
-    // Create default metrics
-    await supabase
-      .from('startup_metrics')
-      .insert({
-        id: user.id,
-        users: "5,200",
-        mrr: "$18,500",
-        growth: "22%",
-        partnerships: "3"
-      });
-    
-    // Create default team members
-    const defaultTeam = [
-      { name: "Alex Johnson", role: "CEO & Co-Founder", bio: "Ex-Google, Stanford MBA" },
-      { name: "Sam Rodriguez", role: "CTO & Co-Founder", bio: "MIT AI Lab, 3 previous startups" },
-      { name: "Jamie Chen", role: "Chief Medical Officer", bio: "Johns Hopkins MD, 15 years in diagnostics" }
-    ];
-    
-    for (const member of defaultTeam) {
-      await supabase
-        .from('startup_team_members')
+    try {
+      // Get the user's name from the profiles table first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user.id)
+        .single();
+      
+      // Create a default startup profile
+      const defaultName = profile?.name || "Your Startup";
+      
+      const { error: profileError } = await supabase
+        .from('startup_profiles')
         .insert({
-          startup_id: user.id,
-          name: member.name,
-          role: member.role,
-          bio: member.bio
+          id: user.id,
+          name: defaultName,
+          tagline: "AI-Powered Healthcare Diagnostics for All",
+          website: "https://example.com",
+          location: "San Francisco, CA",
+          founded: "2021",
+          employees: "12",
+          stage: "Series A",
+          industry: "Healthcare, Artificial Intelligence",
+          bio: "Your startup is revolutionizing healthcare with AI-driven diagnostic tools focused on underserved markets. Our technology helps clinicians make faster, more accurate diagnoses at a fraction of the cost of traditional methods.",
+          target_amount: "$2,000,000",
+          raised_amount: "$500,000",
+          min_investment: "$50,000",
+          equity_offered: "8%"
         });
-    }
-    
-    // Also create default completion tasks if they don't exist yet
-    const { data: tasks } = await supabase
-      .from('profile_completion_tasks')
-      .select('*')
-      .eq('startup_id', user.id);
-    
-    if (!tasks || tasks.length === 0) {
-      const defaultTasks = [
-        { task_name: "Add company details", completed: false },
-        { task_name: "Upload pitch deck", completed: false },
-        { task_name: "Connect team members", completed: false },
-        { task_name: "Add product information", completed: false },
-        { task_name: "Set funding requirements", completed: false }
+      
+      if (profileError) throw profileError;
+      
+      // Create default metrics
+      const { error: metricsError } = await supabase
+        .from('startup_metrics')
+        .insert({
+          id: user.id,
+          users: "5,200",
+          mrr: "$18,500",
+          growth: "22%",
+          partnerships: "3"
+        });
+      
+      if (metricsError) throw metricsError;
+      
+      // Create default team members
+      const defaultTeam = [
+        { name: "Alex Johnson", role: "CEO & Co-Founder", bio: "Ex-Google, Stanford MBA" },
+        { name: "Sam Rodriguez", role: "CTO & Co-Founder", bio: "MIT AI Lab, 3 previous startups" },
+        { name: "Jamie Chen", role: "Chief Medical Officer", bio: "Johns Hopkins MD, 15 years in diagnostics" }
       ];
       
-      for (const task of defaultTasks) {
+      for (const member of defaultTeam) {
         await supabase
-          .from('profile_completion_tasks')
+          .from('startup_team_members')
           .insert({
             startup_id: user.id,
-            task_name: task.task_name,
-            completed: task.completed
+            name: member.name,
+            role: member.role,
+            bio: member.bio
           });
       }
+      
+      // Also create default completion tasks if they don't exist yet
+      const { data: tasks } = await supabase
+        .from('profile_completion_tasks')
+        .select('*')
+        .eq('startup_id', user.id);
+      
+      if (!tasks || tasks.length === 0) {
+        const defaultTasks = [
+          { task_name: "Add company details", completed: false },
+          { task_name: "Upload pitch deck", completed: false },
+          { task_name: "Connect team members", completed: false },
+          { task_name: "Add product information", completed: false },
+          { task_name: "Set funding requirements", completed: false }
+        ];
+        
+        for (const task of defaultTasks) {
+          await supabase
+            .from('profile_completion_tasks')
+            .insert({
+              startup_id: user.id,
+              task_name: task.task_name,
+              completed: task.completed
+            });
+        }
+      }
+      
+      console.log("Default profile created successfully");
+      return true;
+    } catch (error) {
+      console.error("Error creating default profile:", error);
+      throw error;
     }
   };
 
@@ -458,7 +479,10 @@ export const ProfileTab = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading company profile...</p>
+        </div>
       </div>
     );
   }
