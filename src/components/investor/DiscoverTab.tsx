@@ -4,9 +4,12 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "./discover/FilterBar";
 import { StartupCard } from "./discover/StartupCard";
+import { MessageDialog } from "./discover/MessageDialog";
 import { useDiscoverStartups } from "@/hooks/use-discover-startups";
+import { useAuth } from "@/context/AuthContext";
 
 export const DiscoverTab = () => {
+  const { user } = useAuth();
   const {
     startups,
     loading,
@@ -17,6 +20,10 @@ export const DiscoverTab = () => {
     handleInterestedClick,
     handleSkipClick,
     handleLoadMore,
+    messageDialogOpen,
+    selectedStartup,
+    handleCloseMessageDialog,
+    handleMessageSent,
   } = useDiscoverStartups();
   
   return (
@@ -66,6 +73,18 @@ export const DiscoverTab = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Message Dialog */}
+      {selectedStartup && user && (
+        <MessageDialog
+          isOpen={messageDialogOpen}
+          onClose={handleCloseMessageDialog}
+          startupId={selectedStartup.id}
+          startupName={selectedStartup.name}
+          userId={user.id}
+          onMessageSent={handleMessageSent}
+        />
       )}
     </div>
   );

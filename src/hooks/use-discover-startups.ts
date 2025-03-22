@@ -11,6 +11,8 @@ export const useDiscoverStartups = () => {
   const [startups, setStartups] = useState<Startup[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState("match");
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -120,6 +122,18 @@ export const useDiscoverStartups = () => {
         return;
       }
 
+      // Find the startup details
+      const startup = startups.find(s => s.id === startupId);
+      
+      if (!startup) {
+        toast({
+          title: "Error",
+          description: "Startup not found",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Record the interest in the database
       const { error } = await supabase
         .from('investor_matches')
@@ -127,7 +141,7 @@ export const useDiscoverStartups = () => {
           investor_id: user.id,
           startup_id: startupId,
           status: 'interested',
-          match_score: startups.find(s => s.id === startupId)?.score || 80
+          match_score: startup.score || 80
         });
 
       if (error) {
@@ -142,16 +156,12 @@ export const useDiscoverStartups = () => {
 
       toast({
         title: "Interest registered",
-        description: "Startup added to your matches",
+        description: "Send a message to start the conversation",
       });
 
-      // Remove the startup from the discover feed
-      setStartups(prevStartups => 
-        prevStartups.filter(startup => startup.id !== startupId)
-      );
-      
-      // Navigate directly to the messages page
-      navigate("/investor/messages");
+      // Open the message dialog and set the selected startup
+      setSelectedStartup(startup);
+      setMessageDialogOpen(true);
     } catch (error) {
       console.error("Error in handleInterestedClick:", error);
       toast({
@@ -199,6 +209,23 @@ export const useDiscoverStartups = () => {
     }
   };
 
+  const handleMessageSent = () => {
+    // Remove the startup from the discover feed
+    if (selectedStartup) {
+      setStartups(prevStartups => 
+        prevStartups.filter(startup => startup.id !== selectedStartup.id)
+      );
+      
+      // Navigate to messages page after sending a message
+      navigate("/investor/messages");
+    }
+  };
+
+  const handleCloseMessageDialog = () => {
+    setMessageDialogOpen(false);
+    setSelectedStartup(null);
+  };
+
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortOption(e.target.value);
     
@@ -241,5 +268,9 @@ export const useDiscoverStartups = () => {
     handleInterestedClick,
     handleSkipClick,
     handleLoadMore,
+    messageDialogOpen,
+    selectedStartup,
+    handleCloseMessageDialog,
+    handleMessageSent,
   };
 };
