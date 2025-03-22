@@ -42,8 +42,9 @@ export const FilterBar = ({
           (f: string) => f !== filterValue
         );
         // Remove the key if the array is empty
-        if (Array.isArray(newFilters[filterCategory as keyof AppliedFilters]) && 
-            newFilters[filterCategory as keyof AppliedFilters]?.length === 0) {
+        // First check if the value is an array (not minMatch which is a number)
+        const currentValue = newFilters[filterCategory as keyof AppliedFilters];
+        if (Array.isArray(currentValue) && currentValue.length === 0) {
           delete newFilters[filterCategory as keyof AppliedFilters];
         }
       }
