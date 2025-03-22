@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -7,6 +8,15 @@ import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 // Import tab components
 import { OverviewTab } from "@/components/startup/OverviewTab";
@@ -15,9 +25,14 @@ import { SettingsTab } from "@/components/startup/SettingsTab";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [startupName, setStartupName] = useState("Your Startup");
+  const [startupName, setStartupName] = useState("");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [profileComplete, setProfileComplete] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newIndustry, setNewIndustry] = useState("");
+  const [savingBasicProfile, setSavingBasicProfile] = useState(false);
+  const [hasRequiredFields, setHasRequiredFields] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -54,6 +69,9 @@ const StartupDashboard = () => {
         
         if (profile?.name) {
           setStartupName(profile.name);
+        } else {
+          // No profile name found - new user, show the dialog
+          setShowProfileDialog(true);
         }
       }
     } catch (error) {
@@ -63,17 +81,21 @@ const StartupDashboard = () => {
 
   const checkProfileCompletion = async () => {
     try {
-      // Check if we have at least a startup profile
+      // Check if we have at least a startup profile with required fields
       const { data: startupProfile, error } = await supabase
         .from('startup_profiles')
-        .select('bio')
+        .select('name, industry')
         .eq('id', user.id)
         .maybeSingle();
       
       if (error) throw error;
       
-      // Consider profile complete if we have a startup profile with bio
-      setProfileComplete(!!startupProfile?.bio);
+      // Required fields must be filled
+      const requiredFieldsFilled = !!(startupProfile?.name && startupProfile?.industry);
+      setHasRequiredFields(requiredFieldsFilled);
+      
+      // Consider profile complete if we have more than just the required fields
+      setProfileComplete(!!startupProfile?.name && !!startupProfile?.bio);
     } catch (error) {
       console.error("Error checking profile completion:", error);
     }
@@ -113,6 +135,105 @@ const StartupDashboard = () => {
     navigate('/startup/profile');
   };
   
+  const saveBasicProfile = async () => {
+    if (!newCompanyName || !newIndustry) {
+      toast({
+        title: "Required fields",
+        description: "Company name and industry are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSavingBasicProfile(true);
+
+      // Update both profile tables
+      await supabase
+        .from('profiles')
+        .update({ name: newCompanyName })
+        .eq('id', user.id);
+
+      // Check if startup profile exists
+      const { data: existingProfile } = await supabase
+        .from('startup_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // Update existing startup profile
+        await supabase
+          .from('startup_profiles')
+          .update({ 
+            name: newCompanyName,
+            industry: newIndustry,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+      } else {
+        // Insert new startup profile
+        await supabase
+          .from('startup_profiles')
+          .insert({
+            id: user.id,
+            name: newCompanyName,
+            industry: newIndustry
+          });
+      }
+
+      // Update task completion status
+      const { data: companyTask } = await supabase
+        .from('profile_completion_tasks')
+        .select('id')
+        .eq('startup_id', user.id)
+        .eq('task_name', 'Add company details')
+        .maybeSingle();
+
+      if (companyTask) {
+        await supabase
+          .from('profile_completion_tasks')
+          .update({ 
+            completed: true,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', companyTask.id);
+      } else {
+        // Create the task as completed
+        await supabase
+          .from('profile_completion_tasks')
+          .insert({
+            startup_id: user.id,
+            task_name: 'Add company details',
+            completed: true,
+            completed_at: new Date().toISOString()
+          });
+      }
+
+      setStartupName(newCompanyName);
+      setHasRequiredFields(true);
+      setShowProfileDialog(false);
+
+      toast({
+        title: "Profile updated",
+        description: "Your basic profile has been saved"
+      });
+
+      // Refresh data
+      fetchStartupData();
+      checkProfileCompletion();
+    } catch (error) {
+      console.error("Error saving basic profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your profile",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingBasicProfile(false);
+    }
+  };
+  
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
@@ -134,7 +255,7 @@ const StartupDashboard = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
               <h1 className="text-2xl font-bold">Startup Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Welcome back, {startupName}</p>
+              <p className="text-muted-foreground mt-1">Welcome back, {startupName || "Founder"}</p>
             </div>
             
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
@@ -148,7 +269,7 @@ const StartupDashboard = () => {
                 )}
               </button>
               
-              {!profileComplete && (
+              {(!profileComplete && hasRequiredFields) && (
                 <button 
                   className="flex items-center space-x-2 py-2 px-4 rounded-md bg-secondary text-secondary-foreground text-sm"
                   onClick={handleCompleteProfileClick}
@@ -187,6 +308,67 @@ const StartupDashboard = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Initial profile setup dialog */}
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Welcome to Investor Match!</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="mb-4">Please provide some basic details about your company to get started:</p>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="companyName" className="text-sm font-medium">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="companyName"
+                  value={newCompanyName}
+                  onChange={(e) => setNewCompanyName(e.target.value)}
+                  placeholder="Your company name"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="industry" className="text-sm font-medium">
+                  Industry <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="industry"
+                  value={newIndustry}
+                  onChange={(e) => setNewIndustry(e.target.value)}
+                  placeholder="e.g. FinTech, Healthcare, AI"
+                  required
+                />
+              </div>
+            </div>
+            
+            <p className="text-sm text-muted-foreground mt-4">
+              * Required fields. You can complete the rest of your profile later.
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowProfileDialog(false)}
+              disabled={savingBasicProfile}
+            >
+              Finish Later
+            </Button>
+            <Button 
+              onClick={saveBasicProfile}
+              disabled={!newCompanyName || !newIndustry || savingBasicProfile}
+            >
+              {savingBasicProfile ? "Saving..." : "Save & Continue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
