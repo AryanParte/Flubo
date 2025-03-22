@@ -53,6 +53,8 @@ export const MessagesTab = () => {
 
     const fetchConversations = async () => {
       try {
+        console.log("Fetching messages for startup user:", userId);
+        
         // Get all messages for this user (sent or received)
         const { data: messages, error } = await supabase
           .from('messages')
@@ -71,6 +73,8 @@ export const MessagesTab = () => {
           return;
         }
 
+        console.log("Messages fetched:", messages?.length || 0);
+        
         // Group messages by conversation partner
         const conversationMap = new Map();
         
@@ -112,7 +116,9 @@ export const MessagesTab = () => {
         
         // Sort messages within each conversation
         conversationMap.forEach(convo => {
-          convo.messages.sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          convo.messages.sort((a: any, b: any) => 
+            new Date(a.time).getTime() - new Date(b.time).getTime()
+          );
           
           // Set last message info
           if (convo.messages.length > 0) {
@@ -148,9 +154,10 @@ export const MessagesTab = () => {
           event: '*', 
           schema: 'public', 
           table: 'messages',
-          filter: `sender_id=eq.${userId},recipient_id=eq.${userId}`
+          filter: `or(sender_id.eq.${userId},recipient_id.eq.${userId})`
         }, 
         (payload) => {
+          console.log("Realtime message update received:", payload);
           fetchConversations();
         }
       )
