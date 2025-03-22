@@ -53,12 +53,14 @@ export const MessagesTab = () => {
 
     const fetchConversations = async () => {
       try {
+        console.log("Fetching messages for investor user:", userId);
+        
         // Get all messages for this user (sent or received)
         const { data: messages, error } = await supabase
           .from('messages')
           .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
           .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-          .order('sent_at', { ascending: false });
+          .order('sent_at', { ascending: true });
 
         if (error) {
           console.error("Error fetching messages:", error);
@@ -71,6 +73,11 @@ export const MessagesTab = () => {
           return;
         }
 
+        console.log("Messages fetched:", messages?.length || 0);
+        if (messages?.length > 0) {
+          console.log("Sample message:", messages[0]);
+        }
+        
         // Group messages by conversation partner
         const conversationMap = new Map();
         
@@ -79,10 +86,16 @@ export const MessagesTab = () => {
           const partnerId = isUserSender ? msg.recipient_id : msg.sender_id;
           const partnerData = isUserSender ? msg.recipient : msg.sender;
           
-          if (!partnerData) return; // Skip if partner data is missing
+          if (!partnerData) {
+            console.log("Missing partner data for message:", msg);
+            return; // Skip if partner data is missing
+          }
           
           // Only consider startups for investor users
-          if (partnerData.user_type !== 'startup') return;
+          if (partnerData.user_type !== 'startup') {
+            console.log("Skipping non-startup conversation partner:", partnerData.user_type);
+            return;
+          }
           
           if (!conversationMap.has(partnerId)) {
             conversationMap.set(partnerId, {
@@ -112,7 +125,9 @@ export const MessagesTab = () => {
         
         // Sort messages within each conversation
         conversationMap.forEach(convo => {
-          convo.messages.sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          convo.messages.sort((a: any, b: any) => 
+            new Date(a.time).getTime() - new Date(b.time).getTime()
+          );
           
           // Set last message info
           if (convo.messages.length > 0) {
@@ -124,6 +139,8 @@ export const MessagesTab = () => {
         
         // Convert map to array and sort by latest message
         const conversationsArray = Array.from(conversationMap.values());
+        console.log("Conversations processed:", conversationsArray.length);
+        
         setConversations(conversationsArray);
         
         // Select first conversation if available and none selected
@@ -142,21 +159,29 @@ export const MessagesTab = () => {
 
     // Set up real-time subscription for new messages
     const channel = supabase
-      .channel('messages-changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .channel('investor-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'messages',
-          filter: `sender_id=eq.${userId},recipient_id=eq.${userId}`
-        }, 
+          filter: `or(recipient_id.eq.${userId},sender_id.eq.${userId})`,
+        },
         (payload) => {
+          console.log("Realtime message update received for investor:", payload);
+          // Force a refresh of conversations when a message is added, updated, or deleted
           fetchConversations();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Investor message subscription status:", status);
+      });
+
+    console.log("Subscription to realtime messages initialized for investor user");
 
     return () => {
+      console.log("Cleaning up subscription to realtime messages for investor");
       supabase.removeChannel(channel);
     };
   }, [userId]);
@@ -254,6 +279,8 @@ export const MessagesTab = () => {
         });
         return;
       }
+      
+      console.log("Message sent successfully:", data);
       
       // Update local state
       const newMessage = {

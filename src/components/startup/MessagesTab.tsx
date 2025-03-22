@@ -158,27 +158,31 @@ export const MessagesTab = () => {
     fetchConversations();
 
     // Set up real-time subscription for new messages
-    // Use a simple channel name and a more specific filter
+    // The key is to properly construct the filter
     const channel = supabase
-      .channel('messages-changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .channel('startup-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'messages',
-          filter: `or(sender_id.eq.${userId},recipient_id.eq.${userId})`
-        }, 
+          filter: `or(recipient_id.eq.${userId},sender_id.eq.${userId})`,
+        },
         (payload) => {
-          console.log("Realtime message update received:", payload);
+          console.log("Realtime message update received for startup:", payload);
+          // Force a refresh of conversations when a message is added, updated, or deleted
           fetchConversations();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Startup message subscription status:", status);
+      });
 
-    console.log("Subscription to realtime messages initialized");
+    console.log("Subscription to realtime messages initialized for startup user");
 
     return () => {
-      console.log("Cleaning up subscription to realtime messages");
+      console.log("Cleaning up subscription to realtime messages for startup");
       supabase.removeChannel(channel);
     };
   }, [userId]);
