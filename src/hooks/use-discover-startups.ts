@@ -150,11 +150,8 @@ export const useDiscoverStartups = () => {
         prevStartups.filter(startup => startup.id !== startupId)
       );
       
-      // Ask if they want to message the startup
-      const wantToMessage = window.confirm("Would you like to send a message to this startup?");
-      if (wantToMessage) {
-        navigate("/investor/messages");
-      }
+      // Navigate directly to the messages page
+      navigate("/investor/messages");
     } catch (error) {
       console.error("Error in handleInterestedClick:", error);
       toast({
