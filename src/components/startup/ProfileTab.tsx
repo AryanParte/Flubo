@@ -6,19 +6,20 @@ import { toast } from "@/components/ui/use-toast";
 import { Edit, Upload, Trash, Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 export const ProfileTab = () => {
   const { user } = useAuth();
   const params = useParams();
+  const navigate = useNavigate();
+  
   const profileId = params.id || (user ? user.id : null);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [creatingProfile, setCreatingProfile] = useState(false);
-  const [profileCreated, setProfileCreated] = useState(false);
+  const [profileCreationAttempted, setProfileCreationAttempted] = useState(false);
   const [startup, setStartup] = useState({
     name: "",
     tagline: "",
@@ -53,25 +54,37 @@ export const ProfileTab = () => {
       setLoading(false);
       setError("No profile ID available");
     }
-  }, [profileId, profileCreated]);
+  }, [profileId]);
 
   const fetchStartupProfile = async () => {
     try {
-      if (creatingProfile) {
-        console.log("Already creating profile, skipping fetch");
-        return;
-      }
-      
       setLoading(true);
       setError(null);
       console.log("Fetching startup profile...");
+      
+      // First check if user exists in profiles table
+      const { data: userProfile, error: userProfileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .maybeSingle();
+      
+      if (userProfileError) {
+        console.error("Error checking user profile:", userProfileError);
+        throw new Error("Could not verify user profile");
+      }
+      
+      if (!userProfile) {
+        console.error("User profile not found in profiles table");
+        throw new Error("User profile not found. Please complete your account setup first.");
+      }
       
       // Check if we have a startup profile
       const { data: startupProfile, error: profileError } = await supabase
         .from('startup_profiles')
         .select('*')
         .eq('id', profileId)
-        .single();
+        .maybeSingle();
       
       console.log("Startup profile query result:", { startupProfile, profileError });
       
@@ -79,13 +92,18 @@ export const ProfileTab = () => {
       if (profileError) {
         if (profileError.code === 'PGRST116') {
           console.log("No profile found, will create default");
-          // Only create default if viewing own profile
-          if (user && user.id === profileId) {
-            setCreatingProfile(true);
-            await createDefaultStartupProfile();
-            setProfileCreated(true);
-            setCreatingProfile(false);
-            return;
+          // Only create default if viewing own profile and we haven't tried already
+          if (user && user.id === profileId && !profileCreationAttempted) {
+            setProfileCreationAttempted(true);
+            try {
+              await createDefaultStartupProfile(userProfile.name);
+              // Fetch the profile again after creating it
+              await fetchStartupProfile();
+              return;
+            } catch (error) {
+              console.error("Error creating default profile:", error);
+              throw error;
+            }
           } else {
             throw new Error("Profile not found");
           }
@@ -99,7 +117,7 @@ export const ProfileTab = () => {
         .from('startup_metrics')
         .select('*')
         .eq('id', profileId)
-        .single();
+        .maybeSingle();
       
       console.log("Metrics query result:", { metricsData, metricsError });
       
@@ -160,17 +178,10 @@ export const ProfileTab = () => {
     }
   };
 
-  const createDefaultStartupProfile = async () => {
+  const createDefaultStartupProfile = async (userName: string) => {
     try {
-      // Get the user's name from the profiles table first
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', user.id)
-        .single();
-      
       // Create a default startup profile
-      const defaultName = profile?.name || "Your Startup";
+      const defaultName = userName || "Your Startup";
       
       const { error: profileError } = await supabase
         .from('startup_profiles')
@@ -492,9 +503,14 @@ export const ProfileTab = () => {
       <div className="p-6 text-center">
         <h3 className="text-lg font-medium mb-2">Error Loading Profile</h3>
         <p className="text-muted-foreground mb-4">{error}</p>
-        {isOwnProfile && (
-          <Button onClick={fetchStartupProfile}>Try Again</Button>
-        )}
+        <div className="flex justify-center gap-4">
+          {isOwnProfile && (
+            <Button onClick={fetchStartupProfile}>Try Again</Button>
+          )}
+          <Button variant="outline" onClick={() => navigate("/startup")}>
+            Back to Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
@@ -844,4 +860,3 @@ export const ProfileTab = () => {
     </div>
   );
 };
-
