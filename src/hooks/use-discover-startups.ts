@@ -1,263 +1,248 @@
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/AuthContext";
 import { Startup } from "@/types/startup";
+import { useAuth } from "@/context/AuthContext";
+
+type AppliedFilters = {
+  stage?: string[];
+  industry?: string[];
+  location?: string[];
+  minMatch?: number;
+};
+
+type SortOption = "match" | "recent" | "raised";
 
 export const useDiscoverStartups = () => {
-  const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
-  const [startups, setStartups] = useState<Startup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sortOption, setSortOption] = useState("match");
-  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
-  const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  // Fetch startups from the database
-  useEffect(() => {
-    fetchStartups();
-  }, []);
-
-  const fetchStartups = async () => {
+  const [startups, setStartups] = useState<Startup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({});
+  const [sortOption, setSortOption] = useState<SortOption>("match");
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
+  
+  // Fetch startups
+  const fetchStartups = useCallback(async () => {
+    if (!user?.id) return;
+    
     try {
       setLoading(true);
       
-      // First, check if the user has already matched with any startups
-      let skippedOrMatchedIds: string[] = [];
+      // Get existing matches to exclude them
+      const { data: existingMatches } = await supabase
+        .from('investor_matches')
+        .select('startup_id')
+        .eq('investor_id', user.id);
       
-      if (user) {
-        const { data: existingMatches } = await supabase
-          .from('investor_matches')
-          .select('startup_id')
-          .eq('investor_id', user.id);
-        
-        if (existingMatches && existingMatches.length > 0) {
-          skippedOrMatchedIds = existingMatches.map(match => match.startup_id as string);
-        }
-      }
+      const excludedIds = existingMatches?.map(match => match.startup_id) || [];
       
-      // Fetch all startup profiles that haven't been matched or skipped
-      const { data: startupProfiles, error } = await supabase
+      // Fetch startups from the database
+      let query = supabase
         .from('startup_profiles')
         .select(`
           id,
           name,
-          stage,
-          location,
-          industry,
-          bio,
-          raised_amount,
           tagline,
-          profiles(user_type)
+          bio,
+          industry,
+          location,
+          stage,
+          raised_amount,
+          created_at
         `)
-        .eq('profiles.user_type', 'startup')
-        .not('id', 'in', skippedOrMatchedIds.length > 0 ? `(${skippedOrMatchedIds.join(',')})` : '()');
+        .eq('user_type', 'startup')
+        .not('id', 'in', `(${excludedIds.join(',')})`)
+        .limit(20);
+      
+      // Apply filters
+      if (appliedFilters.stage && appliedFilters.stage.length > 0) {
+        query = query.in('stage', appliedFilters.stage);
+      }
+      
+      if (appliedFilters.industry && appliedFilters.industry.length > 0) {
+        query = query.in('industry', appliedFilters.industry);
+      }
+      
+      if (appliedFilters.location && appliedFilters.location.length > 0) {
+        query = query.in('location', appliedFilters.location);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
-        console.error("Error fetching startups:", error);
+        console.error('Error fetching startups:', error);
         toast({
-          title: "Error",
-          description: "Failed to load startups",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Failed to load startups',
+          variant: 'destructive',
         });
-        setLoading(false);
         return;
       }
-
-      if (startupProfiles && startupProfiles.length > 0) {
-        // Transform the data to match the Startup type
-        const transformedStartups = startupProfiles.map((startup) => {
-          // Generate a random match score between 75 and 95
-          const randomScore = Math.floor(Math.random() * 21) + 75;
-          
-          return {
-            id: startup.id,
-            name: startup.name || "Unnamed Startup",
-            score: randomScore,
-            stage: startup.stage || "Unknown",
-            location: startup.location || "Unknown",
-            industry: startup.industry || "Technology",
-            bio: startup.bio || "No description available",
-            raised_amount: startup.raised_amount || "N/A",
-            tagline: startup.tagline || "No tagline available",
-          };
-        });
-        
-        // Sort startups by match score (highest first)
-        const sortedStartups = transformedStartups.sort((a, b) => 
-          (b.score || 0) - (a.score || 0)
+      
+      // Transform data and add match score
+      const enrichedStartups = data.map(startup => ({
+        ...startup,
+        score: Math.floor(Math.random() * 40) + 60, // 60-99% match
+      }));
+      
+      // Sort startups
+      let sortedStartups = [...enrichedStartups];
+      
+      if (sortOption === 'match') {
+        sortedStartups.sort((a, b) => b.score - a.score);
+      } else if (sortOption === 'recent') {
+        sortedStartups.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        
-        setStartups(sortedStartups);
-      } else {
-        // No startups found, show a message
-        toast({
-          title: "No startups found",
-          description: "There are currently no startups in the database or you've already reviewed all available startups",
+      } else if (sortOption === 'raised') {
+        sortedStartups.sort((a, b) => {
+          const amountA = parseFloat(a.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
+          const amountB = parseFloat(b.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
+          return amountB - amountA;
         });
       }
+      
+      // Filter by minimum match if specified
+      if (appliedFilters.minMatch) {
+        sortedStartups = sortedStartups.filter(startup => 
+          startup.score >= appliedFilters.minMatch!
+        );
+      }
+      
+      setStartups(sortedStartups);
     } catch (error) {
-      console.error("Error in fetchStartups:", error);
+      console.error('Error in fetchStartups:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
+  }, [user?.id, appliedFilters, sortOption]);
+  
+  useEffect(() => {
+    fetchStartups();
+  }, [fetchStartups]);
+  
+  const handleSortChange = (newSort: SortOption) => {
+    setSortOption(newSort);
   };
-
-  const handleInterestedClick = async (startupId: string) => {
+  
+  const handleInterestedClick = useCallback(async (startupId: string) => {
+    if (!user?.id) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please log in to continue',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to show interest in startups",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Find the startup details
+      // Find the startup
       const startup = startups.find(s => s.id === startupId);
+      if (!startup) return;
       
-      if (!startup) {
-        toast({
-          title: "Error",
-          description: "Startup not found",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Set the selected startup and open message dialog
+      setSelectedStartup(startup);
+      setMessageDialogOpen(true);
       
-      // Record the interest in the database
+      // Create a match record
       const { error } = await supabase
         .from('investor_matches')
         .insert({
           investor_id: user.id,
           startup_id: startupId,
-          status: 'interested',
-          match_score: startup.score || 80
+          match_score: startup.score,
+          status: 'interested'
         });
-
+      
       if (error) {
-        console.error("Error recording interest:", error);
+        console.error('Error recording interest:', error);
         toast({
-          title: "Error",
-          description: "Failed to record your interest",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Failed to record your interest',
+          variant: 'destructive',
         });
         return;
       }
-
-      toast({
-        title: "Interest registered",
-        description: "Send a message to start the conversation",
-      });
-
-      // Open the message dialog and set the selected startup
-      setSelectedStartup(startup);
-      setMessageDialogOpen(true);
-    } catch (error) {
-      console.error("Error in handleInterestedClick:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSkipClick = async (startupId: string) => {
-    try {
-      if (user) {
-        // Record the skip in the database
-        const { error } = await supabase
-          .from('investor_matches')
-          .insert({
-            investor_id: user.id,
-            startup_id: startupId,
-            status: 'skipped',
-            match_score: startups.find(s => s.id === startupId)?.score || 0
-          });
-
-        if (error) {
-          console.error("Error recording skip:", error);
-        }
-      }
-
-      toast({
-        title: "Startup skipped",
-        description: "Startup removed from your discover feed",
-      });
-
-      // Remove the startup from the discover feed
-      setStartups(prevStartups => 
-        prevStartups.filter(startup => startup.id !== startupId)
-      );
-    } catch (error) {
-      console.error("Error in handleSkipClick:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleMessageSent = () => {
-    // Remove the startup from the discover feed
-    if (selectedStartup) {
-      setStartups(prevStartups => 
-        prevStartups.filter(startup => startup.id !== selectedStartup.id)
-      );
       
-      // Navigate to messages page after sending a message
-      navigate("/investor/messages");
+      // Remove the startup from the list
+      setStartups(prev => prev.filter(s => s.id !== startupId));
+      
+    } catch (error) {
+      console.error('Error in handleInterestedClick:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
     }
+  }, [user?.id, startups]);
+  
+  const handleSkipClick = useCallback(async (startupId: string) => {
+    if (!user?.id) return;
+    
+    try {
+      // Create a match record with status 'skipped'
+      const { error } = await supabase
+        .from('investor_matches')
+        .insert({
+          investor_id: user.id,
+          startup_id: startupId,
+          status: 'skipped'
+        });
+      
+      if (error) {
+        console.error('Error recording skip:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to record your choice',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Remove the startup from the list
+      setStartups(prev => prev.filter(s => s.id !== startupId));
+      
+      toast({
+        title: 'Startup skipped',
+        description: 'You won\'t see this startup again',
+      });
+    } catch (error) {
+      console.error('Error in handleSkipClick:', error);
+    }
+  }, [user?.id]);
+  
+  const handleLoadMore = () => {
+    // In a real app, this would fetch more startups with pagination
+    toast({
+      title: 'Coming soon',
+      description: 'Pagination will be implemented in the future',
+    });
   };
-
+  
   const handleCloseMessageDialog = () => {
     setMessageDialogOpen(false);
-    setSelectedStartup(null);
   };
-
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortOption(e.target.value);
-    
-    // Sort the startups based on the selected option
-    const sortedStartups = [...startups];
-    
-    if (e.target.value === "match") {
-      sortedStartups.sort((a, b) => (b.score || 0) - (a.score || 0));
-    } else if (e.target.value === "newest") {
-      // For demo purposes, just reverse the current order
-      sortedStartups.reverse();
-    }
-    
-    setStartups(sortedStartups);
-  };
-
-  const handleLoadMore = () => {
+  
+  const handleMessageSent = () => {
     toast({
-      title: "Loading more startups",
-      description: "Fetching additional startups...",
+      title: 'Match created!',
+      description: 'You can now message this startup directly',
     });
     
-    // Here you would implement pagination logic
-    // For now, just show a message
-    setTimeout(() => {
-      toast({
-        title: "No more startups",
-        description: "All available startups have been loaded",
-      });
-    }, 1000);
+    // Navigate to messages page
+    navigate('/investor/messages');
   };
-
+  
   return {
     startups,
     loading,
