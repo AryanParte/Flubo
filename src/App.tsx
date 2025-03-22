@@ -32,7 +32,9 @@ const App = () => (
               <Route path="/startup" element={<StartupDashboard />} />
               <Route path="/investor" element={<InvestorDashboard />} />
               <Route path="/startup/profile" element={<StartupProfile />} />
+              <Route path="/startup/profile/:id" element={<StartupProfile />} />
               <Route path="/investor/profile" element={<InvestorProfile />} />
+              <Route path="/investor/profile/:id" element={<InvestorProfile />} />
               <Route path="/startup/messages" element={<StartupMessages />} />
               <Route path="/investor/messages" element={<InvestorMessages />} />
               <Route path="*" element={<NotFound />} />

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +6,17 @@ import { toast } from "@/components/ui/use-toast";
 import { Edit, Upload, Trash, Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useParams } from "react-router-dom";
 
 export const ProfileTab = () => {
   const { user } = useAuth();
+  const params = useParams();
+  const profileId = params.id || (user ? user.id : null);
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [startup, setStartup] = useState({
     name: "",
     tagline: "",
@@ -39,47 +43,72 @@ export const ProfileTab = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (profileId) {
+      console.log("Fetching profile for ID:", profileId);
       fetchStartupProfile();
+    } else {
+      console.log("No profile ID available");
+      setLoading(false);
+      setError("No profile ID available");
     }
-  }, [user]);
+  }, [profileId]);
 
   const fetchStartupProfile = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log("Fetching startup profile...");
       
       // Check if we have a startup profile
       const { data: startupProfile, error: profileError } = await supabase
         .from('startup_profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', profileId)
         .single();
       
-      // If we don't have a startup profile yet, we'll create one with default values
-      if (profileError && profileError.code === 'PGRST116') {
-        await createDefaultStartupProfile();
-        await fetchStartupProfile();
-        return;
-      }
+      console.log("Startup profile query result:", { startupProfile, profileError });
       
-      if (profileError) throw profileError;
+      // If we don't have a startup profile yet, we'll create one with default values
+      if (profileError) {
+        if (profileError.code === 'PGRST116') {
+          console.log("No profile found, will create default");
+          // Only create default if viewing own profile
+          if (user && user.id === profileId) {
+            await createDefaultStartupProfile();
+            await fetchStartupProfile();
+            return;
+          } else {
+            throw new Error("Profile not found");
+          }
+        } else {
+          throw profileError;
+        }
+      }
       
       // Get the metrics
       const { data: metricsData, error: metricsError } = await supabase
         .from('startup_metrics')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', profileId)
         .single();
       
-      if (metricsError && metricsError.code !== 'PGRST116') throw metricsError;
+      console.log("Metrics query result:", { metricsData, metricsError });
+      
+      if (metricsError && metricsError.code !== 'PGRST116') {
+        console.error("Error fetching metrics:", metricsError);
+      }
       
       // Get team members
       const { data: teamData, error: teamError } = await supabase
         .from('startup_team_members')
         .select('*')
-        .eq('startup_id', user.id);
+        .eq('startup_id', profileId);
       
-      if (teamError) throw teamError;
+      console.log("Team query result:", { teamData, teamError });
+      
+      if (teamError) {
+        console.error("Error fetching team data:", teamError);
+      }
       
       // Build the complete startup object
       setStartup({
@@ -107,8 +136,11 @@ export const ProfileTab = () => {
         }
       });
       
+      console.log("Profile data loaded successfully");
+      
     } catch (error) {
       console.error("Error fetching startup profile:", error);
+      setError(error instanceof Error ? error.message : "Failed to load startup profile");
       toast({
         title: "Error",
         description: "Failed to load startup profile",
@@ -421,10 +453,24 @@ export const ProfileTab = () => {
     }
   };
 
+  const isOwnProfile = user && user.id === profileId;
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <h3 className="text-lg font-medium mb-2">Error Loading Profile</h3>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        {isOwnProfile && (
+          <Button onClick={fetchStartupProfile}>Try Again</Button>
+        )}
       </div>
     );
   }
@@ -470,32 +516,34 @@ export const ProfileTab = () => {
             )}
           </div>
         </div>
-        <Button 
-          variant={editing ? "accent" : "outline"} 
-          size="sm" 
-          className="mt-4 md:mt-0"
-          onClick={handleEditToggle}
-          disabled={saving}
-        >
-          {editing ? (
-            saving ? (
-              <>
-                <Loader2 size={16} className="mr-2 animate-spin" />
-                <span>Saving...</span>
-              </>
+        {isOwnProfile && (
+          <Button 
+            variant={editing ? "accent" : "outline"} 
+            size="sm" 
+            className="mt-4 md:mt-0"
+            onClick={handleEditToggle}
+            disabled={saving}
+          >
+            {editing ? (
+              saving ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={16} className="mr-2" />
+                  <span>Save Profile</span>
+                </>
+              )
             ) : (
               <>
-                <Check size={16} className="mr-2" />
-                <span>Save Profile</span>
+                <Edit size={16} className="mr-2" />
+                <span>Edit Profile</span>
               </>
-            )
-          ) : (
-            <>
-              <Edit size={16} className="mr-2" />
-              <span>Edit Profile</span>
-            </>
-          )}
-        </Button>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Company Info */}
@@ -772,3 +820,4 @@ export const ProfileTab = () => {
     </div>
   );
 };
+
