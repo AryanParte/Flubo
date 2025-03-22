@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 
 // Import tab components
 import { OverviewTab } from "@/components/startup/OverviewTab";
-import { MatchesTab } from "@/components/startup/MatchesTab";
+import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { SettingsTab } from "@/components/startup/SettingsTab";
 
 const StartupDashboard = () => {
@@ -277,8 +277,8 @@ const StartupDashboard = () => {
     switch (activeTab) {
       case "overview":
         return <OverviewTab />;
-      case "matches":
-        return <MatchesTab />;
+      case "investors":
+        return <FindInvestorsTab />;
       case "settings":
         return <SettingsTab />;
       default:
@@ -323,7 +323,7 @@ const StartupDashboard = () => {
             <div className="flex overflow-x-auto pb-1">
               {[
                 { id: "overview", label: "Overview", icon: <BarChart3 size={16} /> },
-                { id: "matches", label: "Investor Matches", icon: <Users size={16} /> },
+                { id: "investors", label: "Find Investors", icon: <Users size={16} /> },
                 { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button
