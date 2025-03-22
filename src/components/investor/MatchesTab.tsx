@@ -37,7 +37,7 @@ export const MatchesTab = () => {
           match_score,
           summary,
           startup_id,
-          startup_profiles!startup_id(
+          startup_profiles (
             id,
             name,
             stage,
@@ -47,7 +47,7 @@ export const MatchesTab = () => {
             raised_amount,
             tagline
           ),
-          ai_match_feed_status!inner(status)
+          ai_match_feed_status (status)
         `)
         .eq('investor_id', user?.id)
         .eq('completed', true)
@@ -59,11 +59,14 @@ export const MatchesTab = () => {
       } else if (aiChats) {
         // Transform the data for our Startup type
         const transformedAiMatches = aiChats.map(chat => {
-          const startup = chat.startup_profiles;
-          const status = chat.ai_match_feed_status?.[0]?.status;
+          // Check if startup_profiles exists and is an object
+          const startup = chat.startup_profiles || {};
+          // Check if ai_match_feed_status exists and is an array with at least one element
+          const statusItems = Array.isArray(chat.ai_match_feed_status) ? chat.ai_match_feed_status : [];
+          const status = statusItems.length > 0 ? statusItems[0]?.status : 'new';
           
           return {
-            id: startup.id,
+            id: startup.id || chat.startup_id,
             name: startup.name || "Unnamed Startup",
             score: chat.match_score || 0,
             stage: startup.stage || "Unknown",
@@ -74,7 +77,7 @@ export const MatchesTab = () => {
             tagline: startup.tagline || "No tagline available",
             matchSummary: chat.summary || "No summary available",
             chatId: chat.id,
-            matchStatus: status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored' || 'new'
+            matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
           };
         });
 
@@ -93,7 +96,7 @@ export const MatchesTab = () => {
           startup_id,
           match_score,
           status,
-          startup_profiles!startup_id(
+          startup_profiles (
             id,
             name,
             stage,
@@ -112,10 +115,11 @@ export const MatchesTab = () => {
         console.error("Error fetching confirmed matches:", mutualError);
       } else if (mutualMatches) {
         const transformedConfirmedMatches = mutualMatches.map(match => {
-          const startup = match.startup_profiles;
+          // Check if startup_profiles exists and is an object
+          const startup = match.startup_profiles || {};
           
           return {
-            id: startup.id,
+            id: startup.id || match.startup_id,
             name: startup.name || "Unnamed Startup",
             score: match.match_score || 0,
             stage: startup.stage || "Unknown",
