@@ -6,14 +6,14 @@ import { supabase } from "@/lib/supabase";
 import { Startup } from "@/types/startup";
 import { useAuth } from "@/context/AuthContext";
 
-type AppliedFilters = {
+export type AppliedFilters = {
   stage?: string[];
   industry?: string[];
   location?: string[];
   minMatch?: number;
 };
 
-type SortOption = "match" | "recent" | "raised";
+export type SortOption = "match" | "recent" | "raised";
 
 export const useDiscoverStartups = () => {
   const { user } = useAuth();
@@ -54,9 +54,14 @@ export const useDiscoverStartups = () => {
           raised_amount,
           created_at
         `)
-        .eq('user_type', 'startup')
-        .not('id', 'in', `(${excludedIds.join(',')})`)
-        .limit(20);
+        .eq('user_type', 'startup');
+      
+      // Only apply the exclusion if there are IDs to exclude
+      if (excludedIds.length > 0) {
+        query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+      }
+      
+      query = query.limit(20);
       
       // Apply filters
       if (appliedFilters.stage && appliedFilters.stage.length > 0) {
