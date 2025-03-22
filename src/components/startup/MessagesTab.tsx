@@ -60,7 +60,7 @@ export const MessagesTab = () => {
           .from('messages')
           .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
           .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-          .order('sent_at', { ascending: false });
+          .order('sent_at', { ascending: true });
 
         if (error) {
           console.error("Error fetching messages:", error);
@@ -74,6 +74,9 @@ export const MessagesTab = () => {
         }
 
         console.log("Messages fetched:", messages?.length || 0);
+        if (messages?.length > 0) {
+          console.log("Sample message:", messages[0]);
+        }
         
         // Group messages by conversation partner
         const conversationMap = new Map();
@@ -83,10 +86,16 @@ export const MessagesTab = () => {
           const partnerId = isUserSender ? msg.recipient_id : msg.sender_id;
           const partnerData = isUserSender ? msg.recipient : msg.sender;
           
-          if (!partnerData) return; // Skip if partner data is missing
+          if (!partnerData) {
+            console.log("Missing partner data for message:", msg);
+            return; // Skip if partner data is missing
+          }
           
           // Only consider investors for startup users
-          if (partnerData.user_type !== 'investor') return;
+          if (partnerData.user_type !== 'investor') {
+            console.log("Skipping non-investor conversation partner:", partnerData.user_type);
+            return;
+          }
           
           if (!conversationMap.has(partnerId)) {
             conversationMap.set(partnerId, {
@@ -130,6 +139,8 @@ export const MessagesTab = () => {
         
         // Convert map to array and sort by latest message
         const conversationsArray = Array.from(conversationMap.values());
+        console.log("Conversations processed:", conversationsArray.length);
+        
         setConversations(conversationsArray);
         
         // Select first conversation if available and none selected
@@ -163,7 +174,10 @@ export const MessagesTab = () => {
       )
       .subscribe();
 
+    console.log("Subscription to realtime messages initialized");
+
     return () => {
+      console.log("Cleaning up subscription to realtime messages");
       supabase.removeChannel(channel);
     };
   }, [userId]);
