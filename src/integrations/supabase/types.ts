@@ -9,6 +9,141 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_match_feed_status: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          investor_id: string
+          startup_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          investor_id: string
+          startup_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          investor_id?: string
+          startup_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_match_feed_status_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "ai_persona_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_match_feed_status_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_match_feed_status_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_persona_chats: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          investor_id: string
+          match_score: number | null
+          startup_id: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          investor_id: string
+          match_score?: number | null
+          startup_id: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          investor_id?: string
+          match_score?: number | null
+          startup_id?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_persona_chats_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_persona_chats_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_persona_messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          sender_type: string
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          sender_type: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_persona_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "ai_persona_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       investor_matches: {
         Row: {
           created_at: string | null
