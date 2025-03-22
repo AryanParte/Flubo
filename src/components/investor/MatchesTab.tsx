@@ -37,7 +37,7 @@ export const MatchesTab = () => {
           match_score,
           summary,
           startup_id,
-          startup_profiles:startup_id(
+          startup_profiles!startup_id(
             id,
             name,
             stage,
@@ -47,7 +47,7 @@ export const MatchesTab = () => {
             raised_amount,
             tagline
           ),
-          ai_match_feed_status:ai_match_feed_status(status)
+          ai_match_feed_status!inner(status)
         `)
         .eq('investor_id', user?.id)
         .eq('completed', true)
@@ -60,7 +60,7 @@ export const MatchesTab = () => {
         // Transform the data for our Startup type
         const transformedAiMatches = aiChats.map(chat => {
           const startup = chat.startup_profiles;
-          const status = chat.ai_match_feed_status && chat.ai_match_feed_status[0]?.status;
+          const status = chat.ai_match_feed_status?.[0]?.status;
           
           return {
             id: startup.id,
@@ -74,7 +74,7 @@ export const MatchesTab = () => {
             tagline: startup.tagline || "No tagline available",
             matchSummary: chat.summary || "No summary available",
             chatId: chat.id,
-            matchStatus: status || 'new'
+            matchStatus: status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored' || 'new'
           };
         });
 
@@ -93,7 +93,7 @@ export const MatchesTab = () => {
           startup_id,
           match_score,
           status,
-          startup_profiles:startup_id(
+          startup_profiles!startup_id(
             id,
             name,
             stage,
