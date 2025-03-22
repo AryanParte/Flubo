@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { MessagesTab } from "@/components/investor/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const InvestorMessages = () => {
   const { user, loading: authLoading } = useAuth();
@@ -18,6 +19,28 @@ const InvestorMessages = () => {
       navigate("/auth");
     } else if (!authLoading) {
       setLoading(false);
+      
+      // Log user details for debugging
+      if (user) {
+        console.log("Investor user loaded:", user.id);
+        
+        // Check if this user exists in profiles table
+        const checkUserProfile = async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) {
+            console.error("Error checking user profile:", error);
+          } else {
+            console.log("User profile found:", data);
+          }
+        };
+        
+        checkUserProfile();
+      }
     }
   }, [user, authLoading, navigate]);
 

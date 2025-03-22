@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { MessagesTab } from "@/components/startup/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const StartupMessages = () => {
   const { user, loading: authLoading } = useAuth();
@@ -18,6 +19,47 @@ const StartupMessages = () => {
       navigate("/auth");
     } else if (!authLoading) {
       setLoading(false);
+      
+      // Log user details for debugging
+      if (user) {
+        console.log("Startup user loaded:", user.id);
+        
+        // Check if this user exists in profiles table
+        const checkUserProfile = async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) {
+            console.error("Error checking user profile:", error);
+          } else {
+            console.log("User profile found:", data);
+            
+            // Check if there are any messages for this user
+            const checkMessages = async () => {
+              const { data: messages, error: msgError } = await supabase
+                .from('messages')
+                .select('*')
+                .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
+              
+              if (msgError) {
+                console.error("Error checking messages:", msgError);
+              } else {
+                console.log("Messages for startup user:", messages?.length || 0);
+                if (messages?.length > 0) {
+                  console.log("Sample message:", messages[0]);
+                }
+              }
+            };
+            
+            checkMessages();
+          }
+        };
+        
+        checkUserProfile();
+      }
     }
   }, [user, authLoading, navigate]);
 

@@ -158,6 +158,7 @@ export const MessagesTab = () => {
     fetchConversations();
 
     // Set up real-time subscription for new messages
+    // Use a simple channel name and a more specific filter
     const channel = supabase
       .channel('messages-changes')
       .on('postgres_changes', 
