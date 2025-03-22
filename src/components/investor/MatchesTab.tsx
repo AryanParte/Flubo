@@ -72,25 +72,26 @@ export const MatchesTab = () => {
             tagline: "No tagline available"
           };
           
-          // Get startup data if available
+          // Safely check if startup_profiles exists and is a valid object
+          // We'll use type assertion here to handle the null check
           const startupData = chat.startup_profiles && 
                              typeof chat.startup_profiles === 'object' ? 
-                             chat.startup_profiles : null;
+                             chat.startup_profiles as Record<string, any> : null;
           
           // Check if ai_match_feed_status exists and is an array with at least one element
           const statusItems = Array.isArray(chat.ai_match_feed_status) ? chat.ai_match_feed_status : [];
           const status = statusItems.length > 0 ? statusItems[0]?.status : 'new';
           
           return {
-            id: startupData?.id || startup_id,
-            name: startupData?.name || defaultStartup.name,
+            id: startupData ? startupData.id : startup_id,
+            name: startupData ? startupData.name : defaultStartup.name,
             score: chat.match_score || 0,
-            stage: startupData?.stage || defaultStartup.stage,
-            location: startupData?.location || defaultStartup.location,
-            industry: startupData?.industry || defaultStartup.industry,
-            bio: startupData?.bio || defaultStartup.bio,
-            raised_amount: startupData?.raised_amount || defaultStartup.raised_amount,
-            tagline: startupData?.tagline || defaultStartup.tagline,
+            stage: startupData ? startupData.stage : defaultStartup.stage,
+            location: startupData ? startupData.location : defaultStartup.location,
+            industry: startupData ? startupData.industry : defaultStartup.industry,
+            bio: startupData ? startupData.bio : defaultStartup.bio,
+            raised_amount: startupData ? startupData.raised_amount : defaultStartup.raised_amount,
+            tagline: startupData ? startupData.tagline : defaultStartup.tagline,
             matchSummary: chat.summary || "No summary available",
             chatId: chat.id,
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
@@ -144,21 +145,22 @@ export const MatchesTab = () => {
             tagline: "No tagline available"
           };
           
-          // Get startup data if available
+          // Safely check if startup_profiles exists and is a valid object
+          // We'll use type assertion here to handle the null check
           const startupData = match.startup_profiles && 
                              typeof match.startup_profiles === 'object' ? 
-                             match.startup_profiles : null;
+                             match.startup_profiles as Record<string, any> : null;
           
           return {
-            id: startupData?.id || startup_id,
-            name: startupData?.name || defaultStartup.name,
+            id: startupData ? startupData.id : startup_id,
+            name: startupData ? startupData.name : defaultStartup.name,
             score: match.match_score || 0,
-            stage: startupData?.stage || defaultStartup.stage,
-            location: startupData?.location || defaultStartup.location,
-            industry: startupData?.industry || defaultStartup.industry,
-            bio: startupData?.bio || defaultStartup.bio,
-            raised_amount: startupData?.raised_amount || defaultStartup.raised_amount,
-            tagline: startupData?.tagline || defaultStartup.tagline
+            stage: startupData ? startupData.stage : defaultStartup.stage,
+            location: startupData ? startupData.location : defaultStartup.location,
+            industry: startupData ? startupData.industry : defaultStartup.industry,
+            bio: startupData ? startupData.bio : defaultStartup.bio,
+            raised_amount: startupData ? startupData.raised_amount : defaultStartup.raised_amount,
+            tagline: startupData ? startupData.tagline : defaultStartup.tagline
           };
         });
         
