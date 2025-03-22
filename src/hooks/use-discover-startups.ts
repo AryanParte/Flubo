@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -58,7 +57,10 @@ export const useDiscoverStartups = () => {
       
       // Only apply the exclusion if there are IDs to exclude
       if (excludedIds.length > 0) {
-        query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+        // Use a simpler approach to avoid deep type instantiation
+        for (const id of excludedIds) {
+          query = query.neq('id', id);
+        }
       }
       
       query = query.limit(20);
