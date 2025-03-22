@@ -50,7 +50,7 @@ const StartupDashboard = () => {
       // First check if we have a startup_profile
       const { data: startupProfile, error: startupError } = await supabase
         .from('startup_profiles')
-        .select('name')
+        .select('name, industry')
         .eq('id', user.id)
         .maybeSingle();
       
@@ -58,6 +58,7 @@ const StartupDashboard = () => {
       
       if (startupProfile?.name) {
         setStartupName(startupProfile.name);
+        setHasRequiredFields(!!startupProfile.industry);
       } else {
         // Fallback to the regular profile
         const { data: profile, error: profileError } = await supabase
@@ -97,7 +98,7 @@ const StartupDashboard = () => {
       
       // Consider profile complete if we have more than just the required fields
       // Check specifically for bio field
-      setProfileComplete(!!startupProfile && !!requiredFieldsFilled && !!startupProfile.bio);
+      setProfileComplete(!!startupProfile && requiredFieldsFilled && !!startupProfile.bio);
     } catch (error) {
       console.error("Error checking profile completion:", error);
     }
@@ -311,7 +312,7 @@ const StartupDashboard = () => {
       </main>
       <Footer />
 
-      {/* Initial profile setup dialog */}
+      {/* Initial profile setup dialog - only shown once for new users */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
