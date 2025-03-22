@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -47,6 +46,8 @@ const StartupDashboard = () => {
 
   const fetchStartupData = async () => {
     try {
+      console.log("Fetching startup data for user:", user.id);
+      
       // First check if we have a startup_profile
       const { data: startupProfile, error: startupError } = await supabase
         .from('startup_profiles')
@@ -54,12 +55,22 @@ const StartupDashboard = () => {
         .eq('id', user.id)
         .maybeSingle();
       
-      if (startupError) throw startupError;
+      if (startupError) {
+        console.error("Error fetching startup profile:", startupError);
+        throw startupError;
+      }
       
       if (startupProfile?.name) {
+        console.log("Found startup profile:", startupProfile);
         setStartupName(startupProfile.name);
         setHasRequiredFields(!!startupProfile.industry);
+        
+        // Don't show dialog if we already have a profile with industry
+        if (!!startupProfile.industry) {
+          setShowProfileDialog(false);
+        }
       } else {
+        console.log("No startup profile found, checking user profile");
         // Fallback to the regular profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -67,11 +78,18 @@ const StartupDashboard = () => {
           .eq('id', user.id)
           .maybeSingle();
         
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Error fetching user profile:", profileError);
+          throw profileError;
+        }
         
         if (profile?.name) {
+          console.log("Found user profile with name:", profile.name);
           setStartupName(profile.name);
+          // Show dialog to set industry if we don't have a startup profile
+          setShowProfileDialog(true);
         } else {
+          console.log("No profile found at all. New user");
           // No profile name found - new user, show the dialog
           setShowProfileDialog(true);
         }
@@ -150,12 +168,18 @@ const StartupDashboard = () => {
 
     try {
       setSavingBasicProfile(true);
+      console.log("Saving basic profile with name:", newCompanyName, "and industry:", newIndustry);
 
-      // Update both profile tables
-      await supabase
+      // Update the profile record
+      const { error: profileUpdateError } = await supabase
         .from('profiles')
         .update({ name: newCompanyName })
         .eq('id', user.id);
+        
+      if (profileUpdateError) {
+        console.error("Error updating profile name:", profileUpdateError);
+        throw profileUpdateError;
+      }
 
       // Check if startup profile exists
       const { data: existingProfile } = await supabase
@@ -165,8 +189,9 @@ const StartupDashboard = () => {
         .maybeSingle();
 
       if (existingProfile) {
+        console.log("Updating existing startup profile");
         // Update existing startup profile
-        await supabase
+        const { error: updateError } = await supabase
           .from('startup_profiles')
           .update({ 
             name: newCompanyName,
@@ -174,15 +199,26 @@ const StartupDashboard = () => {
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);
+          
+        if (updateError) {
+          console.error("Error updating startup profile:", updateError);
+          throw updateError;
+        }
       } else {
+        console.log("Creating new startup profile");
         // Insert new startup profile
-        await supabase
+        const { error: insertError } = await supabase
           .from('startup_profiles')
           .insert({
             id: user.id,
             name: newCompanyName,
             industry: newIndustry
           });
+          
+        if (insertError) {
+          console.error("Error creating startup profile:", insertError);
+          throw insertError;
+        }
       }
 
       // Update task completion status

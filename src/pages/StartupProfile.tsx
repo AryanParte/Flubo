@@ -39,6 +39,8 @@ const StartupProfile = () => {
             return;
           }
 
+          console.log("Checking profile exists for ID:", profileId);
+
           // First check if the user exists in the profiles table
           const { data: userProfile, error: userProfileError } = await supabase
             .from('profiles')
@@ -56,9 +58,42 @@ const StartupProfile = () => {
           // If user doesn't exist in profiles table, we can't create a startup profile
           if (!userProfile) {
             console.error("User profile doesn't exist in profiles table");
-            setError("User profile not found. Please complete your account setup first.");
-            setCheckingProfile(false);
-            return;
+            
+            // If this is the current user, attempt to create the profile
+            if (user && user.id === profileId) {
+              console.log("Attempting to create user profile for current user");
+              try {
+                // Create the basic profile
+                const { error: createError } = await supabase
+                  .from('profiles')
+                  .insert({
+                    id: user.id,
+                    user_type: 'startup', // Assume startup since we're on startup profile
+                    name: user.user_metadata?.name || 'New Startup',
+                    email: user.email
+                  });
+                
+                if (createError) {
+                  console.error("Failed to create profile:", createError);
+                  setError("Could not create your profile. Please try again.");
+                  setCheckingProfile(false);
+                  return;
+                }
+                
+                // Continue checking now that profile should exist
+                checkProfileExists();
+                return;
+              } catch (err) {
+                console.error("Error in profile creation:", err);
+                setError("An error occurred while setting up your profile");
+                setCheckingProfile(false);
+                return;
+              }
+            } else {
+              setError("User profile not found. Please complete your account setup first.");
+              setCheckingProfile(false);
+              return;
+            }
           }
 
           // Now check if startup profile exists

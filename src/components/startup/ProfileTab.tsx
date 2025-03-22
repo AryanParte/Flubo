@@ -8,6 +8,31 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 
+const emptyStartupProfile = {
+  name: "",
+  tagline: "",
+  website: "",
+  location: "",
+  founded: "",
+  employees: "",
+  stage: "",
+  industry: "",
+  bio: "",
+  fundraising: {
+    target: "",
+    raised: "",
+    minInvestment: "",
+    equity: ""
+  },
+  team: [],
+  metrics: {
+    users: "",
+    mrr: "",
+    growth: "",
+    partnerships: ""
+  }
+};
+
 export const ProfileTab = () => {
   const { user } = useAuth();
   const params = useParams();
@@ -20,30 +45,7 @@ export const ProfileTab = () => {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileCreationAttempted, setProfileCreationAttempted] = useState(false);
-  const [startup, setStartup] = useState({
-    name: "",
-    tagline: "",
-    website: "",
-    location: "",
-    founded: "",
-    employees: "",
-    stage: "",
-    industry: "",
-    bio: "",
-    fundraising: {
-      target: "",
-      raised: "",
-      minInvestment: "",
-      equity: ""
-    },
-    team: [],
-    metrics: {
-      users: "",
-      mrr: "",
-      growth: "",
-      partnerships: ""
-    }
-  });
+  const [startup, setStartup] = useState(emptyStartupProfile);
 
   useEffect(() => {
     if (profileId) {
@@ -96,7 +98,7 @@ export const ProfileTab = () => {
           if (user && user.id === profileId && !profileCreationAttempted) {
             setProfileCreationAttempted(true);
             try {
-              await createDefaultStartupProfile(userProfile.name);
+              await createBasicStartupProfile(userProfile.name);
               // Fetch the profile again after creating it
               await fetchStartupProfile();
               return;
@@ -164,6 +166,11 @@ export const ProfileTab = () => {
       });
       
       console.log("Profile data loaded successfully");
+
+      // If this is your own profile and it's mostly empty, enable editing by default
+      if (user && user.id === profileId && !startupProfile.bio) {
+        setEditing(true);
+      }
       
     } catch (error) {
       console.error("Error fetching startup profile:", error);
@@ -178,9 +185,9 @@ export const ProfileTab = () => {
     }
   };
 
-  const createDefaultStartupProfile = async (userName: string) => {
+  const createBasicStartupProfile = async (userName: string) => {
     try {
-      // Create a default startup profile
+      // Create a minimal startup profile with empty fields
       const defaultName = userName || "Your Startup";
       
       const { error: profileError } = await supabase
@@ -188,54 +195,21 @@ export const ProfileTab = () => {
         .insert({
           id: user.id,
           name: defaultName,
-          tagline: "AI-Powered Healthcare Diagnostics for All",
-          website: "https://example.com",
-          location: "San Francisco, CA",
-          founded: "2021",
-          employees: "12",
-          stage: "Series A",
-          industry: "Healthcare, Artificial Intelligence",
-          bio: "Your startup is revolutionizing healthcare with AI-driven diagnostic tools focused on underserved markets. Our technology helps clinicians make faster, more accurate diagnoses at a fraction of the cost of traditional methods.",
-          target_amount: "$2,000,000",
-          raised_amount: "$500,000",
-          min_investment: "$50,000",
-          equity_offered: "8%"
+          industry: "Technology", // Default industry that user should update
         });
       
       if (profileError) throw profileError;
       
-      // Create default metrics
+      // Create empty metrics record
       const { error: metricsError } = await supabase
         .from('startup_metrics')
         .insert({
           id: user.id,
-          users: "5,200",
-          mrr: "$18,500",
-          growth: "22%",
-          partnerships: "3"
         });
       
       if (metricsError) throw metricsError;
       
-      // Create default team members
-      const defaultTeam = [
-        { name: "Alex Johnson", role: "CEO & Co-Founder", bio: "Ex-Google, Stanford MBA" },
-        { name: "Sam Rodriguez", role: "CTO & Co-Founder", bio: "MIT AI Lab, 3 previous startups" },
-        { name: "Jamie Chen", role: "Chief Medical Officer", bio: "Johns Hopkins MD, 15 years in diagnostics" }
-      ];
-      
-      for (const member of defaultTeam) {
-        await supabase
-          .from('startup_team_members')
-          .insert({
-            startup_id: user.id,
-            name: member.name,
-            role: member.role,
-            bio: member.bio
-          });
-      }
-      
-      // Also create default completion tasks if they don't exist yet
+      // Create default completion tasks if they don't exist yet
       const { data: tasks } = await supabase
         .from('profile_completion_tasks')
         .select('*')
@@ -261,10 +235,10 @@ export const ProfileTab = () => {
         }
       }
       
-      console.log("Default profile created successfully");
+      console.log("Basic profile created successfully");
       return true;
     } catch (error) {
-      console.error("Error creating default profile:", error);
+      console.error("Error creating basic profile:", error);
       throw error;
     }
   };

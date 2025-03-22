@@ -84,7 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       if (data.user) {
-        // Create profile record
+        console.log("User created successfully, now creating profile");
+        
+        // Create profile record - CRITICAL: Make sure this succeeds 
         const { error: profileError } = await supabase
           .from("profiles")
           .insert([
@@ -103,6 +105,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: profileError.message,
             variant: "destructive",
           });
+          return; // Stop here if profile creation fails
+        }
+
+        console.log("Profile created successfully");
+        
+        // If this is a startup, create minimal startup profile
+        if (userType === "startup") {
+          const { error: startupProfileError } = await supabase
+            .from("startup_profiles")
+            .insert([
+              {
+                id: data.user.id,
+                name: name,
+                industry: "Technology", // Default value that will be updated in the dialog
+              },
+            ]);
+
+          if (startupProfileError) {
+            console.error("Error creating startup profile:", startupProfileError);
+          } else {
+            console.log("Basic startup profile created");
+          }
         }
 
         toast({
