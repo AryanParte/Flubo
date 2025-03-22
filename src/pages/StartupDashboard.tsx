@@ -13,7 +13,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter 
+  DialogFooter,
+  DialogDescription 
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,7 @@ const StartupDashboard = () => {
       // Check if we have at least a startup profile with required fields
       const { data: startupProfile, error } = await supabase
         .from('startup_profiles')
-        .select('name, industry')
+        .select('name, industry, bio')
         .eq('id', user.id)
         .maybeSingle();
       
@@ -95,7 +96,8 @@ const StartupDashboard = () => {
       setHasRequiredFields(requiredFieldsFilled);
       
       // Consider profile complete if we have more than just the required fields
-      setProfileComplete(!!startupProfile?.name && !!startupProfile?.bio);
+      // Check specifically for bio field
+      setProfileComplete(!!startupProfile && !!requiredFieldsFilled && !!startupProfile.bio);
     } catch (error) {
       console.error("Error checking profile completion:", error);
     }
@@ -314,6 +316,9 @@ const StartupDashboard = () => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Welcome to Investor Match!</DialogTitle>
+            <DialogDescription>
+              Let's get started with some basic information about your startup.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="py-4">

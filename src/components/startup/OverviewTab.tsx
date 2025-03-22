@@ -74,7 +74,7 @@ export const OverviewTab = () => {
           created_at,
           match_score,
           status,
-          investor:investor_id (id, name, user_type)
+          investor_id
         `)
         .eq('startup_id', user.id)
         .order('created_at', { ascending: false })
@@ -82,29 +82,40 @@ export const OverviewTab = () => {
       
       if (recentError) throw recentError;
       
-      // For each match, fetch a bit more investor profile data if possible
+      // For each match, fetch investor profile data separately
       const enhancedMatches = await Promise.all((recentMatchesData || []).map(async (match) => {
-        if (!match.investor) {
-          return match;
+        if (!match.investor_id) {
+          return {
+            ...match,
+            investor: { name: 'Anonymous Investor' }
+          };
         }
         
         try {
-          const { data: profileData } = await supabase
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('name')
-            .eq('id', match.investor.id)
+            .select('id, name')
+            .eq('id', match.investor_id)
             .maybeSingle();
             
+          if (profileError) throw profileError;
+          
           return {
             ...match,
             investor: {
-              ...match.investor,
+              id: match.investor_id,
               name: profileData?.name || 'Anonymous Investor'
             }
           };
         } catch (error) {
           console.error("Error fetching investor profile:", error);
-          return match;
+          return {
+            ...match,
+            investor: { 
+              id: match.investor_id,
+              name: 'Anonymous Investor' 
+            }
+          };
         }
       }));
       

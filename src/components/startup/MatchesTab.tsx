@@ -24,7 +24,7 @@ export const MatchesTab = () => {
     try {
       setLoading(true);
       
-      // Fetch all investor matches
+      // Fetch all investor matches with explicit column selection
       const { data, error } = await supabase
         .from('investor_matches')
         .select(`
@@ -32,38 +32,49 @@ export const MatchesTab = () => {
           match_score,
           status,
           created_at,
-          investor:investor_id (id, name)
+          investor_id
         `)
         .eq('startup_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      // Enhance each match with more investor details where possible
+      // Enhance each match with investor details
       const enhancedMatches = await Promise.all((data || []).map(async (match) => {
-        if (!match.investor?.id) {
-          return match;
+        if (!match.investor_id) {
+          return {
+            ...match,
+            investor: { name: 'Anonymous Investor' }
+          };
         }
         
         try {
-          // Get more details from profiles table
-          const { data: profileData } = await supabase
+          // Get investor profile details
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('name, email')
-            .eq('id', match.investor.id)
+            .select('id, name, email')
+            .eq('id', match.investor_id)
             .maybeSingle();
+          
+          if (profileError) throw profileError;
           
           return {
             ...match,
             investor: {
-              ...match.investor,
+              id: match.investor_id,
               name: profileData?.name || 'Anonymous Investor',
               email: profileData?.email
             }
           };
         } catch (error) {
           console.error("Error fetching investor profile:", error);
-          return match;
+          return {
+            ...match,
+            investor: { 
+              id: match.investor_id,
+              name: 'Anonymous Investor' 
+            }
+          };
         }
       }));
       
