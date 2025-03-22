@@ -59,22 +59,38 @@ export const MatchesTab = () => {
       } else if (aiChats) {
         // Transform the data for our Startup type
         const transformedAiMatches = aiChats.map(chat => {
-          // Check if startup_profiles exists and is an object
-          const startup = chat.startup_profiles || {};
+          // Default values for startup info
+          const startup_id = chat.startup_id || '';
+          const defaultStartup = {
+            id: startup_id,
+            name: "Unnamed Startup",
+            stage: "Unknown",
+            location: "Unknown",
+            industry: "Technology",
+            bio: "No description available",
+            raised_amount: "N/A",
+            tagline: "No tagline available"
+          };
+          
+          // Get startup data if available
+          const startupData = chat.startup_profiles && 
+                             typeof chat.startup_profiles === 'object' ? 
+                             chat.startup_profiles : null;
+          
           // Check if ai_match_feed_status exists and is an array with at least one element
           const statusItems = Array.isArray(chat.ai_match_feed_status) ? chat.ai_match_feed_status : [];
           const status = statusItems.length > 0 ? statusItems[0]?.status : 'new';
           
           return {
-            id: startup.id || chat.startup_id,
-            name: startup.name || "Unnamed Startup",
+            id: startupData?.id || startup_id,
+            name: startupData?.name || defaultStartup.name,
             score: chat.match_score || 0,
-            stage: startup.stage || "Unknown",
-            location: startup.location || "Unknown",
-            industry: startup.industry || "Technology",
-            bio: startup.bio || "No description available",
-            raised_amount: startup.raised_amount || "N/A",
-            tagline: startup.tagline || "No tagline available",
+            stage: startupData?.stage || defaultStartup.stage,
+            location: startupData?.location || defaultStartup.location,
+            industry: startupData?.industry || defaultStartup.industry,
+            bio: startupData?.bio || defaultStartup.bio,
+            raised_amount: startupData?.raised_amount || defaultStartup.raised_amount,
+            tagline: startupData?.tagline || defaultStartup.tagline,
             matchSummary: chat.summary || "No summary available",
             chatId: chat.id,
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
@@ -115,19 +131,34 @@ export const MatchesTab = () => {
         console.error("Error fetching confirmed matches:", mutualError);
       } else if (mutualMatches) {
         const transformedConfirmedMatches = mutualMatches.map(match => {
-          // Check if startup_profiles exists and is an object
-          const startup = match.startup_profiles || {};
+          // Default values for startup info
+          const startup_id = match.startup_id || '';
+          const defaultStartup = {
+            id: startup_id,
+            name: "Unnamed Startup",
+            stage: "Unknown",
+            location: "Unknown",
+            industry: "Technology",
+            bio: "No description available",
+            raised_amount: "N/A",
+            tagline: "No tagline available"
+          };
+          
+          // Get startup data if available
+          const startupData = match.startup_profiles && 
+                             typeof match.startup_profiles === 'object' ? 
+                             match.startup_profiles : null;
           
           return {
-            id: startup.id || match.startup_id,
-            name: startup.name || "Unnamed Startup",
+            id: startupData?.id || startup_id,
+            name: startupData?.name || defaultStartup.name,
             score: match.match_score || 0,
-            stage: startup.stage || "Unknown",
-            location: startup.location || "Unknown",
-            industry: startup.industry || "Technology",
-            bio: startup.bio || "No description available",
-            raised_amount: startup.raised_amount || "N/A",
-            tagline: startup.tagline || "No tagline available"
+            stage: startupData?.stage || defaultStartup.stage,
+            location: startupData?.location || defaultStartup.location,
+            industry: startupData?.industry || defaultStartup.industry,
+            bio: startupData?.bio || defaultStartup.bio,
+            raised_amount: startupData?.raised_amount || defaultStartup.raised_amount,
+            tagline: startupData?.tagline || defaultStartup.tagline
           };
         });
         
