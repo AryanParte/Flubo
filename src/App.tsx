@@ -14,6 +14,9 @@ import StartupProfile from "./pages/StartupProfile";
 import InvestorProfile from "./pages/InvestorProfile";
 import StartupMessages from "./pages/StartupMessages";
 import InvestorMessages from "./pages/InvestorMessages";
+import Startups from "./pages/Startups";
+import Investors from "./pages/Investors";
+import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +40,9 @@ const App = () => (
               <Route path="/investor/profile/:id" element={<InvestorProfile />} />
               <Route path="/startup/messages" element={<StartupMessages />} />
               <Route path="/investor/messages" element={<InvestorMessages />} />
+              <Route path="/startups" element={<Startups />} />
+              <Route path="/investors" element={<Investors />} />
+              <Route path="/about" element={<About />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
