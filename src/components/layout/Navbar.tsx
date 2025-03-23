@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Menu, X, User, MessageSquare, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +16,8 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut, loading } = useAuth();
 
   // Check if we're on an authenticated page
   const isAuthPage = location.pathname.includes("/auth");
@@ -38,6 +42,31 @@ export function Navbar() {
   // Don't show navbar on auth page
   if (isAuthPage) return null;
 
+  // Handle logo click - direct to appropriate dashboard if logged in
+  const handleLogoClick = (e) => {
+    if (user) {
+      e.preventDefault();
+      // Check user type and navigate to appropriate dashboard
+      const { data: { user_metadata } = {} } = user;
+      if (user_metadata?.user_type === "startup") {
+        navigate("/startup");
+      } else if (user_metadata?.user_type === "investor") {
+        navigate("/investor");
+      }
+    }
+    // If not logged in, default Link behavior will navigate to "/"
+  };
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   // Navigation items
   const navItems = isDashboard
     ? []
@@ -58,8 +87,9 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         {/* Logo */}
         <Link 
-          to="/" 
+          to={user ? (isStartupDashboard ? "/startup" : isInvestorDashboard ? "/investor" : "/") : "/"}
           className="flex items-center space-x-2 font-semibold text-lg"
+          onClick={handleLogoClick}
         >
           <span className="text-accent">Flubo</span>
         </Link>
@@ -156,7 +186,7 @@ export function Navbar() {
             </TooltipProvider>
           )}
           
-          {!isDashboard && (
+          {!user && !loading && (
             <Link
               to="/auth"
               className="hidden md:inline-flex h-9 px-4 items-center justify-center rounded-md bg-accent text-accent-foreground text-sm font-medium transition-colors duration-200 hover:bg-accent/90"
@@ -165,13 +195,10 @@ export function Navbar() {
             </Link>
           )}
 
-          {isDashboard && (
+          {user && (
             <button 
               className="hidden md:inline-flex h-9 px-4 items-center justify-center rounded-md bg-secondary text-secondary-foreground text-sm font-medium transition-colors hover:bg-secondary/80"
-              onClick={() => {
-                console.log("Sign out");
-                // Sign out logic would go here
-              }}
+              onClick={handleSignOut}
             >
               Sign Out
             </button>
@@ -239,7 +266,7 @@ export function Navbar() {
               </>
             )}
             
-            {!isDashboard && (
+            {!user && !loading && (
               <Link
                 to="/auth"
                 className="inline-flex h-10 px-4 items-center justify-center rounded-md bg-accent text-accent-foreground text-sm font-medium transition-colors hover:bg-accent/90"
@@ -248,13 +275,10 @@ export function Navbar() {
               </Link>
             )}
 
-            {isDashboard && (
+            {user && (
               <button 
                 className="inline-flex h-10 px-4 items-center justify-center rounded-md bg-secondary text-secondary-foreground text-sm font-medium transition-colors hover:bg-secondary/80"
-                onClick={() => {
-                  console.log("Sign out");
-                  // Sign out logic would go here
-                }}
+                onClick={handleSignOut}
               >
                 Sign Out
               </button>
