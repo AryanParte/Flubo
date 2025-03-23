@@ -14,7 +14,7 @@ interface AuthContextProps {
   signOut: () => Promise<void>;
 }
 
-interface CreateProfileParams {
+interface ProfileParams {
   profile_id: string;
   profile_user_type: "startup" | "investor" | "partnership";
   profile_name: string;
@@ -104,14 +104,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        const profileParams = {
+        const profileParams: ProfileParams = {
           profile_id: data.user.id,
           profile_user_type: userType,
           profile_name: name,
           profile_email: email
         };
         
-        const { error: profileError } = await supabase.rpc('create_profile', profileParams);
+        const { error: profileError } = await supabase.rpc('create_profile', profileParams) as { error: any };
 
         if (profileError) {
           console.error("Error creating profile:", profileError);
