@@ -69,6 +69,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
+      // First, check if the user already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+        
+      if (existingUser) {
+        toast({
+          title: "Account already exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Create the user account
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -86,17 +102,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        // Create profile record - CRITICAL: Make sure this succeeds 
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert([
-            {
-              id: data.user.id,
-              user_type: userType,
-              name: name,
-              email: email,
-            },
-          ]);
+        // Create profile record using RPC to avoid constraint issues
+        // This ensures we're running the operation on the database side
+        // where we can handle the user_type check properly
+        const { error: profileError } = await supabase.rpc('create_profile', {
+          profile_id: data.user.id,
+          profile_user_type: userType,
+          profile_name: name,
+          profile_email: email
+        });
 
         if (profileError) {
           console.error("Error creating profile:", profileError);
@@ -105,6 +119,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: profileError.message,
             variant: "destructive",
           });
+          
+          // If the profile creation fails, we should try to delete the auth user
+          // to avoid orphaned accounts
+          await supabase.auth.admin.deleteUser(data.user.id);
+          
           return; // Stop here if profile creation fails
         }
 
