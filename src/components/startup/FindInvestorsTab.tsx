@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 type Investor = {
   id: string;
   name: string;
+  email?: string;
   bio?: string;
   industry?: string;
   location?: string;
@@ -45,22 +46,26 @@ export const FindInvestorsTab = () => {
       // Fetch all profiles with user_type = 'investor'
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email')
+        .select('id, name, email, company, position, user_type')
         .eq('user_type', 'investor');
       
       if (error) throw error;
       
       console.log("Found investors:", data?.length || 0);
       
-      // For now we'll use mock data for the additional fields
-      // In a real application, you would fetch this from an investor_profiles table
+      // Transform the data to include investor details
       const enhancedInvestors = data?.map(investor => ({
-        ...investor,
+        id: investor.id,
+        name: investor.name || 'Unknown Investor',
+        email: investor.email,
+        // Use actual investor profile data when available
+        role: investor.position || 'Angel Investor',
+        company: investor.company || 'Tech Ventures',
+        // For fields that aren't in the basic profile, we'll still use placeholders
+        // In a production app, you'd create and query an investor_profiles table
         bio: "Angel investor with a focus on early-stage startups in technology and innovation.",
         industry: "Technology",
         location: "San Francisco, CA",
-        role: "Angel Investor",
-        company: "Tech Ventures",
       })) || [];
       
       setInvestors(enhancedInvestors);
@@ -84,7 +89,7 @@ export const FindInvestorsTab = () => {
     } else {
       const lowercaseQuery = searchQuery.toLowerCase();
       const filtered = investors.filter(investor => 
-        investor.name.toLowerCase().includes(lowercaseQuery) ||
+        investor.name?.toLowerCase().includes(lowercaseQuery) ||
         investor.industry?.toLowerCase().includes(lowercaseQuery) ||
         investor.location?.toLowerCase().includes(lowercaseQuery) ||
         investor.company?.toLowerCase().includes(lowercaseQuery)
