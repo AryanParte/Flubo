@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -97,14 +98,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        const { error: profileError } = await supabase.rpc(
+        // Using type assertion to help TypeScript understand the parameter structure
+        const { error: profileError } = await supabase.functions.invoke(
           'create_profile',
           {
-            profile_id: data.user.id,
-            profile_user_type: userType,
-            profile_name: name,
-            profile_email: email
-          } as Record<string, any>
+            body: {
+              profile_id: data.user.id,
+              profile_user_type: userType,
+              profile_name: name,
+              profile_email: email
+            }
+          }
         );
 
         if (profileError) {
