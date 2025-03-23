@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -111,7 +112,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profile_email: email
         };
         
-        const { error: profileError } = await supabase.rpc('create_profile', profileParams) as { error: any };
+        // Fix for the TypeScript error - pass parameters without type constraints
+        const { error: profileError } = await supabase.rpc(
+          'create_profile',
+          profileParams
+        );
 
         if (profileError) {
           console.error("Error creating profile:", profileError);
@@ -285,3 +290,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
