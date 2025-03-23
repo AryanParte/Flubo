@@ -53,22 +53,51 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Insert profile into the profiles table
-    const { error } = await supabase
-      .from("profiles")
-      .insert({
-        id: profile_id,
-        user_type: profile_user_type,
-        name: profile_name,
-        email: profile_email
-      });
+    // Try to use the stored procedure first, if it fails, try direct insert
+    try {
+      const { error: rpcError } = await supabase.rpc(
+        'create_profile',
+        {
+          profile_id,
+          profile_user_type,
+          profile_name,
+          profile_email
+        }
+      );
 
-    if (error) {
-      console.error("Error inserting profile:", error);
-      throw error;
+      if (rpcError) {
+        console.log("RPC approach failed, falling back to direct insert:", rpcError.message);
+        // RPC failed, so we'll try direct insert next
+        throw rpcError;
+      } else {
+        console.log(`Profile created successfully via RPC for user ${profile_id} with type ${profile_user_type}`);
+        return new Response(
+          JSON.stringify({ success: true }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
+    } catch (rpcError) {
+      // Fall back to direct insert
+      console.log("Attempting direct insert after RPC failure");
+      const { error } = await supabase
+        .from("profiles")
+        .insert({
+          id: profile_id,
+          user_type: profile_user_type,
+          name: profile_name,
+          email: profile_email
+        });
+
+      if (error) {
+        console.error("Error inserting profile:", error);
+        throw error;
+      }
+
+      console.log(`Profile created successfully via direct insert for user ${profile_id} with type ${profile_user_type}`);
     }
-
-    console.log(`Profile created successfully for user ${profile_id} with type ${profile_user_type}`);
 
     // Return success response
     return new Response(
