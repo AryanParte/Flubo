@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -105,8 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        // Fix: Use explicit typing for the create_profile RPC call
-        const { error: profileError } = await supabase.rpc<any>('create_profile', {
+        const { error: profileError } = await supabase.rpc<CreateProfileParams, null>('create_profile', {
           profile_id: data.user.id,
           profile_user_type: userType,
           profile_name: name,
