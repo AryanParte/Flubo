@@ -1,8 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import {
   Select,
   SelectContent,
@@ -12,14 +14,120 @@ import {
 } from "@/components/ui/select";
 
 export const SettingsTab = () => {
-  const [notificationsForm, useForm] = useState({});
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [emailSettings, setEmailSettings] = useState({
+    'new-match': true,
+    'messages': true,
+    'profile-views': false,
+    'funding-updates': true,
+    'newsletters': false,
+  });
   
-  const handleSaveNotifications = (e: React.FormEvent) => {
+  const [pushSettings, setPushSettings] = useState({
+    'push-matches': true,
+    'push-messages': true,
+    'push-reminders': true,
+  });
+  
+  useEffect(() => {
+    if (user) {
+      fetchNotificationSettings();
+    }
+  }, [user]);
+  
+  const fetchNotificationSettings = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('startup_notification_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 means no rows returned, which is fine for new users
+        throw error;
+      }
+      
+      if (data) {
+        setEmailSettings({
+          'new-match': data.email_new_match ?? true,
+          'messages': data.email_messages ?? true,
+          'profile-views': data.email_profile_views ?? false,
+          'funding-updates': data.email_funding_updates ?? true,
+          'newsletters': data.email_newsletters ?? false,
+        });
+        
+        setPushSettings({
+          'push-matches': data.push_matches ?? true,
+          'push-messages': data.push_messages ?? true,
+          'push-reminders': data.push_reminders ?? true,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load notification settings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleSaveNotifications = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Notification preferences updated",
-      description: "Your notification settings have been saved",
-    });
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('startup_notification_settings')
+        .upsert({
+          user_id: user.id,
+          email_new_match: emailSettings['new-match'],
+          email_messages: emailSettings['messages'],
+          email_profile_views: emailSettings['profile-views'],
+          email_funding_updates: emailSettings['funding-updates'],
+          email_newsletters: emailSettings['newsletters'],
+          push_matches: pushSettings['push-matches'],
+          push_messages: pushSettings['push-messages'],
+          push_reminders: pushSettings['push-reminders'],
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Notification preferences updated",
+        description: "Your notification settings have been saved",
+      });
+    } catch (error) {
+      console.error("Error saving notification settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleCheckboxChange = (settingType: 'email' | 'push', id: string) => {
+    if (settingType === 'email') {
+      setEmailSettings(prev => ({
+        ...prev,
+        [id]: !prev[id as keyof typeof prev]
+      }));
+    } else {
+      setPushSettings(prev => ({
+        ...prev,
+        [id]: !prev[id as keyof typeof prev]
+      }));
+    }
   };
 
   return (
@@ -39,18 +147,19 @@ export const SettingsTab = () => {
                 <h3 className="text-md font-medium">Email Notifications</h3>
                 
                 {[
-                  { id: "new-match", label: "New investor matches", checked: true },
-                  { id: "messages", label: "New messages", checked: true },
-                  { id: "profile-views", label: "Profile views", checked: false },
-                  { id: "funding-updates", label: "Funding updates", checked: true },
-                  { id: "newsletters", label: "Platform newsletters", checked: false },
+                  { id: "new-match", label: "New investor matches", checked: emailSettings['new-match'] },
+                  { id: "messages", label: "New messages", checked: emailSettings['messages'] },
+                  { id: "profile-views", label: "Profile views", checked: emailSettings['profile-views'] },
+                  { id: "funding-updates", label: "Funding updates", checked: emailSettings['funding-updates'] },
+                  { id: "newsletters", label: "Platform newsletters", checked: emailSettings['newsletters'] },
                 ].map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
                     <label htmlFor={item.id} className="text-sm">{item.label}</label>
                     <input 
                       id={item.id}
                       type="checkbox"
-                      defaultChecked={item.checked}
+                      checked={item.checked}
+                      onChange={() => handleCheckboxChange('email', item.id)}
                       className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
                     />
                   </div>
@@ -61,23 +170,26 @@ export const SettingsTab = () => {
                 <h3 className="text-md font-medium">Push Notifications</h3>
                 
                 {[
-                  { id: "push-matches", label: "New investor matches", checked: true },
-                  { id: "push-messages", label: "New messages", checked: true },
-                  { id: "push-reminders", label: "Meeting reminders", checked: true },
+                  { id: "push-matches", label: "New investor matches", checked: pushSettings['push-matches'] },
+                  { id: "push-messages", label: "New messages", checked: pushSettings['push-messages'] },
+                  { id: "push-reminders", label: "Meeting reminders", checked: pushSettings['push-reminders'] },
                 ].map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
                     <label htmlFor={item.id} className="text-sm">{item.label}</label>
                     <input 
                       id={item.id}
                       type="checkbox"
-                      defaultChecked={item.checked}
+                      checked={item.checked}
+                      onChange={() => handleCheckboxChange('push', item.id)}
                       className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
                     />
                   </div>
                 ))}
               </div>
               
-              <Button type="submit">Save Notification Preferences</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : "Save Notification Preferences"}
+              </Button>
             </form>
           </div>
         </TabsContent>

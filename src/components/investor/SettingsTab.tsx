@@ -1,18 +1,22 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export const SettingsTab = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: "Alex Morgan",
-    email: "alex@venturecp.com",
-    company: "Venture Capital Partners",
-    position: "Investment Partner",
-    phone: "+1 (555) 123-4567"
+    name: "",
+    email: "",
+    company: "",
+    position: "",
+    phone: ""
   });
   
   const [preferences, setPreferences] = useState({
@@ -29,29 +33,176 @@ export const SettingsTab = () => {
     preferredStages: ["Pre-seed", "Seed", "Series A"],
     preferredSectors: ["AI & ML", "Fintech", "Healthcare", "CleanTech"]
   });
-  
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Profile updated",
-      description: "Your profile has been updated successfully",
-    });
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+    }
+  }, [user]);
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (profileError) throw profileError;
+      
+      // Fetch investor preferences
+      const { data: preferencesData, error: preferencesError } = await supabase
+        .from('investor_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profileData) {
+        setProfileData({
+          name: profileData.name || "",
+          email: profileData.email || user.email || "",
+          company: profileData.company || "",
+          position: profileData.position || "",
+          phone: profileData.phone || ""
+        });
+      }
+      
+      if (preferencesData) {
+        setPreferences({
+          emailNotifications: preferencesData.email_notifications ?? true,
+          pushNotifications: preferencesData.push_notifications ?? false,
+          newMatches: preferencesData.new_matches ?? true,
+          marketUpdates: preferencesData.market_updates ?? true,
+          weeklyDigest: preferencesData.weekly_digest ?? true
+        });
+        
+        setInvestmentPreferences({
+          minInvestment: preferencesData.min_investment || "250000",
+          maxInvestment: preferencesData.max_investment || "2000000",
+          preferredStages: preferencesData.preferred_stages || ["Pre-seed", "Seed", "Series A"],
+          preferredSectors: preferencesData.preferred_sectors || ["AI & ML", "Fintech", "Healthcare", "CleanTech"]
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
-  const handleSavePreferences = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Preferences updated",
-      description: "Your notification preferences have been updated",
-    });
+    setLoading(true);
+    
+    try {
+      // Update profile in database
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          name: profileData.name,
+          email: profileData.email,
+          company: profileData.company,
+          position: profileData.position,
+          phone: profileData.phone,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
-  const handleSaveInvestmentPreferences = (e: React.FormEvent) => {
+  const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Investment preferences updated",
-      description: "Your investment preferences have been updated",
-    });
+    setLoading(true);
+    
+    try {
+      // Update preferences in database
+      const { error } = await supabase
+        .from('investor_preferences')
+        .upsert({
+          user_id: user.id,
+          email_notifications: preferences.emailNotifications,
+          push_notifications: preferences.pushNotifications,
+          new_matches: preferences.newMatches,
+          market_updates: preferences.marketUpdates,
+          weekly_digest: preferences.weeklyDigest,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Preferences updated",
+        description: "Your notification preferences have been updated",
+      });
+    } catch (error) {
+      console.error("Error updating preferences:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update preferences",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleSaveInvestmentPreferences = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      // Update investment preferences in database
+      const { error } = await supabase
+        .from('investor_preferences')
+        .upsert({
+          user_id: user.id,
+          min_investment: investmentPreferences.minInvestment,
+          max_investment: investmentPreferences.maxInvestment,
+          preferred_stages: investmentPreferences.preferredStages,
+          preferred_sectors: investmentPreferences.preferredSectors,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Investment preferences updated",
+        description: "Your investment preferences have been updated",
+      });
+    } catch (error) {
+      console.error("Error updating investment preferences:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update investment preferences",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,7 +279,9 @@ export const SettingsTab = () => {
                 </div>
               </div>
               <div className="flex justify-end mt-4">
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
             </form>
           </div>
@@ -191,7 +344,9 @@ export const SettingsTab = () => {
                 </div>
               </div>
               <div className="flex justify-end mt-4">
-                <Button type="submit">Save Preferences</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Saving..." : "Save Preferences"}
+                </Button>
               </div>
             </form>
           </div>
@@ -303,7 +458,9 @@ export const SettingsTab = () => {
               </div>
               
               <div className="flex justify-end mt-4">
-                <Button type="submit">Save Preferences</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Saving..." : "Save Preferences"}
+                </Button>
               </div>
             </form>
           </div>
