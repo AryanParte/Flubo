@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        // Using type assertion to help TypeScript understand the parameter structure
+        // Call the Edge Function to create profile
         const { error: profileError } = await supabase.functions.invoke(
           'create_profile',
           {
@@ -119,7 +119,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             variant: "destructive",
           });
           
-          await supabase.auth.admin.deleteUser(data.user.id);
+          try {
+            // We don't use admin.deleteUser here as it's not allowed with the anon key
+            // Instead, we'll leave the account but it won't have a profile
+            console.warn("Could not delete user after profile creation failed. The account exists but profile creation failed.");
+          } catch (deleteError) {
+            console.error("Error during cleanup:", deleteError);
+          }
           
           return;
         }
