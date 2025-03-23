@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Search, Mail, Briefcase, Building, MapPin } from "lucide-react";
+import { Search, Mail, Briefcase, Building, MapPin, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -26,6 +26,7 @@ export const FindInvestorsTab = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [filteredInvestors, setFilteredInvestors] = useState<Investor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,6 +36,28 @@ export const FindInvestorsTab = () => {
   useEffect(() => {
     if (user) {
       fetchInvestors();
+      
+      // Set up realtime subscription for profile changes
+      const channel = supabase
+        .channel('profiles-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles',
+            filter: "user_type=eq.investor"
+          },
+          () => {
+            console.log("Investor profile updated, refreshing data");
+            fetchInvestors();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
   
@@ -79,7 +102,17 @@ export const FindInvestorsTab = () => {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+  
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchInvestors();
+    toast({
+      title: "Refreshed",
+      description: "Investor data has been updated",
+    });
   };
   
   useEffect(() => {
@@ -165,7 +198,7 @@ export const FindInvestorsTab = () => {
     }
   };
   
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -180,14 +213,27 @@ export const FindInvestorsTab = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <h2 className="text-lg font-medium">Find Investors</h2>
           
-          <div className="mt-4 md:mt-0 w-full md:w-72 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-            <Input
-              placeholder="Search investors"
-              className="pl-9"
-              value={searchQuery}
-              onChange={handleSearch}
-            />
+          <div className="mt-4 md:mt-0 w-full md:w-auto flex flex-col md:flex-row gap-3">
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search investors"
+                className="pl-9"
+                value={searchQuery}
+                onChange={handleSearch}
+              />
+            </div>
+            
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              title="Refresh investor data"
+              className="h-10 w-10 rounded-md"
+            >
+              <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+            </Button>
           </div>
         </div>
         
