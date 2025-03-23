@@ -117,11 +117,22 @@ export const FindInvestorsTab = () => {
       
       // If there's no existing conversation, create an initial message
       if (!existingMessages || existingMessages.length === 0) {
+        // Get the authenticated user's name from profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) throw profileError;
+        
+        const userName = profileData?.name || "Unknown Startup";
+        
         // Create initial message from startup to investor
         const { error } = await supabase
           .from('messages')
           .insert({
-            content: `Hello from ${user.name || "Capo"}! We're interested in connecting with you.`,
+            content: `Hello from ${userName}! We're interested in connecting with you.`,
             sender_id: user.id,
             recipient_id: investorId,
             sent_at: new Date().toISOString()
