@@ -10,7 +10,9 @@ import {
   Sparkles,
   ThumbsUp,
   MessageSquare,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -27,6 +29,8 @@ type StartupResult = {
   funding: string;
   matchScore: number;
   description: string;
+  websiteUrl?: string;
+  demoUrl?: string;
 };
 
 interface AISearchResultsTabProps {
@@ -104,6 +108,13 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
     }
   };
 
+  const handleOpenLink = (url: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
   if (!results || results.length === 0) {
     return (
       <div className="text-center py-16">
@@ -127,77 +138,113 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
         {results.map((startup, index) => (
           <div 
             key={index}
-            className="p-6 border border-border/60 rounded-lg bg-background/40 hover:shadow-md transition-shadow"
+            className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in"
+            style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className="flex items-start justify-between">
-              <div>
+            <div className="h-32 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
+              <span className="font-medium text-2xl">{startup.name.charAt(0)}</span>
+            </div>
+            
+            <div className="p-6 flex-1 flex flex-col">
+              <div className="flex justify-between items-start mb-3">
                 <h3 className="text-lg font-semibold">{startup.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{startup.tagline}</p>
-              </div>
-              <div className="flex items-center space-x-1 px-2 py-1 bg-accent/10 rounded text-accent text-sm">
-                <Sparkles size={14} />
-                <span>{startup.matchScore}% Match</span>
-              </div>
-            </div>
-            
-            <div className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
-              <div className="flex items-center space-x-1 text-muted-foreground">
-                <Building size={14} />
-                <span>{startup.industry}</span>
+                <div className="flex items-center space-x-1 px-2 py-1 bg-accent/10 rounded text-accent text-sm">
+                  <Sparkles size={14} />
+                  <span>{startup.matchScore}% Match</span>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-1 text-muted-foreground">
-                <BarChart3 size={14} />
-                <span>{startup.stage}</span>
+              <div className="mb-4 text-sm">
+                <p className="text-muted-foreground italic">{startup.tagline}</p>
               </div>
               
-              <div className="flex items-center space-x-1 text-muted-foreground">
-                <MapPin size={14} />
-                <span>{startup.location}</span>
+              <div className="grid grid-cols-2 gap-y-2 text-sm mb-4">
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <Building size={14} />
+                  <span>{startup.industry}</span>
+                </div>
+                
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <BarChart3 size={14} />
+                  <span>{startup.stage}</span>
+                </div>
+                
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <MapPin size={14} />
+                  <span>{startup.location}</span>
+                </div>
+                
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <Calendar size={14} />
+                  <span>Founded {startup.foundedYear}</span>
+                </div>
+                
+                <div className="col-span-2 flex items-center space-x-1 text-muted-foreground">
+                  <DollarSign size={14} />
+                  <span>Raised {startup.funding}</span>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-1 text-muted-foreground">
-                <Calendar size={14} />
-                <span>Founded {startup.foundedYear}</span>
-              </div>
+              <p className="mb-4 text-sm">{startup.description}</p>
               
-              <div className="col-span-2 flex items-center space-x-1 text-muted-foreground">
-                <DollarSign size={14} />
-                <span>Raised {startup.funding}</span>
+              {/* External Links */}
+              {(startup.websiteUrl || startup.demoUrl) && (
+                <div className="flex space-x-2 mb-4">
+                  {startup.demoUrl && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs flex items-center"
+                      onClick={(e) => handleOpenLink(startup.demoUrl!, e)}
+                    >
+                      <ExternalLink size={14} className="mr-1" />
+                      Demo
+                    </Button>
+                  )}
+                  {startup.websiteUrl && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-xs flex items-center"
+                      onClick={(e) => handleOpenLink(startup.websiteUrl!, e)}
+                    >
+                      <Globe size={14} className="mr-1" />
+                      Website
+                    </Button>
+                  )}
+                </div>
+              )}
+              
+              <div className="mt-auto flex space-x-3">
+                <Button 
+                  variant="accent" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => handleConnectClick(startup)}
+                  disabled={connecting === startup.name}
+                >
+                  {connecting === startup.name ? (
+                    <>
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare size={14} className="mr-1" />
+                      Connect
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant={interestedIn.includes(startup.name) ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleExpressInterest(startup)}
+                >
+                  <ThumbsUp size={14} className="mr-1" />
+                  {interestedIn.includes(startup.name) ? "Interested" : "Express Interest"}
+                </Button>
               </div>
-            </div>
-            
-            <p className="mt-4 text-sm">{startup.description}</p>
-            
-            <div className="mt-6 flex space-x-3">
-              <Button 
-                variant="accent" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => handleConnectClick(startup)}
-                disabled={connecting === startup.name}
-              >
-                {connecting === startup.name ? (
-                  <>
-                    <Loader2 size={14} className="mr-1 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <MessageSquare size={14} className="mr-1" />
-                    Connect
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant={interestedIn.includes(startup.name) ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => handleExpressInterest(startup)}
-              >
-                <ThumbsUp size={14} className="mr-1" />
-                {interestedIn.includes(startup.name) ? "Interested" : "Express Interest"}
-              </Button>
             </div>
           </div>
         ))}

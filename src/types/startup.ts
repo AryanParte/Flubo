@@ -12,4 +12,8 @@ export type Startup = {
   matchSummary?: string;
   chatId?: string;
   matchStatus?: 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored';
+  logo?: string;
+  demoUrl?: string; 
+  websiteUrl?: string;
+  created_at?: string;
 };

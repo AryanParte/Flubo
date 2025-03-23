@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { MessageSquare, ThumbsUp, ThumbsDown, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { MessageSquare, ThumbsUp, ThumbsDown, Eye, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -8,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Startup } from "@/types/startup";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { MatchCard } from "./matches/MatchCard";
 
 export const MatchesTab = () => {
   const [aiMatches, setAiMatches] = useState<Startup[]>([]);
@@ -561,27 +561,14 @@ export const MatchesTab = () => {
         <>
           <h3 className="text-lg font-medium mb-4">Confirmed Matches</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {confirmedMatches.map((startup) => (
-              <div key={startup.id} className="rounded-lg border border-border p-6 bg-background">
-                <div className="flex justify-between items-start mb-3">
-                  <h4 className="font-medium">{startup.name}</h4>
-                  <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1">
-                    {startup.score}% Match
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {startup.tagline || startup.bio || "No description available"}
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleContactClick(startup.id)}
-                >
-                  <MessageSquare size={14} className="mr-1" />
-                  Continue Conversation
-                </Button>
-              </div>
+            {confirmedMatches.map((startup, index) => (
+              <MatchCard
+                key={startup.id}
+                startup={startup}
+                index={index}
+                onRequestDemo={handleRequestDemo}
+                onIgnore={handleIgnoreStartup}
+              />
             ))}
           </div>
         </>
