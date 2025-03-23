@@ -209,16 +209,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      
+      // Check if there's an active session before signing out
+      const { data } = await supabase.auth.getSession();
+      
+      if (data.session) {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      } else {
+        // If there's no session, just navigate to the home page
+        console.log("No active session found, redirecting to home page");
+      }
+      
+      // Clear local state regardless of session status
+      setSession(null);
+      setUser(null);
       navigate("/");
+      
     } catch (error: any) {
+      console.error("Sign out error:", error);
       toast({
         title: "Sign out failed",
         description: error.message,
         variant: "destructive",
       });
-      console.error("Sign out error:", error);
     } finally {
       setLoading(false);
     }
