@@ -59,11 +59,36 @@ export const OverviewTab = () => {
       
       setCompletionTasks(tasksData || []);
       
-      // Calculate completion percentage
+      // Calculate accurate completion percentage
       if (tasksData && tasksData.length > 0) {
         const completedTasks = tasksData.filter(task => task.completed);
         const percentage = Math.round((completedTasks.length / tasksData.length) * 100);
         setCompletionPercentage(percentage);
+      } else {
+        setCompletionPercentage(0);
+      }
+      
+      // Fetch startup profile to check for profile completeness
+      const { data: startupProfile, error: profileError } = await supabase
+        .from('startup_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (profileError && profileError.code !== 'PGRST116') throw profileError;
+      
+      // Check for missing required fields to adjust completion percentage
+      if (startupProfile) {
+        const requiredFields = ['name', 'industry', 'bio', 'stage'];
+        const missingFields = requiredFields.filter(field => !startupProfile[field]);
+        
+        if (missingFields.length > 0) {
+          // Adjust completion percentage based on missing required fields
+          const fieldPercentage = Math.round(((requiredFields.length - missingFields.length) / requiredFields.length) * 100);
+          // Combine task completion with field completion for accurate percentage
+          const combinedPercentage = Math.round((completionPercentage + fieldPercentage) / 2);
+          setCompletionPercentage(combinedPercentage);
+        }
       }
       
       // Fetch recent matches with investor data
