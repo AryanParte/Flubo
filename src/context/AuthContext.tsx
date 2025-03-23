@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -30,7 +29,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, currentSession) => {
         setSession(currentSession);
@@ -39,7 +37,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
@@ -69,7 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // First, check if the user already exists
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('id')
@@ -85,7 +81,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Create the user account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -102,15 +97,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        // Create profile record using RPC to avoid constraint issues
-        // This ensures we're running the operation on the database side
-        // where we can handle the user_type check properly
         const { error: profileError } = await supabase.rpc('create_profile', {
           profile_id: data.user.id,
           profile_user_type: userType,
           profile_name: name,
           profile_email: email
-        });
+        } as any);
 
         if (profileError) {
           console.error("Error creating profile:", profileError);
@@ -120,16 +112,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             variant: "destructive",
           });
           
-          // If the profile creation fails, we should try to delete the auth user
-          // to avoid orphaned accounts
           await supabase.auth.admin.deleteUser(data.user.id);
           
-          return; // Stop here if profile creation fails
+          return;
         }
 
         console.log("Profile created successfully");
         
-        // If this is a startup, create minimal startup profile
         if (userType === "startup") {
           const { error: startupProfileError } = await supabase
             .from("startup_profiles")
@@ -137,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               {
                 id: data.user.id,
                 name: name,
-                industry: "Technology", // Default value that will be updated in the dialog
+                industry: "Technology",
               },
             ]);
 
@@ -153,7 +142,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "You have successfully created an account",
         });
         
-        // Redirect based on user type
         navigate(
           userType === "startup" 
             ? "/startup" 
@@ -194,7 +182,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       if (data.user) {
-        // Fetch user profile to determine user type
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("user_type")
@@ -210,7 +197,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "You have successfully signed in",
         });
 
-        // Redirect based on user type from profile
         const userType = profileData?.user_type || "startup";
         navigate(
           userType === "startup" 
@@ -241,18 +227,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Check if there's an active session before signing out
       const { data } = await supabase.auth.getSession();
       
       if (data.session) {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
       } else {
-        // If there's no session, just navigate to the home page
         console.log("No active session found, redirecting to home page");
       }
       
-      // Clear local state regardless of session status
       setSession(null);
       setUser(null);
       navigate("/");
