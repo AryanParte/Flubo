@@ -210,6 +210,54 @@ export type Database = {
           },
         ]
       }
+      investor_preferences: {
+        Row: {
+          created_at: string | null
+          email_notifications: boolean | null
+          id: string
+          market_updates: boolean | null
+          max_investment: string | null
+          min_investment: string | null
+          new_matches: boolean | null
+          preferred_sectors: string[] | null
+          preferred_stages: string[] | null
+          push_notifications: boolean | null
+          updated_at: string | null
+          user_id: string
+          weekly_digest: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          market_updates?: boolean | null
+          max_investment?: string | null
+          min_investment?: string | null
+          new_matches?: boolean | null
+          preferred_sectors?: string[] | null
+          preferred_stages?: string[] | null
+          push_notifications?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          weekly_digest?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          market_updates?: boolean | null
+          max_investment?: string | null
+          min_investment?: string | null
+          new_matches?: boolean | null
+          preferred_sectors?: string[] | null
+          preferred_stages?: string[] | null
+          push_notifications?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          weekly_digest?: boolean | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -325,24 +373,33 @@ export type Database = {
       }
       profiles: {
         Row: {
+          company: string | null
           created_at: string | null
           email: string | null
           id: string
           name: string | null
+          phone: string | null
+          position: string | null
           user_type: string
         }
         Insert: {
+          company?: string | null
           created_at?: string | null
           email?: string | null
           id: string
           name?: string | null
+          phone?: string | null
+          position?: string | null
           user_type: string
         }
         Update: {
+          company?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           name?: string | null
+          phone?: string | null
+          position?: string | null
           user_type?: string
         }
         Relationships: []
@@ -381,6 +438,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      startup_notification_settings: {
+        Row: {
+          created_at: string | null
+          email_funding_updates: boolean | null
+          email_messages: boolean | null
+          email_new_match: boolean | null
+          email_newsletters: boolean | null
+          email_profile_views: boolean | null
+          id: string
+          push_matches: boolean | null
+          push_messages: boolean | null
+          push_reminders: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_funding_updates?: boolean | null
+          email_messages?: boolean | null
+          email_new_match?: boolean | null
+          email_newsletters?: boolean | null
+          email_profile_views?: boolean | null
+          id?: string
+          push_matches?: boolean | null
+          push_messages?: boolean | null
+          push_reminders?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_funding_updates?: boolean | null
+          email_messages?: boolean | null
+          email_new_match?: boolean | null
+          email_newsletters?: boolean | null
+          email_profile_views?: boolean | null
+          id?: string
+          push_matches?: boolean | null
+          push_messages?: boolean | null
+          push_reminders?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       startup_profiles: {
         Row: {
