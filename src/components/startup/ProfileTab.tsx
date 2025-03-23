@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { Edit, Upload, Trash, Check, Loader2 } from "lucide-react";
+import { Edit, Upload, Trash, Check, Loader2, Video, Link } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
@@ -18,6 +18,8 @@ const emptyStartupProfile = {
   stage: "",
   industry: "",
   bio: "",
+  demoUrl: "",
+  demoVideo: "",
   fundraising: {
     target: "",
     raised: "",
@@ -64,7 +66,6 @@ export const ProfileTab = () => {
       setError(null);
       console.log("Fetching startup profile...");
       
-      // First check if user exists in profiles table
       const { data: userProfile, error: userProfileError } = await supabase
         .from('profiles')
         .select('*')
@@ -81,7 +82,6 @@ export const ProfileTab = () => {
         throw new Error("User profile not found. Please complete your account setup first.");
       }
       
-      // Check if we have a startup profile
       const { data: startupProfile, error: profileError } = await supabase
         .from('startup_profiles')
         .select('*')
@@ -90,16 +90,13 @@ export const ProfileTab = () => {
       
       console.log("Startup profile query result:", { startupProfile, profileError });
       
-      // If we don't have a startup profile yet, we'll create one with default values
       if (profileError) {
         if (profileError.code === 'PGRST116') {
           console.log("No profile found, will create default");
-          // Only create default if viewing own profile and we haven't tried already
           if (user && user.id === profileId && !profileCreationAttempted) {
             setProfileCreationAttempted(true);
             try {
               await createBasicStartupProfile(userProfile.name);
-              // Fetch the profile again after creating it
               await fetchStartupProfile();
               return;
             } catch (error) {
@@ -114,7 +111,6 @@ export const ProfileTab = () => {
         }
       }
       
-      // Get the metrics
       const { data: metricsData, error: metricsError } = await supabase
         .from('startup_metrics')
         .select('*')
@@ -127,7 +123,6 @@ export const ProfileTab = () => {
         console.error("Error fetching metrics:", metricsError);
       }
       
-      // Get team members
       const { data: teamData, error: teamError } = await supabase
         .from('startup_team_members')
         .select('*')
@@ -135,11 +130,6 @@ export const ProfileTab = () => {
       
       console.log("Team query result:", { teamData, teamError });
       
-      if (teamError) {
-        console.error("Error fetching team data:", teamError);
-      }
-      
-      // Build the complete startup object
       setStartup({
         name: startupProfile?.name || "",
         tagline: startupProfile?.tagline || "",
@@ -150,6 +140,8 @@ export const ProfileTab = () => {
         stage: startupProfile?.stage || "",
         industry: startupProfile?.industry || "",
         bio: startupProfile?.bio || "",
+        demoUrl: startupProfile?.demo_url || "",
+        demoVideo: startupProfile?.demo_video || "",
         fundraising: {
           target: startupProfile?.target_amount || "",
           raised: startupProfile?.raised_amount || "",
@@ -167,7 +159,6 @@ export const ProfileTab = () => {
       
       console.log("Profile data loaded successfully");
 
-      // If this is your own profile and it's mostly empty, enable editing by default
       if (user && user.id === profileId && !startupProfile.bio) {
         setEditing(true);
       }
@@ -187,7 +178,6 @@ export const ProfileTab = () => {
 
   const createBasicStartupProfile = async (userName: string) => {
     try {
-      // Create a minimal startup profile with empty fields
       const defaultName = userName || "Your Startup";
       
       const { error: profileError } = await supabase
@@ -195,12 +185,11 @@ export const ProfileTab = () => {
         .insert({
           id: user.id,
           name: defaultName,
-          industry: "Technology", // Default industry that user should update
+          industry: "Technology",
         });
       
       if (profileError) throw profileError;
       
-      // Create empty metrics record
       const { error: metricsError } = await supabase
         .from('startup_metrics')
         .insert({
@@ -209,7 +198,6 @@ export const ProfileTab = () => {
       
       if (metricsError) throw metricsError;
       
-      // Create default completion tasks if they don't exist yet
       const { data: tasks } = await supabase
         .from('profile_completion_tasks')
         .select('*')
@@ -245,11 +233,9 @@ export const ProfileTab = () => {
 
   const handleEditToggle = async () => {
     if (editing) {
-      // Save changes
       try {
         setSaving(true);
         
-        // Update startup_profiles table
         const { error: profileError } = await supabase
           .from('startup_profiles')
           .update({
@@ -262,6 +248,8 @@ export const ProfileTab = () => {
             stage: startup.stage,
             industry: startup.industry,
             bio: startup.bio,
+            demo_url: startup.demoUrl,
+            demo_video: startup.demoVideo,
             target_amount: startup.fundraising.target,
             raised_amount: startup.fundraising.raised,
             min_investment: startup.fundraising.minInvestment,
@@ -272,7 +260,6 @@ export const ProfileTab = () => {
         
         if (profileError) throw profileError;
         
-        // Update metrics
         const { error: metricsError } = await supabase
           .from('startup_metrics')
           .update({
@@ -286,7 +273,6 @@ export const ProfileTab = () => {
         
         if (metricsError) throw metricsError;
         
-        // Update company details task to completed if not already
         const { data: companyDetailsTask } = await supabase
           .from('profile_completion_tasks')
           .select('*')
@@ -304,7 +290,6 @@ export const ProfileTab = () => {
             .eq('id', companyDetailsTask.id);
         }
         
-        // Update funding task to completed if not already
         const { data: fundingTask } = await supabase
           .from('profile_completion_tasks')
           .select('*')
@@ -383,7 +368,6 @@ export const ProfileTab = () => {
       
       if (error) throw error;
       
-      // Update local state
       setStartup(prev => ({
         ...prev,
         team: prev.team.filter(member => member.id !== id)
@@ -409,7 +393,6 @@ export const ProfileTab = () => {
       description: "Team member addition functionality coming soon",
     });
     
-    // For now, let's add a placeholder team member
     try {
       const newMember = {
         name: "New Team Member",
@@ -430,13 +413,11 @@ export const ProfileTab = () => {
       
       if (error) throw error;
       
-      // Update local state
       setStartup(prev => ({
         ...prev,
         team: [...prev.team, data]
       }));
       
-      // Update team members task to completed
       const { data: teamTask } = await supabase
         .from('profile_completion_tasks')
         .select('*')
@@ -491,7 +472,6 @@ export const ProfileTab = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header with avatar and edit button */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div className="flex items-center gap-4">
           <div className="relative group">
@@ -560,7 +540,6 @@ export const ProfileTab = () => {
         )}
       </div>
 
-      {/* Company Info */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Company Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -573,7 +552,14 @@ export const ProfileTab = () => {
                 className="mt-1"
               />
             ) : (
-              <p className="mt-1">{startup.website}</p>
+              <p className="mt-1">
+                {startup.website && (
+                  <a href={startup.website} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center">
+                    <Link size={14} className="mr-1" />
+                    {startup.website}
+                  </a>
+                )}
+              </p>
             )}
           </div>
           <div>
@@ -651,7 +637,67 @@ export const ProfileTab = () => {
         </div>
       </div>
 
-      {/* Metrics */}
+      <div className="glass-card p-6 rounded-lg">
+        <h2 className="text-lg font-medium mb-4">Demo & Links</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">Demo URL</label>
+            {editing ? (
+              <Input 
+                value={startup.demoUrl} 
+                onChange={(e) => handleInputChange('demoUrl', e.target.value)}
+                className="mt-1"
+                placeholder="https://demo.example.com"
+              />
+            ) : (
+              <p className="mt-1">
+                {startup.demoUrl && (
+                  <a href={startup.demoUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center">
+                    <Link size={14} className="mr-1" />
+                    {startup.demoUrl}
+                  </a>
+                )}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">Demo Video</label>
+            {editing ? (
+              <Input 
+                value={startup.demoVideo} 
+                onChange={(e) => handleInputChange('demoVideo', e.target.value)}
+                className="mt-1"
+                placeholder="https://youtube.com/watch?v=example"
+              />
+            ) : (
+              <p className="mt-1">
+                {startup.demoVideo && (
+                  <a href={startup.demoVideo} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center">
+                    <Video size={14} className="mr-1" />
+                    {startup.demoVideo}
+                  </a>
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+        {startup.demoVideo && !editing && (
+          <div className="mt-4 aspect-video bg-black/20 rounded-md flex items-center justify-center">
+            <div className="text-center">
+              <Video className="h-12 w-12 mx-auto mb-2 text-accent" />
+              <a 
+                href={startup.demoVideo} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                View Demo Video
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Key Metrics</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -706,7 +752,6 @@ export const ProfileTab = () => {
         </div>
       </div>
 
-      {/* Fundraising */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Current Fundraising</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -759,7 +804,6 @@ export const ProfileTab = () => {
             )}
           </div>
         </div>
-        {/* Progress bar */}
         <div className="mt-6">
           <div className="flex justify-between text-sm mb-1">
             <span>{startup.fundraising.raised} raised</span>
@@ -770,16 +814,15 @@ export const ProfileTab = () => {
               className="bg-accent h-2.5 rounded-full" 
               style={{ 
                 width: (() => {
-                  // Parse the values and calculate percentage
                   try {
                     const raised = parseFloat(startup.fundraising.raised.replace(/[^0-9.]/g, ''));
                     const target = parseFloat(startup.fundraising.target.replace(/[^0-9.]/g, ''));
                     if (!isNaN(raised) && !isNaN(target) && target > 0) {
                       return `${Math.min(100, (raised / target) * 100)}%`;
                     }
-                    return "25%"; // Default fallback
+                    return "25%";
                   } catch (e) {
-                    return "25%"; // Default fallback
+                    return "25%";
                   }
                 })()
               }}
@@ -788,7 +831,6 @@ export const ProfileTab = () => {
         </div>
       </div>
 
-      {/* Team */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Team</h2>
         <div className="space-y-4">
@@ -834,3 +876,7 @@ export const ProfileTab = () => {
     </div>
   );
 };
+
+
+
+

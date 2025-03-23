@@ -15,5 +15,6 @@ export type Startup = {
   logo?: string;
   demoUrl?: string; 
   websiteUrl?: string;
+  demoVideo?: string;
   created_at?: string;
 };
