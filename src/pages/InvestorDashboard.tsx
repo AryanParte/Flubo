@@ -45,12 +45,19 @@ const InvestorDashboard = () => {
       setSearching(true);
       setSearchResults(null);
       
+      console.log("Sending search query:", searchQuery);
+      
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('investor-search', {
         body: { query: searchQuery, userId: user.id }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Search error:", error);
+        throw error;
+      }
+      
+      console.log("Search results:", data);
       
       setSearchResults(data.results);
       setActiveTab("search-results");
@@ -111,7 +118,7 @@ const InvestorDashboard = () => {
               <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search startups using natural language, e.g. 'Series A startup in Africa working on AI for healthcare'"
+                placeholder="Search startups using natural language, e.g. 'AI startups in India' or 'Seed stage fintech companies'"
                 className="w-full h-12 pl-11 pr-4 rounded-md bg-background/70 border border-border/40 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

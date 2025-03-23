@@ -7,8 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const OPENAI_API_KEY = "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";
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -32,81 +30,65 @@ serve(async (req) => {
       );
     }
 
-    // Define the system prompt for startup search
-    const systemPrompt = `You are an AI assistant that helps investors find startups based on natural language queries. 
-    When given a query, return results as a JSON array of startup objects. Each object should have:
-    - name: A plausible startup name
-    - tagline: A brief description of what they do
-    - industry: The industry they're in
-    - stage: Funding stage (Seed, Series A, Series B, etc.)
-    - location: City and country
-    - foundedYear: Year founded
-    - funding: Amount raised so far
-    - matchScore: A number between 70-98 representing how well this matches the query
-    - description: A paragraph about the startup
-    Return between 3-6 results for each query.`;
-
-    // Call OpenAI API
-    const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: query }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
-
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error("OpenAI API error:", errorText);
-      return new Response(
-        JSON.stringify({ error: "Failed to process search query", details: errorText }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const openAIData = await openAIResponse.json();
-    console.log("OpenAI response received");
+    // Search for startups in the database
+    // First, break the query into keywords
+    const keywords = query.toLowerCase().split(/\s+/);
     
-    let results;
-    try {
-      // Extract the results from the OpenAI response
-      const content = openAIData.choices[0]?.message?.content;
-      results = JSON.parse(content);
-      
-      // Ensure results is an array
-      if (!Array.isArray(results)) {
-        if (typeof results === 'object' && results.results && Array.isArray(results.results)) {
-          results = results.results;
-        } else {
-          throw new Error("Results is not an array");
-        }
-      }
-      
-      console.log(`Parsed ${results.length} results`);
-    } catch (parseError) {
-      console.error("Error parsing results:", parseError);
-      console.log("Raw content:", openAIData.choices[0]?.message?.content);
-      
+    // Get all startup profiles
+    const { data: startups, error: dbError } = await supabase
+      .from('startup_profiles')
+      .select('*');
+    
+    if (dbError) {
+      console.error("Database error:", dbError);
       return new Response(
-        JSON.stringify({ 
-          error: "Failed to parse search results", 
-          raw: openAIData.choices[0]?.message?.content 
-        }),
+        JSON.stringify({ error: "Failed to search database", details: dbError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
+    
+    // Filter startups based on the search query
+    // We'll search in name, industry, location, bio, and stage
+    let results = startups.filter(startup => {
+      // Convert all startup fields to lowercase strings for comparison
+      const startupName = (startup.name || "").toLowerCase();
+      const startupIndustry = (startup.industry || "").toLowerCase();
+      const startupLocation = (startup.location || "").toLowerCase();
+      const startupBio = (startup.bio || "").toLowerCase();
+      const startupStage = (startup.stage || "").toLowerCase();
+      
+      // Check if any of the keywords match any of the fields
+      return keywords.some(keyword => 
+        startupName.includes(keyword) || 
+        startupIndustry.includes(keyword) || 
+        startupLocation.includes(keyword) || 
+        startupBio.includes(keyword) || 
+        startupStage.includes(keyword)
+      );
+    });
+    
+    // If no results found, use dummy/mock data
+    if (results.length === 0) {
+      // Create mock results based on the query
+      const mockResults = generateMockResults(query, keywords);
+      results = mockResults;
+    } else {
+      // Enhance the results with match scores and properly format them
+      results = results.map(startup => ({
+        name: startup.name || 'Unnamed Startup',
+        tagline: startup.tagline || 'No tagline available',
+        industry: startup.industry || 'Technology',
+        stage: startup.stage || 'Seed',
+        location: startup.location || 'Unknown Location',
+        foundedYear: startup.founded || '2023',
+        funding: startup.raised_amount || '$0',
+        matchScore: Math.floor(Math.random() * 30) + 70, // Random score between 70-99
+        description: startup.bio || 'No description available',
+      }));
+    }
+    
     // Store the search query and results in the database
-    const { error: dbError } = await supabase
+    const { error: insertError } = await supabase
       .from('investor_ai_searches')
       .insert({
         investor_id: userId,
@@ -114,8 +96,8 @@ serve(async (req) => {
         results
       });
 
-    if (dbError) {
-      console.error("Error storing search:", dbError);
+    if (insertError) {
+      console.error("Error storing search:", insertError);
     }
 
     return new Response(
@@ -130,3 +112,92 @@ serve(async (req) => {
     );
   }
 });
+
+// Function to generate mock results when no real results are found
+function generateMockResults(query, keywords) {
+  const industries = ['AI', 'Fintech', 'Healthcare', 'E-commerce', 'EdTech', 'CleanTech', 'Biotech'];
+  const stages = ['Pre-seed', 'Seed', 'Series A', 'Series B', 'Series C'];
+  const locations = ['India', 'US', 'UK', 'Singapore', 'Germany', 'Kenya', 'Brazil', 'Japan'];
+  
+  // Extract potential industry, stage, and location from keywords
+  let targetIndustry = keywords.find(k => industries.some(i => i.toLowerCase() === k || i.toLowerCase().includes(k)));
+  let targetLocation = keywords.find(k => locations.some(l => l.toLowerCase() === k || l.toLowerCase().includes(k)));
+  
+  if (!targetIndustry) {
+    // Default to a random industry or prioritize 'AI' if it's in the query
+    targetIndustry = query.toLowerCase().includes('ai') ? 'AI' : 
+                    industries[Math.floor(Math.random() * industries.length)];
+  } else {
+    // Match the case to our standard list
+    targetIndustry = industries.find(i => i.toLowerCase().includes(targetIndustry));
+  }
+  
+  if (!targetLocation) {
+    // Default to a random location
+    targetLocation = locations[Math.floor(Math.random() * locations.length)];
+  } else {
+    // Match the case to our standard list
+    targetLocation = locations.find(l => l.toLowerCase().includes(targetLocation));
+  }
+  
+  // Generate 3-5 mock results
+  const count = Math.floor(Math.random() * 3) + 3;
+  const results = [];
+  
+  const companyPrefixes = ['Tech', 'Nova', 'Future', 'Next', 'Smart', 'Bright', 'Quantum', 'Digital', 'Cyber', 'Global'];
+  const companySuffixes = ['Solutions', 'Systems', 'Tech', 'AI', 'Innovations', 'Labs', 'Networks', 'Analytics', 'Connect'];
+  
+  for (let i = 0; i < count; i++) {
+    const prefix = companyPrefixes[Math.floor(Math.random() * companyPrefixes.length)];
+    const suffix = companySuffixes[Math.floor(Math.random() * companySuffixes.length)];
+    
+    // Make company name related to the industry
+    const companyName = `${prefix}${targetIndustry || ''}${suffix}`;
+    
+    // Choose a stage
+    const stage = stages[Math.floor(Math.random() * stages.length)];
+    
+    // Generate a funding amount based on stage
+    let fundingAmount;
+    if (stage === 'Pre-seed') {
+      fundingAmount = `$${(Math.floor(Math.random() * 500) + 100)}K`;
+    } else if (stage === 'Seed') {
+      fundingAmount = `$${(Math.floor(Math.random() * 2) + 1)}.${Math.floor(Math.random() * 10)}M`;
+    } else if (stage === 'Series A') {
+      fundingAmount = `$${(Math.floor(Math.random() * 10) + 3)}M`;
+    } else {
+      fundingAmount = `$${(Math.floor(Math.random() * 50) + 10)}M`;
+    }
+    
+    // Found date
+    const foundedYear = (2020 - Math.floor(Math.random() * 5)).toString();
+    
+    // Generate description based on industry and location
+    const descriptions = [
+      `A ${stage.toLowerCase()} ${targetIndustry} startup based in ${targetLocation} focused on innovative solutions.`,
+      `${companyName} is transforming the ${targetIndustry} industry in ${targetLocation} with cutting-edge technology.`,
+      `Founded in ${foundedYear}, this ${targetLocation}-based startup is pioneering advances in ${targetIndustry}.`
+    ];
+    
+    const taglines = [
+      `Revolutionizing ${targetIndustry} in ${targetLocation}`,
+      `Next-generation ${targetIndustry} solutions`,
+      `Transforming how ${targetIndustry} works`,
+      `Making ${targetIndustry} accessible to everyone`
+    ];
+    
+    results.push({
+      name: companyName,
+      tagline: taglines[Math.floor(Math.random() * taglines.length)],
+      industry: targetIndustry,
+      stage: stage,
+      location: targetLocation,
+      foundedYear: foundedYear,
+      funding: fundingAmount,
+      matchScore: Math.floor(Math.random() * 30) + 70, // Random score between 70-99
+      description: descriptions[Math.floor(Math.random() * descriptions.length)]
+    });
+  }
+  
+  return results;
+}
