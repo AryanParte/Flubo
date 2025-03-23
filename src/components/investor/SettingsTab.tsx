@@ -43,7 +43,6 @@ export const SettingsTab = () => {
     try {
       setLoading(true);
       
-      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -52,7 +51,6 @@ export const SettingsTab = () => {
       
       if (profileError) throw profileError;
       
-      // Fetch investor preferences
       const { data: preferencesData, error: preferencesError } = await supabase
         .from('investor_preferences')
         .select('*')
@@ -102,7 +100,6 @@ export const SettingsTab = () => {
     setLoading(true);
     
     try {
-      // Update profile in database - Removed updated_at field which doesn't exist in the profiles table
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -111,7 +108,8 @@ export const SettingsTab = () => {
           email: profileData.email,
           company: profileData.company,
           position: profileData.position,
-          phone: profileData.phone
+          phone: profileData.phone,
+          user_type: 'investor'
         });
       
       if (error) throw error;
@@ -137,7 +135,6 @@ export const SettingsTab = () => {
     setLoading(true);
     
     try {
-      // Update preferences in database
       const { error } = await supabase
         .from('investor_preferences')
         .upsert({
@@ -173,7 +170,6 @@ export const SettingsTab = () => {
     setLoading(true);
     
     try {
-      // Update investment preferences in database
       const { error } = await supabase
         .from('investor_preferences')
         .upsert({
@@ -564,4 +560,3 @@ export const SettingsTab = () => {
     </div>
   );
 };
-
