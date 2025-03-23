@@ -21,7 +21,8 @@ AS $$
   
     INSERT INTO supabase_realtime.subscription (entity, filters, claims)
     VALUES 
-      ('public:messages', '{}', '{"role":"authenticated"}')
+      ('public:messages', '{}', '{"role":"authenticated"}'),
+      ('public:investor_ai_searches', '{}', '{"role":"authenticated"}')
     ON CONFLICT DO NOTHING;
   END;
 $$;

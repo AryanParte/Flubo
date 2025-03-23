@@ -144,6 +144,30 @@ export type Database = {
           },
         ]
       }
+      investor_ai_searches: {
+        Row: {
+          created_at: string
+          id: string
+          investor_id: string
+          query: string
+          results: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          investor_id: string
+          query: string
+          results?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          investor_id?: string
+          query?: string
+          results?: Json | null
+        }
+        Relationships: []
+      }
       investor_matches: {
         Row: {
           created_at: string | null

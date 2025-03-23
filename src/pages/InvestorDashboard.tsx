@@ -2,32 +2,72 @@
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp } from "lucide-react";
+import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
 import { PortfolioTab } from "@/components/investor/PortfolioTab";
 import { AnalyticsTab } from "@/components/investor/AnalyticsTab";
 import { SettingsTab } from "@/components/investor/SettingsTab";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
+import { AISearchResultsTab } from "@/components/investor/AISearchResultsTab";
 
 const InvestorDashboard = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("discover");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
   
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      toast({
-        title: "Search initiated",
-        description: `Searching for: ${searchQuery}`,
-      });
-      // This would normally call the OpenAI API to process the natural language query
-    } else {
+    
+    if (!searchQuery.trim()) {
       toast({
         variant: "destructive",
         title: "Search query empty",
         description: "Please enter a search term",
       });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "Please sign in to use the search feature",
+      });
+      return;
+    }
+    
+    try {
+      setSearching(true);
+      setSearchResults(null);
+      
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('investor-search', {
+        body: { query: searchQuery, userId: user.id }
+      });
+      
+      if (error) throw error;
+      
+      setSearchResults(data.results);
+      setActiveTab("search-results");
+      
+      toast({
+        title: "Search complete",
+        description: `Found ${data.results.length} startups matching your query`,
+      });
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        variant: "destructive",
+        title: "Search failed",
+        description: error.message || "Failed to process your search query",
+      });
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -75,12 +115,21 @@ const InvestorDashboard = () => {
                 className="w-full h-12 pl-11 pr-4 rounded-md bg-background/70 border border-border/40 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={searching}
               />
               <button 
                 type="submit" 
-                className="absolute right-2 top-2 bg-accent text-accent-foreground px-3 py-2 rounded-md text-sm font-medium"
+                className="absolute right-2 top-2 bg-accent text-accent-foreground px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 disabled:opacity-70"
+                disabled={searching || !searchQuery.trim()}
               >
-                Search
+                {searching ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin mr-1" />
+                    <span>Searching...</span>
+                  </>
+                ) : (
+                  <span>Search</span>
+                )}
               </button>
             </form>
           </div>
@@ -119,6 +168,7 @@ const InvestorDashboard = () => {
             {activeTab === "portfolio" && <PortfolioTab />}
             {activeTab === "analytics" && <AnalyticsTab />}
             {activeTab === "settings" && <SettingsTab />}
+            {activeTab === "search-results" && <AISearchResultsTab results={searchResults} />}
           </div>
         </div>
       </main>
