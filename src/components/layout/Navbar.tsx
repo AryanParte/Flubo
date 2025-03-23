@@ -47,10 +47,10 @@ export function Navbar() {
     if (user) {
       e.preventDefault();
       // Check user type and navigate to appropriate dashboard
-      const { data: { user_metadata } = {} } = user;
-      if (user_metadata?.user_type === "startup") {
+      const userMetadata = user.user_metadata;
+      if (userMetadata?.user_type === "startup") {
         navigate("/startup");
-      } else if (user_metadata?.user_type === "investor") {
+      } else if (userMetadata?.user_type === "investor") {
         navigate("/investor");
       }
     }
