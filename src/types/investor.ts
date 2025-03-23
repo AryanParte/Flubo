@@ -8,4 +8,8 @@ export interface Investor {
   location?: string;
   role?: string;
   company?: string;
+  avatar_url?: string;
+  interests?: string[];
+  investment_stage?: string[];
+  investment_size?: string;
 }

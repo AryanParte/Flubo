@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorCard } from "./InvestorCard";
 import { EmptyState } from "./EmptyState";
-import { Investor } from "../../../types/investor";
 import { useInvestorData } from "../../../hooks/useInvestorData";
 
 interface InvestorListProps {
@@ -29,11 +28,35 @@ export const InvestorList = ({
   } = useInvestorData();
   
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [displayedInvestors, setDisplayedInvestors] = useState(filteredInvestors);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    // Here you could implement filtering by investor type
+    
+    // Filter investors based on tab selection
+    if (value === "all") {
+      setDisplayedInvestors(filteredInvestors);
+    } else if (value === "angel") {
+      const angelInvestors = filteredInvestors.filter(investor => 
+        investor.role?.toLowerCase().includes("angel") ||
+        (!investor.role?.toLowerCase().includes("vc") && 
+         !investor.role?.toLowerCase().includes("venture"))
+      );
+      setDisplayedInvestors(angelInvestors);
+    } else if (value === "vc") {
+      const vcInvestors = filteredInvestors.filter(investor => 
+        investor.role?.toLowerCase().includes("vc") || 
+        investor.role?.toLowerCase().includes("venture")
+      );
+      setDisplayedInvestors(vcInvestors);
+    }
   };
+  
+  // Update displayed investors when filtered investors change
+  useEffect(() => {
+    // Maintain current tab filter when search results change
+    handleTabChange(activeTab);
+  }, [filteredInvestors]);
   
   // If loading and not refreshing, show loading state
   if (loading && !refreshing) {
@@ -87,9 +110,9 @@ export const InvestorList = ({
           </Tabs>
         )}
         
-        {filteredInvestors.length > 0 ? (
+        {displayedInvestors.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredInvestors.map((investor) => (
+            {displayedInvestors.map((investor) => (
               <InvestorCard key={investor.id} investor={investor} />
             ))}
           </div>

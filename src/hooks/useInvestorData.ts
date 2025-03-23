@@ -47,29 +47,49 @@ export const useInvestorData = () => {
       console.log("Fetching investors for startup user:", user?.id);
       
       // Fetch all profiles with user_type = 'investor'
-      const { data, error } = await supabase
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, name, email, company, position, user_type')
         .eq('user_type', 'investor');
       
-      if (error) throw error;
+      if (profilesError) throw profilesError;
       
-      console.log("Found investors:", data?.length || 0);
+      // Fetch investor preferences for additional data
+      const { data: preferencesData, error: preferencesError } = await supabase
+        .from('investor_preferences')
+        .select('user_id, min_investment, max_investment, preferred_stages, preferred_sectors');
+        
+      if (preferencesError) throw preferencesError;
       
-      // Transform the data to include investor details
-      const enhancedInvestors = data?.map(investor => ({
-        id: investor.id,
-        name: investor.name || 'Unknown Investor',
-        email: investor.email,
-        // Use actual investor profile data when available
-        role: investor.position || 'Angel Investor',
-        company: investor.company || 'Tech Ventures',
-        // For fields that aren't in the basic profile, we'll still use placeholders
-        // In a production app, you'd create and query an investor_profiles table
-        bio: "Angel investor with a focus on early-stage startups in technology and innovation.",
-        industry: "Technology",
-        location: "San Francisco, CA",
-      })) || [];
+      // Create a map of preferences by user_id for easy lookup
+      const preferencesMap = new Map();
+      preferencesData?.forEach(pref => {
+        preferencesMap.set(pref.user_id, pref);
+      });
+      
+      console.log("Found investors:", profilesData?.length || 0);
+      
+      // Transform the data to include all investor details
+      const enhancedInvestors = profilesData?.map(investor => {
+        // Get preferences for this investor if they exist
+        const preferences = preferencesMap.get(investor.id);
+        
+        return {
+          id: investor.id,
+          name: investor.name || 'Unknown Investor',
+          email: investor.email,
+          role: investor.position || 'Angel Investor',
+          company: investor.company || 'Independent',
+          // Use actual investor profile data when available
+          bio: "Angel investor with a focus on early-stage startups in technology and innovation.",
+          industry: preferences?.preferred_sectors?.[0] || "Technology",
+          location: "San Francisco, CA",
+          investment_stage: preferences?.preferred_stages || [],
+          investment_size: preferences?.min_investment 
+            ? `${preferences.min_investment}${preferences.max_investment ? ' - ' + preferences.max_investment : '+'}`
+            : undefined
+        };
+      }) || [];
       
       setInvestors(enhancedInvestors);
       setFilteredInvestors(enhancedInvestors);

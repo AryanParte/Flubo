@@ -1,8 +1,13 @@
 
 import { useState } from "react";
-import { Mail, Briefcase, Building, MapPin, Loader2 } from "lucide-react";
+import { Mail, Briefcase, Building, MapPin, Tags, DollarSign, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  Card,
+  CardContent,
+  CardFooter
+} from "@/components/ui/card";
 import { Investor } from "../../../types/investor";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -77,50 +82,74 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
   };
 
   return (
-    <div className="p-4 border border-border/60 rounded-lg bg-background/40 hover:shadow-md transition-shadow">
-      <div className="flex items-start space-x-3">
-        <Avatar className="h-12 w-12 rounded-full">
-          <AvatarFallback className="bg-accent/10 text-accent">
-            {investor.name?.charAt(0) || 'I'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <h3 className="font-medium text-base">{investor.name}</h3>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center">
-            <Briefcase size={12} className="mr-1" />
-            {investor.role} at {investor.company}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center">
-            <Building size={12} className="mr-1" />
-            {investor.industry}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center">
-            <MapPin size={12} className="mr-1" />
-            {investor.location}
-          </p>
-          <p className="text-sm mt-3 line-clamp-2">{investor.bio}</p>
-          
-          <Button
-            variant="accent"
-            size="sm"
-            className="w-full mt-4 flex items-center justify-center"
-            onClick={handleMessageInvestor}
-            disabled={sendingMessage === investor.id}
-          >
-            {sendingMessage === investor.id ? (
-              <>
-                <Loader2 size={14} className="mr-2 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <Mail size={14} className="mr-2" />
-                Connect
-              </>
-            )}
-          </Button>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-start space-x-3">
+          <Avatar className="h-12 w-12 rounded-full">
+            <AvatarFallback className="bg-accent/10 text-accent">
+              {investor.name?.charAt(0) || 'I'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h3 className="font-medium text-base">{investor.name}</h3>
+            
+            <div className="space-y-1 mt-2">
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Briefcase size={12} className="mr-1 flex-shrink-0" />
+                <span>{investor.role} at {investor.company}</span>
+              </p>
+              
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Building size={12} className="mr-1 flex-shrink-0" />
+                <span>{investor.industry}</span>
+              </p>
+              
+              <p className="text-xs text-muted-foreground flex items-center">
+                <MapPin size={12} className="mr-1 flex-shrink-0" />
+                <span>{investor.location}</span>
+              </p>
+              
+              {investor.investment_stage && investor.investment_stage.length > 0 && (
+                <p className="text-xs text-muted-foreground flex items-start">
+                  <Tags size={12} className="mr-1 mt-1 flex-shrink-0" />
+                  <span>{investor.investment_stage.join(", ")}</span>
+                </p>
+              )}
+              
+              {investor.investment_size && (
+                <p className="text-xs text-muted-foreground flex items-center">
+                  <DollarSign size={12} className="mr-1 flex-shrink-0" />
+                  <span>{investor.investment_size}</span>
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+        
+        <p className="text-sm mt-3 line-clamp-2">{investor.bio}</p>
+      </CardContent>
+      
+      <CardFooter className="px-6 pb-6 pt-0">
+        <Button
+          variant="accent"
+          size="sm"
+          className="w-full flex items-center justify-center"
+          onClick={handleMessageInvestor}
+          disabled={sendingMessage === investor.id}
+        >
+          {sendingMessage === investor.id ? (
+            <>
+              <Loader2 size={14} className="mr-2 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <Mail size={14} className="mr-2" />
+              Connect
+            </>
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
