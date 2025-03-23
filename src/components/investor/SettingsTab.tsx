@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -103,7 +102,7 @@ export const SettingsTab = () => {
     setLoading(true);
     
     try {
-      // Update profile in database
+      // Update profile in database - Removed updated_at field which doesn't exist in the profiles table
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -112,8 +111,7 @@ export const SettingsTab = () => {
           email: profileData.email,
           company: profileData.company,
           position: profileData.position,
-          phone: profileData.phone,
-          updated_at: new Date().toISOString()
+          phone: profileData.phone
         });
       
       if (error) throw error;
@@ -566,3 +564,4 @@ export const SettingsTab = () => {
     </div>
   );
 };
+
