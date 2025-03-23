@@ -104,12 +104,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log("User created successfully, now creating profile");
         
-        const { error: profileError } = await supabase.rpc<CreateProfileParams, null>('create_profile', {
+        const profileParams = {
           profile_id: data.user.id,
           profile_user_type: userType,
           profile_name: name,
           profile_email: email
-        });
+        };
+        
+        const { error: profileError } = await supabase.rpc('create_profile', profileParams);
 
         if (profileError) {
           console.error("Error creating profile:", profileError);
