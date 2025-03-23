@@ -10,7 +10,7 @@ interface AuthContextProps {
   user: User | null;
   loading: boolean;
   supabaseConfigured: boolean;
-  signUp: (email: string, password: string, userType: "startup" | "investor", name: string) => Promise<void>;
+  signUp: (email: string, password: string, userType: "startup" | "investor" | "partnership", name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (
     email: string, 
     password: string, 
-    userType: "startup" | "investor", 
+    userType: "startup" | "investor" | "partnership", 
     name: string
   ) => {
     if (!supabaseConfigured) {
@@ -135,7 +135,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         // Redirect based on user type
-        navigate(userType === "startup" ? "/startup" : "/investor");
+        navigate(
+          userType === "startup" 
+            ? "/startup" 
+            : userType === "investor" 
+              ? "/investor" 
+              : "/partnership"
+        );
       }
     } catch (error: any) {
       toast({
@@ -187,7 +193,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Redirect based on user type from profile
         const userType = profileData?.user_type || "startup";
-        navigate(userType === "startup" ? "/startup" : "/investor");
+        navigate(
+          userType === "startup" 
+            ? "/startup" 
+            : userType === "investor" 
+              ? "/investor" 
+              : "/partnership"
+        );
       }
     } catch (error: any) {
       toast({
