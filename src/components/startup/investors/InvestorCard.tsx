@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Mail, Briefcase, Building, MapPin, Tags, DollarSign, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Card,
   CardContent,
@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 interface InvestorCardProps {
   investor: Investor;
@@ -86,9 +87,13 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
       <CardContent className="p-6">
         <div className="flex items-start space-x-3">
           <Avatar className="h-12 w-12 rounded-full">
-            <AvatarFallback className="bg-accent/10 text-accent">
-              {investor.name?.charAt(0) || 'I'}
-            </AvatarFallback>
+            {investor.avatar_url ? (
+              <AvatarImage src={investor.avatar_url} alt={investor.name} />
+            ) : (
+              <AvatarFallback className="bg-accent/10 text-accent">
+                {investor.name?.charAt(0) || 'I'}
+              </AvatarFallback>
+            )}
           </Avatar>
           <div className="flex-1">
             <h3 className="font-medium text-base">{investor.name}</h3>
@@ -96,23 +101,27 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
             <div className="space-y-1 mt-2">
               <p className="text-xs text-muted-foreground flex items-center">
                 <Briefcase size={12} className="mr-1 flex-shrink-0" />
-                <span>{investor.role} at {investor.company}</span>
+                <span>{investor.role || "Investor"} at {investor.company || "Independent"}</span>
               </p>
               
-              <p className="text-xs text-muted-foreground flex items-center">
-                <Building size={12} className="mr-1 flex-shrink-0" />
-                <span>{investor.industry}</span>
-              </p>
+              {investor.industry && (
+                <p className="text-xs text-muted-foreground flex items-center">
+                  <Building size={12} className="mr-1 flex-shrink-0" />
+                  <span>{investor.industry}</span>
+                </p>
+              )}
               
-              <p className="text-xs text-muted-foreground flex items-center">
-                <MapPin size={12} className="mr-1 flex-shrink-0" />
-                <span>{investor.location}</span>
-              </p>
+              {investor.location && (
+                <p className="text-xs text-muted-foreground flex items-center">
+                  <MapPin size={12} className="mr-1 flex-shrink-0" />
+                  <span>{investor.location}</span>
+                </p>
+              )}
               
-              {investor.investment_stage && investor.investment_stage.length > 0 && (
+              {investor.preferred_stages && investor.preferred_stages.length > 0 && (
                 <p className="text-xs text-muted-foreground flex items-start">
                   <Tags size={12} className="mr-1 mt-1 flex-shrink-0" />
-                  <span>{investor.investment_stage.join(", ")}</span>
+                  <span>{investor.preferred_stages.join(", ")}</span>
                 </p>
               )}
               
@@ -126,7 +135,19 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
           </div>
         </div>
         
-        <p className="text-sm mt-3 line-clamp-2">{investor.bio}</p>
+        {investor.bio && (
+          <p className="text-sm mt-3 line-clamp-2">{investor.bio}</p>
+        )}
+        
+        {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {investor.preferred_sectors.map((sector, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {sector}
+              </Badge>
+            ))}
+          </div>
+        )}
       </CardContent>
       
       <CardFooter className="px-6 pb-6 pt-0">

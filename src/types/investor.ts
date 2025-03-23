@@ -12,4 +12,8 @@ export interface Investor {
   interests?: string[];
   investment_stage?: string[];
   investment_size?: string;
+  min_investment?: string;
+  max_investment?: string;
+  preferred_stages?: string[];
+  preferred_sectors?: string[];
 }

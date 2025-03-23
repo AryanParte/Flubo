@@ -57,7 +57,7 @@ export const useInvestorData = () => {
       // Fetch investor preferences for additional data
       const { data: preferencesData, error: preferencesError } = await supabase
         .from('investor_preferences')
-        .select('user_id, min_investment, max_investment, preferred_stages, preferred_sectors');
+        .select('*');
         
       if (preferencesError) throw preferencesError;
       
@@ -80,14 +80,19 @@ export const useInvestorData = () => {
           email: investor.email,
           role: investor.position || 'Angel Investor',
           company: investor.company || 'Independent',
-          // Use actual investor profile data when available
           bio: "Angel investor with a focus on early-stage startups in technology and innovation.",
-          industry: preferences?.preferred_sectors?.[0] || "Technology",
           location: "San Francisco, CA",
+          industry: preferences?.preferred_sectors?.[0] || "Technology",
           investment_stage: preferences?.preferred_stages || [],
-          investment_size: preferences?.min_investment 
-            ? `${preferences.min_investment}${preferences.max_investment ? ' - ' + preferences.max_investment : '+'}`
-            : undefined
+          preferred_stages: preferences?.preferred_stages || [],
+          preferred_sectors: preferences?.preferred_sectors || [],
+          min_investment: preferences?.min_investment,
+          max_investment: preferences?.max_investment,
+          investment_size: preferences?.min_investment && preferences?.max_investment
+            ? `${preferences.min_investment} - ${preferences.max_investment}`
+            : preferences?.min_investment
+              ? `${preferences.min_investment}+`
+              : undefined
         };
       }) || [];
       
@@ -125,7 +130,9 @@ export const useInvestorData = () => {
         investor.name?.toLowerCase().includes(lowercaseQuery) ||
         investor.industry?.toLowerCase().includes(lowercaseQuery) ||
         investor.location?.toLowerCase().includes(lowercaseQuery) ||
-        investor.company?.toLowerCase().includes(lowercaseQuery)
+        investor.company?.toLowerCase().includes(lowercaseQuery) ||
+        investor.preferred_sectors?.some(sector => sector.toLowerCase().includes(lowercaseQuery)) ||
+        investor.preferred_stages?.some(stage => stage.toLowerCase().includes(lowercaseQuery))
       );
       setFilteredInvestors(filtered);
     }

@@ -79,7 +79,7 @@ export const InvestorList = ({
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                 <input
-                  placeholder="Search investors"
+                  placeholder="Search investors by name, industry, or location"
                   className="pl-9 w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
