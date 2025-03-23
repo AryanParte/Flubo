@@ -488,6 +488,8 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string | null
+          demo_url: string | null
+          demo_video: string | null
           employees: string | null
           equity_offered: string | null
           founded: string | null
@@ -506,6 +508,8 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string | null
+          demo_url?: string | null
+          demo_video?: string | null
           employees?: string | null
           equity_offered?: string | null
           founded?: string | null
@@ -524,6 +528,8 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string | null
+          demo_url?: string | null
+          demo_video?: string | null
           employees?: string | null
           equity_offered?: string | null
           founded?: string | null

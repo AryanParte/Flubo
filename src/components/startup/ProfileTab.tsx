@@ -876,7 +876,3 @@ export const ProfileTab = () => {
     </div>
   );
 };
-
-
-
-
