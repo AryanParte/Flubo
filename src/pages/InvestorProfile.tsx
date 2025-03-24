@@ -1,6 +1,6 @@
 
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { ProfileTab } from "@/components/investor/ProfileTab";
 
 const InvestorProfile = () => {
@@ -13,7 +13,7 @@ const InvestorProfile = () => {
           <ProfileTab />
         </div>
       </main>
-      <Footer />
+      <MinimalFooter />
     </div>
   );
 };

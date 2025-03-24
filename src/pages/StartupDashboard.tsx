@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { Bell, Users, BarChart3, Settings, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
@@ -453,7 +453,7 @@ const StartupDashboard = () => {
           {renderTabContent()}
         </div>
       </main>
-      <Footer />
+      <MinimalFooter />
 
       {/* Initial profile setup dialog - only shown once for new users */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
@@ -551,4 +551,3 @@ const StartupDashboard = () => {
 };
 
 export default StartupDashboard;
-

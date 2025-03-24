@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { MessagesTab } from "@/components/investor/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -54,7 +54,7 @@ const InvestorMessages = () => {
             <p className="text-muted-foreground">Loading messages...</p>
           </div>
         </main>
-        <Footer />
+        <MinimalFooter />
       </div>
     );
   }
@@ -68,7 +68,7 @@ const InvestorMessages = () => {
           <MessagesTab />
         </div>
       </main>
-      <Footer />
+      <MinimalFooter />
     </div>
   );
 };

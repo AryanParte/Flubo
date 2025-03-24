@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { MessagesTab } from "@/components/startup/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -14,17 +13,14 @@ const StartupMessages = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Redirect if not authenticated and auth check is complete
     if (!authLoading && !user) {
       navigate("/auth");
     } else if (!authLoading) {
       setLoading(false);
       
-      // Log user details for debugging
       if (user) {
         console.log("Startup user loaded:", user.id);
         
-        // Check if this user exists in profiles table
         const checkUserProfile = async () => {
           const { data, error } = await supabase
             .from('profiles')
@@ -37,7 +33,6 @@ const StartupMessages = () => {
           } else {
             console.log("User profile found:", data);
             
-            // Check if there are any messages for this user
             const checkMessages = async () => {
               const { data: messages, error: msgError } = await supabase
                 .from('messages')
@@ -73,7 +68,7 @@ const StartupMessages = () => {
             <p className="text-muted-foreground">Loading messages...</p>
           </div>
         </main>
-        <Footer />
+        <MinimalFooter />
       </div>
     );
   }
@@ -87,7 +82,7 @@ const StartupMessages = () => {
           <MessagesTab />
         </div>
       </main>
-      <Footer />
+      <MinimalFooter />
     </div>
   );
 };

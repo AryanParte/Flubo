@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
@@ -179,7 +179,7 @@ const InvestorDashboard = () => {
           </div>
         </div>
       </main>
-      <Footer />
+      <MinimalFooter />
     </div>
   );
 };
