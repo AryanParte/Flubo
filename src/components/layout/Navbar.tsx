@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { Menu, X, User, MessageSquare, LayoutDashboard } from "lucide-react";
+import { Menu, X, User, MessageSquare, LayoutDashboard, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -21,9 +21,9 @@ export function Navbar() {
 
   // Check if we're on an authenticated page
   const isAuthPage = location.pathname.includes("/auth");
-  const isStartupDashboard = location.pathname.includes("/startup");
+  const isBusinessDashboard = location.pathname.includes("/business");
   const isInvestorDashboard = location.pathname.includes("/investor");
-  const isDashboard = isStartupDashboard || isInvestorDashboard;
+  const isDashboard = isBusinessDashboard || isInvestorDashboard;
 
   // Handle scroll event to change navbar appearance
   useEffect(() => {
@@ -49,7 +49,7 @@ export function Navbar() {
       // Check user type and navigate to appropriate dashboard
       const userMetadata = user.user_metadata;
       if (userMetadata?.user_type === "startup") {
-        navigate("/startup");
+        navigate("/business");
       } else if (userMetadata?.user_type === "investor") {
         navigate("/investor");
       }
@@ -67,7 +67,7 @@ export function Navbar() {
     }
   };
 
-  // Navigation items
+  // Navigation items for non-dashboard pages
   const navItems = isDashboard
     ? []
     : [
@@ -87,103 +87,117 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         {/* Logo */}
         <Link 
-          to={user ? (isStartupDashboard ? "/startup" : isInvestorDashboard ? "/investor" : "/") : "/"}
+          to={user ? (isBusinessDashboard ? "/business" : isInvestorDashboard ? "/investor" : "/") : "/"}
           className="flex items-center space-x-2 font-semibold text-lg"
           onClick={handleLogoClick}
         >
           <span className="text-accent">Flubo</span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-8">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  "text-sm font-medium transition-colors duration-200",
-                  isActive
-                    ? "text-accent"
-                    : "text-foreground/80 hover:text-foreground"
-                )}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Desktop Navigation - Only show for non-dashboard pages */}
+        {!isDashboard && (
+          <nav className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "text-sm font-medium transition-colors duration-200",
+                    isActive
+                      ? "text-accent"
+                      : "text-foreground/80 hover:text-foreground"
+                  )}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         {/* Right side - Auth / Theme toggle / Dashboard/Profile/Messages icons */}
         <div className="flex items-center space-x-4">
           <ThemeToggle />
           
           {isDashboard && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    to={isStartupDashboard ? "/startup" : "/investor"}
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-                      (location.pathname === "/startup" || location.pathname === "/investor")
-                        ? "bg-accent/20 text-accent" 
-                        : "text-foreground/80 hover:text-foreground hover:bg-background/80"
-                    )}
-                    aria-label="Dashboard"
-                  >
-                    <LayoutDashboard size={18} />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>Dashboard</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
-          {isDashboard && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-                      location.pathname.includes("/profile") 
-                        ? "bg-accent/20 text-accent" 
-                        : "text-foreground/80 hover:text-foreground hover:bg-background/80"
-                    )}
-                    aria-label="Profile"
-                  >
-                    <User size={18} />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>Profile</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
-          {isDashboard && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    to={isStartupDashboard ? "/startup/messages" : "/investor/messages"}
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-                      location.pathname.includes("/messages") 
-                        ? "bg-accent/20 text-accent" 
-                        : "text-foreground/80 hover:text-foreground hover:bg-background/80"
-                    )}
-                    aria-label="Messages"
-                  >
-                    <MessageSquare size={18} />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>Messages</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={isBusinessDashboard ? "/business" : "/investor"}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                        (location.pathname === "/business" || location.pathname === "/investor")
+                          ? "bg-accent/20 text-accent" 
+                          : "text-foreground/80 hover:text-foreground hover:bg-background/80"
+                      )}
+                      aria-label="Dashboard"
+                    >
+                      <LayoutDashboard size={18} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Dashboard</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={isBusinessDashboard ? "/business/profile" : "/investor/profile"}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                        location.pathname.includes("/profile") 
+                          ? "bg-accent/20 text-accent" 
+                          : "text-foreground/80 hover:text-foreground hover:bg-background/80"
+                      )}
+                      aria-label="Profile"
+                    >
+                      <User size={18} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Profile</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={isBusinessDashboard ? "/business/messages" : "/investor/messages"}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                        location.pathname.includes("/messages") 
+                          ? "bg-accent/20 text-accent" 
+                          : "text-foreground/80 hover:text-foreground hover:bg-background/80"
+                      )}
+                      aria-label="Messages"
+                    >
+                      <MessageSquare size={18} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Messages</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-background/80 transition-colors"
+                      aria-label="Notifications"
+                    >
+                      <Bell size={18} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Notifications</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </>
           )}
           
           {!user && !loading && (
@@ -219,7 +233,8 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden glass-nav h-screen animate-fade-in">
           <nav className="container mx-auto px-4 py-8 flex flex-col space-y-6">
-            {navItems.map((item) => {
+            {/* Show regular navigation items for non-dashboard pages */}
+            {!isDashboard && navItems.map((item) => {
               const isActive = location.pathname === item.href;
                 
               return (
@@ -238,10 +253,11 @@ export function Navbar() {
               );
             })}
             
+            {/* Show dashboard navigation for dashboard pages */}
             {isDashboard && (
               <>
                 <Link
-                  to={isStartupDashboard ? "/startup" : "/investor"}
+                  to={isBusinessDashboard ? "/business" : "/investor"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
                 >
                   <LayoutDashboard size={18} />
@@ -249,7 +265,7 @@ export function Navbar() {
                 </Link>
                 
                 <Link
-                  to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
+                  to={isBusinessDashboard ? "/business/profile" : "/investor/profile"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
                 >
                   <User size={18} />
@@ -257,12 +273,19 @@ export function Navbar() {
                 </Link>
                 
                 <Link
-                  to={isStartupDashboard ? "/startup/messages" : "/investor/messages"}
+                  to={isBusinessDashboard ? "/business/messages" : "/investor/messages"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
                 >
                   <MessageSquare size={18} />
                   <span>Messages</span>
                 </Link>
+                
+                <button
+                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
+                >
+                  <Bell size={18} />
+                  <span>Notifications</span>
+                </button>
               </>
             )}
             
