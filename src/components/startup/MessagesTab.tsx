@@ -25,6 +25,7 @@ type Conversation = {
   time: string;
   unread: number;
   avatar: string;
+  user_type: string;
   messages: {
     sender: "you" | "them";
     text: string;
@@ -53,7 +54,7 @@ export const MessagesTab = () => {
 
     const fetchConversations = async () => {
       try {
-        console.log("Fetching messages for startup user:", userId);
+        console.log("Fetching messages for user:", userId);
         
         // Get all messages for this user (sent or received)
         const { data: messages, error } = await supabase
@@ -91,17 +92,13 @@ export const MessagesTab = () => {
             return; // Skip if partner data is missing
           }
           
-          // Only consider investors for startup users
-          if (partnerData.user_type !== 'investor') {
-            console.log("Skipping non-investor conversation partner:", partnerData.user_type);
-            return;
-          }
-          
+          // Include all conversation partners (both investors and businesses)
           if (!conversationMap.has(partnerId)) {
             conversationMap.set(partnerId, {
               id: partnerId,
               name: partnerData.name || "Unknown User",
               avatar: partnerData.name ? partnerData.name.charAt(0).toUpperCase() : "?",
+              user_type: partnerData.user_type || "unknown",
               messages: [],
               lastMessage: "",
               time: "",
@@ -158,7 +155,6 @@ export const MessagesTab = () => {
     fetchConversations();
 
     // Set up real-time subscription for new messages
-    // The key is to properly construct the filter
     const channel = supabase
       .channel('startup-messages')
       .on(
@@ -170,19 +166,19 @@ export const MessagesTab = () => {
           filter: `or(recipient_id.eq.${userId},sender_id.eq.${userId})`,
         },
         (payload) => {
-          console.log("Realtime message update received for startup:", payload);
+          console.log("Realtime message update received:", payload);
           // Force a refresh of conversations when a message is added, updated, or deleted
           fetchConversations();
         }
       )
       .subscribe((status) => {
-        console.log("Startup message subscription status:", status);
+        console.log("Message subscription status:", status);
       });
 
-    console.log("Subscription to realtime messages initialized for startup user");
+    console.log("Subscription to realtime messages initialized for user");
 
     return () => {
-      console.log("Cleaning up subscription to realtime messages for startup");
+      console.log("Cleaning up subscription to realtime messages");
       supabase.removeChannel(channel);
     };
   }, [userId]);
@@ -334,6 +330,18 @@ export const MessagesTab = () => {
     setSelectedChat(chatId);
   };
 
+  // Get user type label
+  const getUserTypeLabel = (userType: string): string => {
+    switch (userType) {
+      case 'investor':
+        return 'Investor';
+      case 'startup':
+        return 'Business';
+      default:
+        return userType.charAt(0).toUpperCase() + userType.slice(1);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -374,7 +382,12 @@ export const MessagesTab = () => {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between">
-                    <p className="font-medium text-sm truncate">{convo.name}</p>
+                    <div className="flex items-center">
+                      <p className="font-medium text-sm truncate">{convo.name}</p>
+                      <span className="ml-2 text-xs text-muted-foreground px-1.5 py-0.5 bg-secondary rounded-full">
+                        {getUserTypeLabel(convo.user_type)}
+                      </span>
+                    </div>
                     <span className="text-xs text-muted-foreground">{convo.time}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{convo.lastMessage}</p>
@@ -405,7 +418,10 @@ export const MessagesTab = () => {
                   {selectedChatData.avatar}
                 </AvatarFallback>
               </Avatar>
-              <p className="font-medium">{selectedChatData.name}</p>
+              <div>
+                <p className="font-medium">{selectedChatData.name}</p>
+                <p className="text-xs text-muted-foreground">{getUserTypeLabel(selectedChatData.user_type)}</p>
+              </div>
             </div>
             <Button variant="ghost" size="icon">
               <MoreHorizontal size={20} />
@@ -497,7 +513,7 @@ export const MessagesTab = () => {
           <p className="text-muted-foreground">
             {filteredConversations.length > 0 
               ? "Select a conversation to start messaging" 
-              : "No conversations yet. Investors will appear here when they message you."}
+              : "No conversations yet. Messages from businesses and investors will appear here."}
           </p>
         </div>
       )}
