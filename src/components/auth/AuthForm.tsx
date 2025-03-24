@@ -100,7 +100,7 @@ export function AuthForm() {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Startup
+            Business
           </button>
           <button
             type="button"
@@ -129,7 +129,7 @@ export function AuthForm() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
-              placeholder={userType === "startup" ? "Your startup name" : "Your name"}
+              placeholder={userType === "startup" ? "Your company name" : "Your name"}
               required
             />
           </div>
