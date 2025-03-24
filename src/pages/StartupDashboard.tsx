@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
@@ -133,7 +132,7 @@ const StartupDashboard = () => {
   };
 
   const handleCompleteProfileClick = () => {
-    navigate('/startup/profile');
+    navigate('/business/profile');
   };
   
   const saveBasicProfile = async () => {

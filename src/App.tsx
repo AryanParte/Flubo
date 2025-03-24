@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
 import Index from "./pages/Index";
@@ -44,7 +44,7 @@ const App = () => (
               <Route path="/investors" element={<Investors />} />
               <Route path="/about" element={<About />} />
               {/* Redirect for legacy routes */}
-              <Route path="/startup/*" element={<NotFound />} />
+              <Route path="/startup/*" element={<Navigate to="/business/*" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
