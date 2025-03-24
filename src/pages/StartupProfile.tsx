@@ -151,7 +151,7 @@ const StartupProfile = () => {
             <p className="text-muted-foreground mb-6">{error}</p>
             <div className="flex justify-center gap-4">
               <Button onClick={() => navigate("/")} variant="outline">Go Home</Button>
-              {user && <Button onClick={() => navigate("/startup")}>Dashboard</Button>}
+              {user && <Button onClick={() => navigate("/business")}>Dashboard</Button>}
             </div>
           </div>
         </main>

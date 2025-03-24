@@ -462,7 +462,7 @@ export const ProfileTab = () => {
           {isOwnProfile && (
             <Button onClick={fetchStartupProfile}>Try Again</Button>
           )}
-          <Button variant="outline" onClick={() => navigate("/startup")}>
+          <Button variant="outline" onClick={() => navigate("/business")}>
             Back to Dashboard
           </Button>
         </div>
