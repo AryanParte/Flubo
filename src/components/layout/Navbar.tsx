@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { Menu, X, User, MessageSquare, LayoutDashboard, Bell } from "lucide-react";
+import { Menu, X, User, MessageSquare, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -11,10 +11,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from "@/lib/supabase";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
@@ -33,6 +35,66 @@ export function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Count unread messages when user is logged in
+  useEffect(() => {
+    if (user) {
+      const fetchUnreadMessages = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('messages')
+            .select('id')
+            .eq('recipient_id', user.id)
+            .is('read_at', null);
+            
+          if (error) throw error;
+          
+          setUnreadMessages(data?.length || 0);
+        } catch (error) {
+          console.error("Error counting unread messages:", error);
+          setUnreadMessages(0);
+        }
+      };
+      
+      fetchUnreadMessages();
+      
+      // Set up realtime subscription for new messages
+      const channel = supabase
+        .channel('messages-changes')
+        .on(
+          'postgres_changes',
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `recipient_id=eq.${user.id}`
+          },
+          (payload) => {
+            setUnreadMessages(prev => prev + 1);
+          }
+        )
+        .on(
+          'postgres_changes',
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `recipient_id=eq.${user.id}`
+          },
+          (payload) => {
+            // If a message was marked as read
+            if (payload.new.read_at && !payload.old.read_at) {
+              setUnreadMessages(prev => Math.max(0, prev - 1));
+            }
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
 
   // Close mobile menu when changing routes
   useEffect(() => {
@@ -170,7 +232,7 @@ export function Navbar() {
                     <Link
                       to={isBusinessDashboard ? "/business/messages" : "/investor/messages"}
                       className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                        "relative flex h-8 w-8 items-center justify-center rounded-full transition-colors",
                         location.pathname.includes("/messages") 
                           ? "bg-accent/20 text-accent" 
                           : "text-foreground/80 hover:text-foreground hover:bg-background/80"
@@ -178,23 +240,14 @@ export function Navbar() {
                       aria-label="Messages"
                     >
                       <MessageSquare size={18} />
+                      {unreadMessages > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
+                          {unreadMessages > 9 ? '9+' : unreadMessages}
+                        </span>
+                      )}
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent>Messages</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/80 hover:text-foreground hover:bg-background/80 transition-colors"
-                      aria-label="Notifications"
-                    >
-                      <Bell size={18} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Notifications</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </>
@@ -274,18 +327,16 @@ export function Navbar() {
                 
                 <Link
                   to={isBusinessDashboard ? "/business/messages" : "/investor/messages"}
-                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
+                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200 relative"
                 >
                   <MessageSquare size={18} />
                   <span>Messages</span>
+                  {unreadMessages > 0 && (
+                    <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] font-medium text-accent-foreground">
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
                 </Link>
-                
-                <button
-                  className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
-                >
-                  <Bell size={18} />
-                  <span>Notifications</span>
-                </button>
               </>
             )}
             

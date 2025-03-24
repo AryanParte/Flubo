@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { Bell, Users, BarChart3, Settings, Building } from "lucide-react";
+import { BarChart3, Users, Settings, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -29,7 +30,6 @@ import { SettingsTab } from "@/components/startup/SettingsTab";
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [startupName, setStartupName] = useState("");
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [profileComplete, setProfileComplete] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
@@ -45,7 +45,6 @@ const StartupDashboard = () => {
     if (user) {
       fetchStartupData();
       checkProfileCompletion();
-      countUnreadNotifications();
     }
   }, [user]);
 
@@ -129,34 +128,8 @@ const StartupDashboard = () => {
     }
   };
 
-  const countUnreadNotifications = async () => {
-    try {
-      // Count unread messages
-      const { data, error } = await supabase
-        .from('messages')
-        .select('id')
-        .eq('recipient_id', user.id)
-        .is('read_at', null);
-        
-      if (error) throw error;
-      
-      setUnreadNotifications(data?.length || 0);
-    } catch (error) {
-      console.error("Error counting notifications:", error);
-      // If there's an error, set a default value
-      setUnreadNotifications(0);
-    }
-  };
-
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-  };
-
-  const handleNotificationClick = () => {
-    toast({
-      title: "Notifications",
-      description: `You have ${unreadNotifications} unread notifications`,
-    });
   };
 
   const handleCompleteProfileClick = () => {
@@ -377,16 +350,6 @@ const StartupDashboard = () => {
                   </Label>
                 </div>
               </div>
-              
-              <button 
-                className="relative p-2 rounded-full bg-background border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
-                onClick={handleNotificationClick}
-              >
-                <Bell size={20} />
-                {unreadNotifications > 0 && (
-                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-accent"></span>
-                )}
-              </button>
               
               {(!profileComplete && hasRequiredFields) && (
                 <button 
