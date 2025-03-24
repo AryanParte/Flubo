@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 // Import tab components
 import { OverviewTab } from "@/components/startup/OverviewTab";
@@ -35,6 +37,8 @@ const StartupDashboard = () => {
   const [newIndustry, setNewIndustry] = useState("");
   const [savingBasicProfile, setSavingBasicProfile] = useState(false);
   const [hasRequiredFields, setHasRequiredFields] = useState(false);
+  const [lookingForFunding, setLookingForFunding] = useState(false);
+  const [lookingForDesignPartner, setLookingForDesignPartner] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -53,7 +57,7 @@ const StartupDashboard = () => {
       // First check if we have a startup_profile
       const { data: startupProfile, error: startupError } = await supabase
         .from('startup_profiles')
-        .select('name, industry')
+        .select('name, industry, looking_for_funding, looking_for_design_partner')
         .eq('id', user.id)
         .maybeSingle();
       
@@ -66,6 +70,8 @@ const StartupDashboard = () => {
         console.log("Found startup profile:", startupProfile);
         setStartupName(startupProfile.name);
         setHasRequiredFields(!!startupProfile.industry);
+        setLookingForFunding(startupProfile.looking_for_funding || false);
+        setLookingForDesignPartner(startupProfile.looking_for_design_partner || false);
         
         // Don't show dialog if we already have a profile with industry
         if (!!startupProfile.industry) {
@@ -198,6 +204,8 @@ const StartupDashboard = () => {
           .update({ 
             name: newCompanyName,
             industry: newIndustry,
+            looking_for_funding: lookingForFunding,
+            looking_for_design_partner: lookingForDesignPartner,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);
@@ -214,7 +222,9 @@ const StartupDashboard = () => {
           .insert({
             id: user.id,
             name: newCompanyName,
-            industry: newIndustry
+            industry: newIndustry,
+            looking_for_funding: lookingForFunding,
+            looking_for_design_partner: lookingForDesignPartner
           });
           
         if (insertError) {
@@ -274,6 +284,49 @@ const StartupDashboard = () => {
       setSavingBasicProfile(false);
     }
   };
+
+  const handlePartnershipToggle = async (type: 'funding' | 'design', value: boolean) => {
+    try {
+      const updateData = type === 'funding' 
+        ? { looking_for_funding: value }
+        : { looking_for_design_partner: value };
+      
+      // Update local state
+      if (type === 'funding') {
+        setLookingForFunding(value);
+      } else {
+        setLookingForDesignPartner(value);
+      }
+      
+      // Update in database
+      const { error } = await supabase
+        .from('startup_profiles')
+        .update(updateData)
+        .eq('id', user.id);
+      
+      if (error) {
+        console.error(`Error updating ${type} status:`, error);
+        toast({
+          title: "Error",
+          description: `Failed to update ${type} status`,
+          variant: "destructive"
+        });
+        // Revert local state if update failed
+        if (type === 'funding') {
+          setLookingForFunding(!value);
+        } else {
+          setLookingForDesignPartner(!value);
+        }
+      } else {
+        toast({
+          title: "Status updated",
+          description: `Your ${type === 'funding' ? 'funding' : 'design partnership'} status has been updated`
+        });
+      }
+    } catch (error) {
+      console.error(`Error in handlePartnershipToggle (${type}):`, error);
+    }
+  };
   
   const renderTabContent = () => {
     switch (activeTab) {
@@ -320,6 +373,30 @@ const StartupDashboard = () => {
                   <span>Complete Your Profile</span>
                 </button>
               )}
+            </div>
+          </div>
+          
+          {/* Partnership Status Panel */}
+          <div className="mb-8 p-4 border border-border/60 rounded-lg bg-background/50">
+            <h3 className="font-medium mb-3">Partnership Status</h3>
+            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-6">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="looking-for-funding"
+                  checked={lookingForFunding}
+                  onCheckedChange={(checked) => handlePartnershipToggle('funding', checked)}
+                />
+                <Label htmlFor="looking-for-funding">Looking for funding</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="looking-for-design-partner"
+                  checked={lookingForDesignPartner}
+                  onCheckedChange={(checked) => handlePartnershipToggle('design', checked)}
+                />
+                <Label htmlFor="looking-for-design-partner">Looking for design partner</Label>
+              </div>
             </div>
           </div>
           
@@ -391,6 +468,32 @@ const StartupDashboard = () => {
                   placeholder="e.g. FinTech, Healthcare, AI"
                   required
                 />
+              </div>
+              
+              <div className="mt-6 space-y-3">
+                <h4 className="text-sm font-medium">Partnership Status</h4>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="dialog-looking-for-funding"
+                    checked={lookingForFunding}
+                    onCheckedChange={setLookingForFunding}
+                  />
+                  <label htmlFor="dialog-looking-for-funding" className="text-sm">
+                    Looking for funding
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="dialog-looking-for-design-partner"
+                    checked={lookingForDesignPartner}
+                    onCheckedChange={setLookingForDesignPartner}
+                  />
+                  <label htmlFor="dialog-looking-for-design-partner" className="text-sm">
+                    Looking for design partnerships
+                  </label>
+                </div>
               </div>
             </div>
             
