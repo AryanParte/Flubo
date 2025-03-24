@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Bell, Users, BarChart3, Settings } from "lucide-react";
+import { Bell, Users, BarChart3, Settings, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +22,7 @@ import { Input } from "@/components/ui/input";
 // Import tab components
 import { OverviewTab } from "@/components/startup/OverviewTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
+import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
 import { SettingsTab } from "@/components/startup/SettingsTab";
 
 const StartupDashboard = () => {
@@ -279,6 +281,8 @@ const StartupDashboard = () => {
         return <OverviewTab />;
       case "investors":
         return <FindInvestorsTab />;
+      case "companies":
+        return <FindCompaniesTab />;
       case "settings":
         return <SettingsTab />;
       default:
@@ -324,6 +328,7 @@ const StartupDashboard = () => {
               {[
                 { id: "overview", label: "Overview", icon: <BarChart3 size={16} /> },
                 { id: "investors", label: "Find Investors", icon: <Users size={16} /> },
+                { id: "companies", label: "Find Companies", icon: <Building size={16} /> },
                 { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button
