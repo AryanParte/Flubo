@@ -293,7 +293,7 @@ const StartupDashboard = () => {
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
-              <h1 className="text-2xl font-bold">Startup Dashboard</h1>
+              <h1 className="text-2xl font-bold">Business Dashboard</h1>
               <p className="text-muted-foreground mt-1">Welcome back, {startupName || "Founder"}</p>
             </div>
             
@@ -354,7 +354,7 @@ const StartupDashboard = () => {
           <DialogHeader>
             <DialogTitle className="text-xl">Welcome to Investor Match!</DialogTitle>
             <DialogDescription>
-              Let's get started with some basic information about your startup.
+              Let's get started with some basic information about your business.
             </DialogDescription>
           </DialogHeader>
           

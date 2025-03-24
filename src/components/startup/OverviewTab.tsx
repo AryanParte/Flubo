@@ -200,7 +200,7 @@ export const OverviewTab = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-medium mb-1">Complete Your Profile</h3>
-            <p className="text-sm text-muted-foreground">Finish setting up your startup profile to attract investors</p>
+            <p className="text-sm text-muted-foreground">Finish setting up your business profile to attract investors</p>
           </div>
           <Button 
             variant="outline" 
