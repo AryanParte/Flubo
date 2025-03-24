@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -355,6 +354,30 @@ const StartupDashboard = () => {
             </div>
             
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
+              <div className="hidden md:flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    id="looking-for-funding"
+                    checked={lookingForFunding}
+                    onCheckedChange={(checked) => handlePartnershipToggle('funding', checked)}
+                  />
+                  <Label htmlFor="looking-for-funding" className="text-xs whitespace-nowrap">
+                    Seeking funding
+                  </Label>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    id="looking-for-design-partner"
+                    checked={lookingForDesignPartner}
+                    onCheckedChange={(checked) => handlePartnershipToggle('design', checked)}
+                  />
+                  <Label htmlFor="looking-for-design-partner" className="text-xs whitespace-nowrap">
+                    Design partner
+                  </Label>
+                </div>
+              </div>
+              
               <button 
                 className="relative p-2 rounded-full bg-background border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
                 onClick={handleNotificationClick}
@@ -376,26 +399,28 @@ const StartupDashboard = () => {
             </div>
           </div>
           
-          {/* Partnership Status Panel */}
-          <div className="mb-8 p-4 border border-border/60 rounded-lg bg-background/50">
-            <h3 className="font-medium mb-3">Partnership Status</h3>
-            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-6">
-              <div className="flex items-center space-x-2">
+          <div className="md:hidden flex justify-end mb-4">
+            <div className="flex gap-3 items-center">
+              <div className="flex items-center gap-1.5">
                 <Switch 
-                  id="looking-for-funding"
+                  id="m-looking-for-funding"
                   checked={lookingForFunding}
                   onCheckedChange={(checked) => handlePartnershipToggle('funding', checked)}
                 />
-                <Label htmlFor="looking-for-funding">Looking for funding</Label>
+                <Label htmlFor="m-looking-for-funding" className="text-xs">
+                  Seeking funding
+                </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1.5">
                 <Switch 
-                  id="looking-for-design-partner"
+                  id="m-looking-for-design-partner"
                   checked={lookingForDesignPartner}
                   onCheckedChange={(checked) => handlePartnershipToggle('design', checked)}
                 />
-                <Label htmlFor="looking-for-design-partner">Looking for design partner</Label>
+                <Label htmlFor="m-looking-for-design-partner" className="text-xs">
+                  Design partner
+                </Label>
               </div>
             </div>
           </div>
@@ -473,26 +498,28 @@ const StartupDashboard = () => {
               <div className="mt-6 space-y-3">
                 <h4 className="text-sm font-medium">Partnership Status</h4>
                 
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="dialog-looking-for-funding"
-                    checked={lookingForFunding}
-                    onCheckedChange={setLookingForFunding}
-                  />
-                  <label htmlFor="dialog-looking-for-funding" className="text-sm">
-                    Looking for funding
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="dialog-looking-for-design-partner"
-                    checked={lookingForDesignPartner}
-                    onCheckedChange={setLookingForDesignPartner}
-                  />
-                  <label htmlFor="dialog-looking-for-design-partner" className="text-sm">
-                    Looking for design partnerships
-                  </label>
+                <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="dialog-looking-for-funding"
+                      checked={lookingForFunding}
+                      onCheckedChange={setLookingForFunding}
+                    />
+                    <label htmlFor="dialog-looking-for-funding" className="text-sm">
+                      Looking for funding
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="dialog-looking-for-design-partner"
+                      checked={lookingForDesignPartner}
+                      onCheckedChange={setLookingForDesignPartner}
+                    />
+                    <label htmlFor="dialog-looking-for-design-partner" className="text-sm">
+                      Looking for design partnerships
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -524,3 +551,4 @@ const StartupDashboard = () => {
 };
 
 export default StartupDashboard;
+
