@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         // Redirect based on user type
-        navigate(userType === "startup" ? "/startup" : "/investor");
+        navigate(userType === "startup" ? "/business" : "/investor");
       }
     } catch (error: any) {
       toast({
@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Redirect based on user type from profile
         const userType = profileData?.user_type || "startup";
-        navigate(userType === "startup" ? "/startup" : "/investor");
+        navigate(userType === "startup" ? "/business" : "/investor");
       }
     } catch (error: any) {
       toast({
