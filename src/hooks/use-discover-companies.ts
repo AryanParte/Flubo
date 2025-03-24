@@ -100,6 +100,8 @@ export const useDiscoverCompanies = () => {
       const enrichedCompanies = data.map(company => ({
         ...company,
         score: Math.floor(Math.random() * 40) + 60, // 60-99% match
+        lookingForFunding: company.looking_for_funding || false,
+        lookingForDesignPartner: company.looking_for_design_partner || false
       }));
       
       // Sort companies

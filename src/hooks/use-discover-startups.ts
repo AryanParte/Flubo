@@ -24,14 +24,12 @@ export const useDiscoverStartups = () => {
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
   
-  // Fetch startups
   const fetchStartups = useCallback(async () => {
     if (!user?.id) return;
     
     try {
       setLoading(true);
       
-      // Get existing matches to exclude them
       const { data: existingMatches } = await supabase
         .from('investor_matches')
         .select('startup_id')
@@ -39,7 +37,6 @@ export const useDiscoverStartups = () => {
       
       const excludedIds = existingMatches?.map(match => match.startup_id) || [];
       
-      // Fetch startups from the database
       let query = supabase
         .from('startup_profiles')
         .select(`
@@ -51,13 +48,12 @@ export const useDiscoverStartups = () => {
           location,
           stage,
           raised_amount,
-          created_at
+          created_at,
+          looking_for_funding,
+          looking_for_design_partner
         `);
       
-      // Only apply the exclusion if there are IDs to exclude
       if (excludedIds.length > 0) {
-        // Using a different approach to fix the deep type instantiation
-        // We'll build the query one step at a time
         for (const id of excludedIds) {
           if (id) {
             query = query.neq('id', id);
@@ -65,12 +61,8 @@ export const useDiscoverStartups = () => {
         }
       }
       
-      // Add user_type filter only if the column exists
-      // For this example we'll assume it doesn't exist based on the error
-      
       query = query.limit(20);
       
-      // Apply filters
       if (appliedFilters.stage && appliedFilters.stage.length > 0) {
         query = query.in('stage', appliedFilters.stage);
       }
@@ -95,13 +87,13 @@ export const useDiscoverStartups = () => {
         return;
       }
       
-      // Transform data and add match score
       const enrichedStartups = data.map(startup => ({
         ...startup,
-        score: Math.floor(Math.random() * 40) + 60, // 60-99% match
+        score: Math.floor(Math.random() * 40) + 60,
+        lookingForFunding: startup.looking_for_funding || false,
+        lookingForDesignPartner: startup.looking_for_design_partner || false
       }));
       
-      // Sort startups
       let sortedStartups = [...enrichedStartups];
       
       if (sortOption === 'match') {
@@ -118,7 +110,6 @@ export const useDiscoverStartups = () => {
         });
       }
       
-      // Filter by minimum match if specified
       if (appliedFilters.minMatch) {
         sortedStartups = sortedStartups.filter(startup => 
           startup.score >= appliedFilters.minMatch!
@@ -157,15 +148,12 @@ export const useDiscoverStartups = () => {
     }
     
     try {
-      // Find the startup
       const startup = startups.find(s => s.id === startupId);
       if (!startup) return;
       
-      // Set the selected startup and open message dialog
       setSelectedStartup(startup);
       setMessageDialogOpen(true);
       
-      // Create a match record
       const { error } = await supabase
         .from('investor_matches')
         .insert({
@@ -185,7 +173,6 @@ export const useDiscoverStartups = () => {
         return;
       }
       
-      // Remove the startup from the list
       setStartups(prev => prev.filter(s => s.id !== startupId));
       
     } catch (error) {
@@ -202,7 +189,6 @@ export const useDiscoverStartups = () => {
     if (!user?.id) return;
     
     try {
-      // Create a match record with status 'skipped'
       const { error } = await supabase
         .from('investor_matches')
         .insert({
@@ -221,7 +207,6 @@ export const useDiscoverStartups = () => {
         return;
       }
       
-      // Remove the startup from the list
       setStartups(prev => prev.filter(s => s.id !== startupId));
       
       toast({
@@ -234,7 +219,6 @@ export const useDiscoverStartups = () => {
   }, [user?.id]);
   
   const handleLoadMore = () => {
-    // In a real app, this would fetch more startups with pagination
     toast({
       title: 'Coming soon',
       description: 'Pagination will be implemented in the future',
@@ -251,7 +235,6 @@ export const useDiscoverStartups = () => {
       description: 'You can now message this startup directly',
     });
     
-    // Navigate to messages page
     navigate('/investor/messages');
   };
   

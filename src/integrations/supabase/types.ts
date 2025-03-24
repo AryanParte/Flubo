@@ -496,6 +496,8 @@ export type Database = {
           id: string
           industry: string | null
           location: string | null
+          looking_for_design_partner: boolean | null
+          looking_for_funding: boolean | null
           min_investment: string | null
           name: string | null
           raised_amount: string | null
@@ -516,6 +518,8 @@ export type Database = {
           id: string
           industry?: string | null
           location?: string | null
+          looking_for_design_partner?: boolean | null
+          looking_for_funding?: boolean | null
           min_investment?: string | null
           name?: string | null
           raised_amount?: string | null
@@ -536,6 +540,8 @@ export type Database = {
           id?: string
           industry?: string | null
           location?: string | null
+          looking_for_design_partner?: boolean | null
+          looking_for_funding?: boolean | null
           min_investment?: string | null
           name?: string | null
           raised_amount?: string | null
