@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2 } from "lucide-react";
+import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2, Rss } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
@@ -12,10 +12,11 @@ import { SettingsTab } from "@/components/investor/SettingsTab";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AISearchResultsTab } from "@/components/investor/AISearchResultsTab";
+import { FeedTab } from "@/components/shared/FeedTab";
 
 const InvestorDashboard = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("discover");
+  const [activeTab, setActiveTab] = useState("feed");
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
@@ -145,6 +146,7 @@ const InvestorDashboard = () => {
           <div className="border-b border-border/60 mb-8">
             <div className="flex overflow-x-auto pb-1">
               {[
+                { id: "feed", label: "Feed", icon: <Rss size={16} /> },
                 { id: "discover", label: "Discover Startups", icon: <Globe size={16} /> },
                 { id: "matches", label: "My Matches", icon: <ThumbsUp size={16} /> },
                 { id: "portfolio", label: "Portfolio", icon: <Briefcase size={16} /> },
@@ -170,6 +172,7 @@ const InvestorDashboard = () => {
           
           {/* Dashboard Content */}
           <div>
+            {activeTab === "feed" && <FeedTab />}
             {activeTab === "discover" && <DiscoverTab />}
             {activeTab === "matches" && <MatchesTab />}
             {activeTab === "portfolio" && <PortfolioTab />}

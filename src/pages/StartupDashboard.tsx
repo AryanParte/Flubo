@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { BarChart3, Users, Settings, Building } from "lucide-react";
+import { BarChart3, Users, Settings, Building, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -21,13 +22,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 // Import tab components
-import { OverviewTab } from "@/components/startup/OverviewTab";
+import { FeedTab } from "@/components/shared/FeedTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
 import { SettingsTab } from "@/components/startup/SettingsTab";
 
 const StartupDashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("feed");
   const [startupName, setStartupName] = useState("");
   const [profileComplete, setProfileComplete] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
@@ -301,8 +302,8 @@ const StartupDashboard = () => {
   
   const renderTabContent = () => {
     switch (activeTab) {
-      case "overview":
-        return <OverviewTab />;
+      case "feed":
+        return <FeedTab />;
       case "investors":
         return <FindInvestorsTab />;
       case "companies":
@@ -310,7 +311,7 @@ const StartupDashboard = () => {
       case "settings":
         return <SettingsTab />;
       default:
-        return <OverviewTab />;
+        return <FeedTab />;
     }
   };
   
@@ -390,7 +391,7 @@ const StartupDashboard = () => {
           <div className="border-b border-border/60 mb-8">
             <div className="flex overflow-x-auto pb-1">
               {[
-                { id: "overview", label: "Overview", icon: <BarChart3 size={16} /> },
+                { id: "feed", label: "Feed", icon: <Rss size={16} /> },
                 { id: "investors", label: "Find Investors", icon: <Users size={16} /> },
                 { id: "companies", label: "Find Companies", icon: <Building size={16} /> },
                 { id: "settings", label: "Settings", icon: <Settings size={16} /> },
