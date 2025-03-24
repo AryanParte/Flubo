@@ -57,7 +57,9 @@ export const useDiscoverCompanies = () => {
           location,
           stage,
           raised_amount,
-          created_at
+          created_at,
+          looking_for_funding,
+          looking_for_design_partner
         `);
       
       // Only apply the exclusion if there are IDs to exclude
