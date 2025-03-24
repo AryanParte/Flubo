@@ -131,11 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         toast({
           title: "Account created",
-          description: "You have successfully created an account",
+          description: "Please check your email for a confirmation link to verify your account",
         });
         
-        // Redirect based on user type
-        navigate(userType === "startup" ? "/business" : "/investor");
+        // Don't automatically redirect since we need email verification
+        // The UI will show the email verification message
       }
     } catch (error: any) {
       toast({
