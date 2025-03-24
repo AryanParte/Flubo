@@ -43,6 +43,8 @@ const App = () => (
               <Route path="/startups" element={<Startups />} />
               <Route path="/investors" element={<Investors />} />
               <Route path="/about" element={<About />} />
+              {/* Redirect for legacy routes */}
+              <Route path="/startup/*" element={<NotFound />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
