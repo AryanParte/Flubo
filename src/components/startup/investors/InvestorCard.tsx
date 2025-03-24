@@ -68,8 +68,8 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
         description: `You can now message ${investor.name} directly.`,
       });
       
-      // Navigate to messages page
-      navigate('/startup/messages');
+      // Navigate to messages page - use /business/messages instead of /startup/messages
+      navigate('/business/messages');
     } catch (error) {
       console.error("Error messaging investor:", error);
       toast({

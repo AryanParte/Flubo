@@ -39,7 +39,7 @@ const NotFound = () => {
                 It looks like you're trying to access a startup route. 
                 We've updated our URLs to use /business instead of /startup.
               </p>
-              <Button asChild>
+              <Button asChild variant="accent" className="mb-4">
                 <Link to={correctedPath}>
                   Go to {correctedPath}
                 </Link>
