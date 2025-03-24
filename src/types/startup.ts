@@ -17,4 +17,6 @@ export type Startup = {
   websiteUrl?: string;
   demoVideo?: string;
   created_at?: string;
+  lookingForFunding?: boolean;
+  lookingForDesignPartner?: boolean;
 };

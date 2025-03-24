@@ -1,6 +1,6 @@
 
 import React from "react";
-import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe } from "lucide-react";
+import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Startup } from "@/types/startup";
 
@@ -56,13 +56,29 @@ export const CompanyCard = ({
         
         <p className="text-sm text-muted-foreground mb-4">{company.bio || company.tagline || 'No description available'}</p>
         
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-4">
           <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs">
             {company.industry || 'Technology'}
           </div>
           {company.raised_amount && (
             <div className="px-2 py-1 rounded-md bg-secondary/50 text-secondary-foreground text-xs">
               Raised: {company.raised_amount}
+            </div>
+          )}
+        </div>
+
+        {/* Partnership Status Indicators */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {company.lookingForFunding && (
+            <div className="px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs flex items-center">
+              <Briefcase className="h-3 w-3 mr-1" />
+              Seeking Investment
+            </div>
+          )}
+          {company.lookingForDesignPartner && (
+            <div className="px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-xs flex items-center">
+              <Handshake className="h-3 w-3 mr-1" />
+              Seeking Design Partner
             </div>
           )}
         </div>

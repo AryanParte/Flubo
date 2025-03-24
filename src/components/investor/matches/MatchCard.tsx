@@ -1,6 +1,6 @@
 
 import React from "react";
-import { ThumbsUp, ThumbsDown, MessageSquare, ExternalLink } from "lucide-react";
+import { ThumbsUp, ThumbsDown, MessageSquare, ExternalLink, Briefcase, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Startup } from "@/types/startup";
 
@@ -45,10 +45,24 @@ export const MatchCard = ({
         
         <p className="text-sm text-gray-300 mb-4">{startup.tagline || 'No description available'}</p>
         
-        <div className="mb-6">
+        <div className="flex flex-wrap gap-2 mb-4">
           <div className="inline-block px-3 py-1 rounded-full bg-[#1F2A3B] text-gray-300 text-xs">
             {startup.industry || 'Technology'}
           </div>
+          
+          {/* Partnership Status Indicators */}
+          {startup.lookingForFunding && (
+            <div className="inline-block px-3 py-1 rounded-full bg-[#1F3A2A] text-[#4BDA7C] text-xs flex items-center">
+              <Briefcase className="h-3 w-3 mr-1" />
+              Seeking Investment
+            </div>
+          )}
+          {startup.lookingForDesignPartner && (
+            <div className="inline-block px-3 py-1 rounded-full bg-[#1F2A4A] text-[#4B9CDA] text-xs flex items-center">
+              <Handshake className="h-3 w-3 mr-1" />
+              Seeking Design Partner
+            </div>
+          )}
         </div>
         
         <div className="mt-auto flex space-x-2">

@@ -7,6 +7,8 @@ import { Edit, Upload, Trash, Check, Loader2, Video, Link } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const emptyStartupProfile = {
   name: "",
@@ -20,6 +22,8 @@ const emptyStartupProfile = {
   bio: "",
   demoUrl: "",
   demoVideo: "",
+  lookingForFunding: false,
+  lookingForDesignPartner: false,
   fundraising: {
     target: "",
     raised: "",
@@ -142,6 +146,8 @@ export const ProfileTab = () => {
         bio: startupProfile?.bio || "",
         demoUrl: startupProfile?.demo_url || "",
         demoVideo: startupProfile?.demo_video || "",
+        lookingForFunding: startupProfile?.looking_for_funding || false,
+        lookingForDesignPartner: startupProfile?.looking_for_design_partner || false,
         fundraising: {
           target: startupProfile?.target_amount || "",
           raised: startupProfile?.raised_amount || "",
@@ -186,6 +192,8 @@ export const ProfileTab = () => {
           id: user.id,
           name: defaultName,
           industry: "Technology",
+          looking_for_funding: false,
+          looking_for_design_partner: false
         });
       
       if (profileError) throw profileError;
@@ -250,6 +258,8 @@ export const ProfileTab = () => {
             bio: startup.bio,
             demo_url: startup.demoUrl,
             demo_video: startup.demoVideo,
+            looking_for_funding: startup.lookingForFunding,
+            looking_for_design_partner: startup.lookingForDesignPartner,
             target_amount: startup.fundraising.target,
             raised_amount: startup.fundraising.raised,
             min_investment: startup.fundraising.minInvestment,
@@ -326,6 +336,13 @@ export const ProfileTab = () => {
   };
 
   const handleInputChange = (field: string, value: string) => {
+    setStartup(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleToggleChange = (field: string, value: boolean) => {
     setStartup(prev => ({
       ...prev,
       [field]: value
@@ -634,6 +651,59 @@ export const ProfileTab = () => {
           ) : (
             <p className="mt-1">{startup.bio}</p>
           )}
+        </div>
+      </div>
+
+      <div className="glass-card p-6 rounded-lg">
+        <h2 className="text-lg font-medium mb-4">Partnership Status</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="funding-toggle" className="text-base">Looking for Funding</Label>
+              <p className="text-sm text-muted-foreground">
+                Toggle on if your company is currently seeking investment
+              </p>
+            </div>
+            {editing ? (
+              <Switch
+                id="funding-toggle"
+                checked={startup.lookingForFunding}
+                onCheckedChange={(checked) => handleToggleChange('lookingForFunding', checked)}
+              />
+            ) : (
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                startup.lookingForFunding 
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+              }`}>
+                {startup.lookingForFunding ? 'Seeking Funding' : 'Not Seeking Funding'}
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="partner-toggle" className="text-base">Looking for Design Partner</Label>
+              <p className="text-sm text-muted-foreground">
+                Toggle on if your company is seeking product/design partnerships
+              </p>
+            </div>
+            {editing ? (
+              <Switch
+                id="partner-toggle"
+                checked={startup.lookingForDesignPartner}
+                onCheckedChange={(checked) => handleToggleChange('lookingForDesignPartner', checked)}
+              />
+            ) : (
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                startup.lookingForDesignPartner 
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' 
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+              }`}>
+                {startup.lookingForDesignPartner ? 'Seeking Design Partner' : 'Not Seeking Partner'}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
