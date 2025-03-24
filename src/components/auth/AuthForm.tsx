@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-type UserType = "startup" | "investor" | "partnership";
+type UserType = "startup" | "investor";
 type AuthMode = "signin" | "signup";
 
 export function AuthForm() {
@@ -89,12 +89,12 @@ export function AuthForm() {
       
       {/* User Type Selector */}
       <div className="bg-background/50 p-1 rounded-lg border border-border mb-6">
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-2 gap-1">
           <button
             type="button"
             onClick={() => setUserType("startup")}
             className={cn(
-              "py-2.5 px-2 text-sm font-medium rounded-md transition-all",
+              "py-2.5 px-4 text-sm font-medium rounded-md transition-all",
               userType === "startup"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -106,25 +106,13 @@ export function AuthForm() {
             type="button"
             onClick={() => setUserType("investor")}
             className={cn(
-              "py-2.5 px-2 text-sm font-medium rounded-md transition-all",
+              "py-2.5 px-4 text-sm font-medium rounded-md transition-all",
               userType === "investor"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             Investor
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserType("partnership")}
-            className={cn(
-              "py-2.5 px-2 text-sm font-medium rounded-md transition-all",
-              userType === "partnership"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Partnership
           </button>
         </div>
       </div>
@@ -133,9 +121,7 @@ export function AuthForm() {
         {authMode === "signup" && (
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium">
-              {userType === "startup" ? "Company Name" : 
-               userType === "investor" ? "Full Name" : 
-               "Organization Name"}
+              {userType === "startup" ? "Company Name" : "Full Name"}
             </label>
             <input
               id="name"
@@ -143,9 +129,7 @@ export function AuthForm() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
-              placeholder={userType === "startup" ? "Your startup name" : 
-                          userType === "investor" ? "Your name" : 
-                          "Your organization name"}
+              placeholder={userType === "startup" ? "Your startup name" : "Your name"}
               required
             />
           </div>

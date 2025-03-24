@@ -595,15 +595,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_profile: {
-        Args: {
-          profile_id: string
-          profile_user_type: string
-          profile_name: string
-          profile_email: string
-        }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

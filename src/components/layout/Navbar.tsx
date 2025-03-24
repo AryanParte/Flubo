@@ -23,8 +23,7 @@ export function Navbar() {
   const isAuthPage = location.pathname.includes("/auth");
   const isStartupDashboard = location.pathname.includes("/startup");
   const isInvestorDashboard = location.pathname.includes("/investor");
-  const isPartnershipDashboard = location.pathname.includes("/partnership");
-  const isDashboard = isStartupDashboard || isInvestorDashboard || isPartnershipDashboard;
+  const isDashboard = isStartupDashboard || isInvestorDashboard;
 
   // Handle scroll event to change navbar appearance
   useEffect(() => {
@@ -53,8 +52,6 @@ export function Navbar() {
         navigate("/startup");
       } else if (userMetadata?.user_type === "investor") {
         navigate("/investor");
-      } else if (userMetadata?.user_type === "partnership") {
-        navigate("/partnership");
       }
     }
     // If not logged in, default Link behavior will navigate to "/"
@@ -77,23 +74,8 @@ export function Navbar() {
         { name: "Home", href: "/" },
         { name: "Startups", href: "/startups" },
         { name: "Investors", href: "/investors" },
-        { name: "Partnerships", href: "/partnerships" },
         { name: "About", href: "/about" },
       ];
-
-  // Determine dashboard path based on user type
-  const getDashboardPath = () => {
-    if (isStartupDashboard) return "/startup";
-    if (isInvestorDashboard) return "/investor";
-    if (isPartnershipDashboard) return "/partnership";
-    
-    // Default dashboard path based on user metadata
-    if (user?.user_metadata?.user_type === "startup") return "/startup";
-    if (user?.user_metadata?.user_type === "investor") return "/investor";
-    if (user?.user_metadata?.user_type === "partnership") return "/partnership";
-    
-    return "/";
-  };
 
   return (
     <header
@@ -105,7 +87,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         {/* Logo */}
         <Link 
-          to={user ? getDashboardPath() : "/"}
+          to={user ? (isStartupDashboard ? "/startup" : isInvestorDashboard ? "/investor" : "/") : "/"}
           className="flex items-center space-x-2 font-semibold text-lg"
           onClick={handleLogoClick}
         >
@@ -143,12 +125,10 @@ export function Navbar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link
-                    to={getDashboardPath()}
+                    to={isStartupDashboard ? "/startup" : "/investor"}
                     className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-                      (location.pathname === "/startup" || 
-                       location.pathname === "/investor" || 
-                       location.pathname === "/partnership")
+                      (location.pathname === "/startup" || location.pathname === "/investor")
                         ? "bg-accent/20 text-accent" 
                         : "text-foreground/80 hover:text-foreground hover:bg-background/80"
                     )}
@@ -167,7 +147,7 @@ export function Navbar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link
-                    to={`${getDashboardPath()}/profile`}
+                    to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
                     className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
                       location.pathname.includes("/profile") 
@@ -189,7 +169,7 @@ export function Navbar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link
-                    to={`${getDashboardPath()}/messages`}
+                    to={isStartupDashboard ? "/startup/messages" : "/investor/messages"}
                     className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
                       location.pathname.includes("/messages") 
@@ -261,7 +241,7 @@ export function Navbar() {
             {isDashboard && (
               <>
                 <Link
-                  to={getDashboardPath()}
+                  to={isStartupDashboard ? "/startup" : "/investor"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
                 >
                   <LayoutDashboard size={18} />
@@ -269,7 +249,7 @@ export function Navbar() {
                 </Link>
                 
                 <Link
-                  to={`${getDashboardPath()}/profile`}
+                  to={isStartupDashboard ? "/startup/profile" : "/investor/profile"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
                 >
                   <User size={18} />
@@ -277,7 +257,7 @@ export function Navbar() {
                 </Link>
                 
                 <Link
-                  to={`${getDashboardPath()}/messages`}
+                  to={isStartupDashboard ? "/startup/messages" : "/investor/messages"}
                   className="flex items-center space-x-2 text-base font-medium py-2 transition-colors duration-200"
                 >
                   <MessageSquare size={18} />
