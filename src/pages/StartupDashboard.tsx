@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { BarChart3, Users, Settings, Building, Rss } from "lucide-react";
+import { BarChart3, Users, Settings, Building, Rss, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -38,6 +37,8 @@ const StartupDashboard = () => {
   const [hasRequiredFields, setHasRequiredFields] = useState(false);
   const [lookingForFunding, setLookingForFunding] = useState(false);
   const [lookingForDesignPartner, setLookingForDesignPartner] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -300,6 +301,50 @@ const StartupDashboard = () => {
     }
   };
   
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Search query empty",
+        description: "Please enter a search term",
+      });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "Please sign in to use the search feature",
+      });
+      return;
+    }
+    
+    try {
+      setSearching(true);
+      
+      console.log("Searching for companies with query:", searchQuery);
+      
+      // In the future, implement company search functionality here
+      
+      toast({
+        title: "Search feature",
+        description: "Company search will be implemented in a future update",
+      });
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        variant: "destructive",
+        title: "Search failed",
+        description: error.message || "Failed to process your search query",
+      });
+    } finally {
+      setSearching(false);
+    }
+  };
+  
   const renderTabContent = () => {
     switch (activeTab) {
       case "feed":
@@ -387,6 +432,37 @@ const StartupDashboard = () => {
               </div>
             </div>
           </div>
+          
+          {/* Company Search - Only visible on companies tab */}
+          {activeTab === "companies" && (
+            <div className="glass-card rounded-lg p-4 mb-8 animate-fade-in">
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search companies using natural language, e.g. 'Design agencies in Europe' or 'SaaS companies for healthcare'"
+                  className="w-full h-12 pl-11 pr-4 rounded-md bg-background/70 border border-border/40 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={searching}
+                />
+                <button 
+                  type="submit" 
+                  className="absolute right-2 top-2 bg-accent text-accent-foreground px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 disabled:opacity-70"
+                  disabled={searching || !searchQuery.trim()}
+                >
+                  {searching ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin mr-1" />
+                      <span>Searching...</span>
+                    </>
+                  ) : (
+                    <span>Search</span>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
           
           <div className="border-b border-border/60 mb-8">
             <div className="flex overflow-x-auto pb-1">
