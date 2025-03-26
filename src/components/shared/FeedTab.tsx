@@ -63,6 +63,7 @@ export function FeedTab() {
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<{name: string | null, user_type: string | null} | null>(null);
   
   // Extract hashtags from post content
   const extractHashtags = (content: string): string[] => {
@@ -94,6 +95,32 @@ export function FeedTab() {
     const years = Math.floor(months / 12);
     return `${years} year${years !== 1 ? 's' : ''} ago`;
   };
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name, user_type')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching user profile:", error);
+          return;
+        }
+        
+        setUserProfile(data);
+      } catch (error) {
+        console.error("Error in fetchUserProfile:", error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user]);
   
   // Fetch posts from Supabase
   const fetchPosts = async (filter = 'latest') => {
@@ -231,8 +258,8 @@ export function FeedTab() {
         id: Date.now().toString(),
         author: {
           id: user?.id || 'anonymous',
-          name: user?.user_metadata?.name || 'Anonymous User',
-          role: user?.user_metadata?.user_type === 'startup' ? 'Business' : 'Investor',
+          name: userProfile?.name || (user?.user_metadata?.name as string) || 'Anonymous User',
+          role: userProfile?.user_type === 'startup' ? 'Business' : 'Investor',
           avatar: '/placeholder.svg'
         },
         content: newPostContent,
@@ -292,7 +319,7 @@ export function FeedTab() {
           <Avatar className="h-10 w-10">
             <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
             <AvatarFallback>
-              {user?.user_metadata?.name?.charAt(0) || 'U'}
+              {userProfile?.name?.charAt(0) || user?.user_metadata?.name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-3">
