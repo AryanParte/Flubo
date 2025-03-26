@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -35,7 +34,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   
   // Fetch comments for this post
   const { data: comments, loading: loadingComments, error } = useSupabaseQuery<Comment[]>(() => 
-    // Fix: Return a Promise with the expected structure
     supabase
       .from('comments')
       .select(`
@@ -52,7 +50,9 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       `)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
-      .then(result => result) // Convert to the expected Promise format
+      .then(({ data, error }) => {
+        return { data, error };
+      })
   , [postId]);
 
   // Subscribe to real-time updates for new comments
@@ -60,8 +60,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     'comments',
     ['INSERT', 'UPDATE', 'DELETE'],
     (payload) => {
-      // We'll let the useSupabaseQuery refresh the data
-      // Update comment count when comments change
       if (comments && onCommentCountChange) {
         if (payload.eventType === 'INSERT') {
           onCommentCountChange(comments.length + 1);
@@ -81,7 +79,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   }, [comments, onCommentCountChange]);
 
   // Handle adding a new comment
-  const handleAddComment = async () => {
+  async function handleAddComment() {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -103,7 +101,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     setIsSubmitting(true);
 
     try {
-      // Add comment to database
       const { error } = await supabase
         .from('comments')
         .insert({
@@ -117,7 +114,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         throw error;
       }
 
-      // Update post comment count
       const { error: updateError } = await supabase
         .from('posts')
         .update({ 
@@ -129,7 +125,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         console.error("Error updating comment count:", updateError);
       }
 
-      // Clear input
       setNewComment('');
       
       toast({
@@ -146,10 +141,10 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
 
   // Format relative time for comments
-  const formatRelativeTime = (timestamp: string): string => {
+  function formatRelativeTime(timestamp: string): string {
     const date = new Date(timestamp);
     const now = new Date();
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -170,7 +165,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     
     const years = Math.floor(months / 12);
     return `${years} year${years !== 1 ? 's' : ''} ago`;
-  };
+  }
 
   if (error) {
     return <div className="text-red-500 p-4">Error loading comments: {error.message}</div>;
@@ -214,7 +209,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         </>
       )}
       
-      {/* Comment input */}
       {user && (
         <div className="flex space-x-3 pt-2">
           <Avatar className="h-8 w-8">

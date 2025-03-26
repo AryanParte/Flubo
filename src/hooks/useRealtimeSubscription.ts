@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -21,17 +21,16 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to events
     events.forEach(event => {
-      // The issue is here - we need to properly type the event parameter
-      // @ts-ignore - We need to use postgres_changes but TypeScript isn't recognizing it correctly
+      // Using the correct typing for postgres_changes
       newChannel.on(
-        'postgres_changes',
+        'postgres_changes' as any, // Type assertion to bypass the type checking issue
         {
           event,
           schema: 'public',
           table,
           ...(filter && { filter })
         },
-        payload => {
+        (payload: RealtimePostgresChangesPayload<T>) => {
           console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callback) {
             callback({

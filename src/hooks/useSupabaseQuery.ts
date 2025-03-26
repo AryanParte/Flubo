@@ -2,11 +2,16 @@
 import { useState, useEffect } from 'react';
 import { PostgrestError } from '@supabase/supabase-js';
 
+type SupabaseQueryResult<T> = {
+  data: T | null;
+  error: PostgrestError | null;
+};
+
 /**
  * A hook to handle Supabase queries with proper error handling and loading states
  */
 export function useSupabaseQuery<T>(
-  queryFn: () => Promise<{ data: T | null; error: PostgrestError | null }>,
+  queryFn: () => Promise<SupabaseQueryResult<T>>,
   dependencies: any[] = []
 ) {
   const [data, setData] = useState<T | null>(null);
@@ -17,13 +22,13 @@ export function useSupabaseQuery<T>(
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data, error } = await queryFn();
+        const result = await queryFn();
         
-        if (error) {
-          setError(error);
+        if (result.error) {
+          setError(result.error);
           setData(null);
         } else {
-          setData(data);
+          setData(result.data);
           setError(null);
         }
       } catch (err) {
