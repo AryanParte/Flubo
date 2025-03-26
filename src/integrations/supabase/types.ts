@@ -300,6 +300,47 @@ export type Database = {
           },
         ]
       }
+      posts: {
+        Row: {
+          comments_count: number
+          content: string
+          created_at: string
+          hashtags: string[]
+          id: string
+          image_url: string | null
+          likes: number
+          user_id: string
+        }
+        Insert: {
+          comments_count?: number
+          content: string
+          created_at?: string
+          hashtags?: string[]
+          id?: string
+          image_url?: string | null
+          likes?: number
+          user_id: string
+        }
+        Update: {
+          comments_count?: number
+          content?: string
+          created_at?: string
+          hashtags?: string[]
+          id?: string
+          image_url?: string | null
+          likes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_completion_tasks: {
         Row: {
           completed: boolean | null
