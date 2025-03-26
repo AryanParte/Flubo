@@ -80,6 +80,23 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     fetchComments();
   }, [postId]);
   
+  // Update posts table comment count
+  const updatePostCommentCount = async (change: number) => {
+    try {
+      console.log(`Updating post ${postId} comment count by ${change}`);
+      const { error } = await supabase.rpc('increment_comment_count', { 
+        post_id: postId, 
+        increment_by: change 
+      });
+      
+      if (error) {
+        console.error("Error updating comment count:", error);
+      }
+    } catch (error) {
+      console.error("Error in updatePostCommentCount:", error);
+    }
+  };
+  
   // Setup realtime subscription for comments
   useRealtimeSubscription<Comment>(
     'comments',
@@ -149,9 +166,22 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       }
 
       console.log('Comment added successfully:', data);
-      // No need to manually update the UI since we have realtime subscription
+      
+      // Also update the post's comment count
+      await supabase
+        .from('posts')
+        .update({ comments_count: comments.length + 1 })
+        .eq('id', postId);
 
       setNewComment('');
+      
+      // Local UI update for immediate feedback
+      if (data && data[0]) {
+        setComments(prev => [...prev, data[0] as Comment]);
+        if (onCommentCountChange) {
+          onCommentCountChange(comments.length + 1);
+        }
+      }
       
       toast({
         title: "Comment added",

@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -21,27 +21,15 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to events
     events.forEach(event => {
-      // We need to bypass TypeScript's type checking here because the Supabase types
-      // don't accurately reflect the actual API functionality for realtime subscriptions
-      type PostgresChangesPayload = {
-        schema: string;
-        table: string;
-        commit_timestamp: string;
-        eventType: string;
-        new: T;
-        old: T;
-      };
-
-      // Using as any to bypass type checking
       newChannel.on(
-        'postgres_changes' as any,
+        'postgres_changes',
         {
           event,
           schema: 'public',
           table,
           ...(filter && { filter })
         },
-        (payload: any) => {
+        (payload: RealtimePostgresChangesPayload<T>) => {
           console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callback) {
             callback({

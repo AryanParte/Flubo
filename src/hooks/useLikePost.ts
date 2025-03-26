@@ -39,10 +39,10 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         
         // Update likes count based on the event type
         if (payload.eventType === 'INSERT') {
-          console.log('Incrementing likes count');
+          console.log('Incrementing likes count due to INSERT event');
           setLikesCount(prevCount => prevCount + 1);
         } else if (payload.eventType === 'DELETE') {
-          console.log('Decrementing likes count');
+          console.log('Decrementing likes count due to DELETE event');
           setLikesCount(prevCount => Math.max(0, prevCount - 1));
         }
       }
@@ -76,11 +76,19 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
     }
   };
   
+  // Initial check for like status
   useEffect(() => {
     if (user) {
       checkLikeStatus();
+    } else {
+      setIsLiked(false);
     }
   }, [postId, user]);
+  
+  // Also update the likes count based on initial prop update
+  useEffect(() => {
+    setLikesCount(initialLikesCount);
+  }, [initialLikesCount]);
   
   const toggleLike = async () => {
     if (!user) {
@@ -111,8 +119,9 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         }
         
         console.log('Like removed successfully');
-        // No need to update post likes count as the realtime subscription will handle this
+        // Local update for immediate UI feedback
         setIsLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
       } else {
         // Add like
         console.log('Adding like for post:', postId, 'user:', user.id);
@@ -129,8 +138,9 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         }
         
         console.log('Like added successfully');
-        // No need to update post likes count as the realtime subscription will handle this
+        // Local update for immediate UI feedback
         setIsLiked(true);
+        setLikesCount(prev => prev + 1);
       }
     } catch (error) {
       console.error("Error toggling like:", error);
