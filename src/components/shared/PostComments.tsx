@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, SendHorizontal } from "lucide-react";
-import { useSupabaseQuery, SupabaseQueryResult } from "@/hooks/useSupabaseQuery";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 export type Comment = {
@@ -39,6 +38,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const fetchComments = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching comments for post:', postId);
       const { data, error } = await supabase
         .from('comments')
         .select(`
@@ -62,6 +62,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       }
       
       if (data) {
+        console.log('Fetched comments:', data);
         setComments(data as Comment[]);
         if (onCommentCountChange) {
           onCommentCountChange(data.length);
@@ -84,19 +85,23 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     'comments',
     ['INSERT', 'UPDATE', 'DELETE'],
     (payload) => {
+      console.log('Received comment update:', payload);
       if (payload.eventType === 'INSERT' && payload.new.post_id === postId) {
         // Add new comment to state
+        console.log('Adding new comment to state:', payload.new);
         setComments(prev => [...prev, payload.new]);
         if (onCommentCountChange) {
           onCommentCountChange(comments.length + 1);
         }
       } else if (payload.eventType === 'UPDATE' && payload.new.post_id === postId) {
         // Update existing comment
+        console.log('Updating existing comment:', payload.new);
         setComments(prev => 
           prev.map(comment => comment.id === payload.new.id ? payload.new : comment)
         );
       } else if (payload.eventType === 'DELETE' && payload.old.post_id === postId) {
         // Remove deleted comment
+        console.log('Removing deleted comment:', payload.old);
         setComments(prev => prev.filter(comment => comment.id !== payload.old.id));
         if (onCommentCountChange) {
           onCommentCountChange(comments.length - 1);
@@ -128,19 +133,22 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
+      console.log('Adding comment for post:', postId, 'user:', user.id, 'content:', newComment);
+      const { data, error } = await supabase
         .from('comments')
         .insert({
           post_id: postId,
           user_id: user.id,
           content: newComment.trim()
-        });
+        })
+        .select();
 
       if (error) {
         console.error("Error posting comment:", error);
         throw error;
       }
 
+      console.log('Comment added successfully:', data);
       // No need to manually update the UI since we have realtime subscription
 
       setNewComment('');

@@ -30,6 +30,7 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
     'post_likes',
     ['INSERT', 'DELETE'],
     (payload) => {
+      console.log('Received post_likes update:', payload);
       if (payload.new?.post_id === postId || payload.old?.post_id === postId) {
         // Refresh like status if the update is for the current post
         if (user) {
@@ -38,8 +39,10 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         
         // Update likes count based on the event type
         if (payload.eventType === 'INSERT') {
+          console.log('Incrementing likes count');
           setLikesCount(prevCount => prevCount + 1);
         } else if (payload.eventType === 'DELETE') {
+          console.log('Decrementing likes count');
           setLikesCount(prevCount => Math.max(0, prevCount - 1));
         }
       }
@@ -52,6 +55,7 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
     if (!user) return;
     
     try {
+      console.log('Checking like status for post:', postId, 'user:', user.id);
       const { data, error } = await supabase
         .from('post_likes')
         .select('id')
@@ -64,7 +68,9 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         return;
       }
       
-      setIsLiked(!!data);
+      const liked = !!data;
+      console.log('Post is liked:', liked);
+      setIsLiked(liked);
     } catch (error) {
       console.error("Error in checkLikeStatus:", error);
     }
@@ -89,8 +95,10 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
     setIsLoading(true);
     
     try {
+      console.log('Current like status:', isLiked);
       if (isLiked) {
         // Remove like
+        console.log('Removing like for post:', postId, 'user:', user.id);
         const { error: deleteLikeError } = await supabase
           .from('post_likes')
           .delete()
@@ -102,10 +110,12 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
           throw deleteLikeError;
         }
         
+        console.log('Like removed successfully');
         // No need to update post likes count as the realtime subscription will handle this
         setIsLiked(false);
       } else {
         // Add like
+        console.log('Adding like for post:', postId, 'user:', user.id);
         const { error: addLikeError } = await supabase
           .from('post_likes')
           .insert({
@@ -118,6 +128,7 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
           throw addLikeError;
         }
         
+        console.log('Like added successfully');
         // No need to update post likes count as the realtime subscription will handle this
         setIsLiked(true);
       }

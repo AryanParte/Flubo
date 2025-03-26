@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -32,9 +32,9 @@ export function useRealtimeSubscription<T>(
         old: T;
       };
 
-      // Using as any to bypass the type check
-      (newChannel as any).on(
-        'postgres_changes',
+      // Using as any to bypass type checking
+      newChannel.on(
+        'postgres_changes' as any,
         {
           event,
           schema: 'public',
