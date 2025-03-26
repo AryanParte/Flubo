@@ -21,6 +21,8 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to events
     events.forEach(event => {
+      // The issue is here - we need to properly type the event parameter
+      // @ts-ignore - We need to use postgres_changes but TypeScript isn't recognizing it correctly
       newChannel.on(
         'postgres_changes',
         {

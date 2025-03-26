@@ -35,6 +35,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   
   // Fetch comments for this post
   const { data: comments, loading: loadingComments, error } = useSupabaseQuery<Comment[]>(() => 
+    // Fix: Return a Promise with the expected structure
     supabase
       .from('comments')
       .select(`
@@ -51,6 +52,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       `)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
+      .then(result => result) // Convert to the expected Promise format
   , [postId]);
 
   // Subscribe to real-time updates for new comments
