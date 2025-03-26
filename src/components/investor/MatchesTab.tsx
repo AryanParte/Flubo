@@ -37,9 +37,14 @@ export const MatchesTab = () => {
           match_score,
           summary,
           startup_id,
-          profiles:startup_id (
+          profiles!ai_persona_chats_startup_id_fkey (
             id,
             name,
+            email,
+            company,
+            position
+          ),
+          startup_profiles!ai_persona_chats_startup_id_fkey (
             stage,
             location,
             industry,
@@ -72,26 +77,26 @@ export const MatchesTab = () => {
             tagline: "No tagline available"
           };
           
-          // Safely check if profiles exists and is a valid object
-          // We'll use type assertion here to handle the null check
-          const startupData = chat.profiles && 
-                             typeof chat.profiles === 'object' ? 
-                             chat.profiles as Record<string, any> : null;
+          // Get profile data
+          const profileData = chat.profiles;
+          
+          // Get startup profile data
+          const startupProfileData = chat.startup_profiles;
           
           // Check if ai_match_feed_status exists and is an array with at least one element
           const statusItems = Array.isArray(chat.ai_match_feed_status) ? chat.ai_match_feed_status : [];
           const status = statusItems.length > 0 ? statusItems[0]?.status : 'new';
           
           return {
-            id: startupData ? startupData.id : startup_id,
-            name: startupData ? startupData.name : defaultStartup.name,
+            id: profileData ? profileData.id : startup_id,
+            name: profileData ? profileData.name : defaultStartup.name,
             score: chat.match_score || 0,
-            stage: startupData ? startupData.stage : defaultStartup.stage,
-            location: startupData ? startupData.location : defaultStartup.location,
-            industry: startupData ? startupData.industry : defaultStartup.industry,
-            bio: startupData ? startupData.bio : defaultStartup.bio,
-            raised_amount: startupData ? startupData.raised_amount : defaultStartup.raised_amount,
-            tagline: startupData ? startupData.tagline : defaultStartup.tagline,
+            stage: startupProfileData ? startupProfileData.stage : defaultStartup.stage,
+            location: startupProfileData ? startupProfileData.location : defaultStartup.location,
+            industry: startupProfileData ? startupProfileData.industry : defaultStartup.industry,
+            bio: startupProfileData ? startupProfileData.bio : defaultStartup.bio,
+            raised_amount: startupProfileData ? startupProfileData.raised_amount : defaultStartup.raised_amount,
+            tagline: startupProfileData ? startupProfileData.tagline : defaultStartup.tagline,
             matchSummary: chat.summary || "No summary available",
             chatId: chat.id,
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
@@ -113,9 +118,14 @@ export const MatchesTab = () => {
           startup_id,
           match_score,
           status,
-          profiles:startup_id (
+          profiles!investor_matches_startup_id_fkey (
             id,
             name,
+            email,
+            company,
+            position
+          ),
+          startup_profiles!investor_matches_startup_id_fkey (
             stage,
             location,
             industry,
@@ -145,22 +155,22 @@ export const MatchesTab = () => {
             tagline: "No tagline available"
           };
           
-          // Safely check if profiles exists and is a valid object
-          // We'll use type assertion here to handle the null check
-          const startupData = match.profiles && 
-                             typeof match.profiles === 'object' ? 
-                             match.profiles as Record<string, any> : null;
+          // Get profile data
+          const profileData = match.profiles;
+          
+          // Get startup profile data
+          const startupProfileData = match.startup_profiles;
           
           return {
-            id: startupData ? startupData.id : startup_id,
-            name: startupData ? startupData.name : defaultStartup.name,
+            id: profileData ? profileData.id : startup_id,
+            name: profileData ? profileData.name : defaultStartup.name,
             score: match.match_score || 0,
-            stage: startupData ? startupData.stage : defaultStartup.stage,
-            location: startupData ? startupData.location : defaultStartup.location,
-            industry: startupData ? startupData.industry : defaultStartup.industry,
-            bio: startupData ? startupData.bio : defaultStartup.bio,
-            raised_amount: startupData ? startupData.raised_amount : defaultStartup.raised_amount,
-            tagline: startupData ? startupData.tagline : defaultStartup.tagline
+            stage: startupProfileData ? startupProfileData.stage : defaultStartup.stage,
+            location: startupProfileData ? startupProfileData.location : defaultStartup.location,
+            industry: startupProfileData ? startupProfileData.industry : defaultStartup.industry,
+            bio: startupProfileData ? startupProfileData.bio : defaultStartup.bio,
+            raised_amount: startupProfileData ? startupProfileData.raised_amount : defaultStartup.raised_amount,
+            tagline: startupProfileData ? startupProfileData.tagline : defaultStartup.tagline
           };
         });
         
