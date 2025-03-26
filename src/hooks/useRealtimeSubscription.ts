@@ -23,8 +23,17 @@ export function useRealtimeSubscription<T>(
     events.forEach(event => {
       // We need to bypass TypeScript's type checking here because the Supabase types
       // don't accurately reflect the actual API functionality for realtime subscriptions
-      // @ts-ignore
-      newChannel.on(
+      type PostgresChangesPayload = {
+        schema: string;
+        table: string;
+        commit_timestamp: string;
+        eventType: string;
+        new: T;
+        old: T;
+      };
+
+      // Using as any to bypass the type check
+      (newChannel as any).on(
         'postgres_changes',
         {
           event,
