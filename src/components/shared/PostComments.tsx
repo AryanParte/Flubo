@@ -134,8 +134,9 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
             // Add new comment to state
             console.log('Adding new comment to state with profile:', data);
             setComments(prev => [...prev, data as Comment]);
+            // Update the comment count - using the new total count
             if (onCommentCountChange) {
-              onCommentCountChange(prev => prev + 1);
+              onCommentCountChange(comments.length + 1);
             }
             
             // Also update the post's comment count in the database
@@ -159,8 +160,9 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         // Remove deleted comment
         console.log('Removing deleted comment:', payload.old);
         setComments(prev => prev.filter(comment => comment.id !== payload.old.id));
+        // Update comment count - using the new total after deletion
         if (onCommentCountChange) {
-          onCommentCountChange(prev => Math.max(0, prev - 1));
+          onCommentCountChange(comments.length - 1);
         }
         
         // Update the post's comment count
@@ -243,6 +245,8 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       // Local UI update for immediate feedback
       if (data && data[0]) {
         setComments(prev => [...prev, data[0] as Comment]);
+        
+        // Use the new total count directly instead of a function
         if (onCommentCountChange) {
           onCommentCountChange(comments.length + 1);
         }
