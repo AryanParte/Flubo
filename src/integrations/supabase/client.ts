@@ -15,19 +15,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Add a type extension for the posts table since it's not in the auto-generated types
 declare module '@supabase/supabase-js' {
   interface SupabaseClient<Database> {
-    from<T extends string>(table: T): T extends keyof Database['public']['Tables'] 
-      ? PostgrestQueryBuilder<Database['public']['Tables'][T]['Row'], any, any> 
-      : T extends 'posts' 
-        ? PostgrestQueryBuilder<{
-            id: string;
-            user_id: string;
-            content: string;
-            image_url: string | null;
-            likes: number;
-            comments_count: number;
-            hashtags: string[];
-            created_at: string;
-          }, any, any> 
-        : PostgrestQueryBuilder<any, any, any>;
+    from<T extends string>(table: T): PostgrestQueryBuilder<
+      T extends keyof Database['public']['Tables'] 
+        ? Database['public']['Tables'][T]['Row'] 
+        : T extends 'posts' 
+          ? {
+              id: string;
+              user_id: string;
+              content: string;
+              image_url: string | null;
+              likes: number;
+              comments_count: number;
+              hashtags: string[];
+              created_at: string;
+            }
+          : Record<string, unknown>
+    >;
   }
 }
