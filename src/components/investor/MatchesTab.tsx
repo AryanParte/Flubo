@@ -55,7 +55,7 @@ export const MatchesTab = () => {
         toast({ title: "Error", description: "Failed to load AI matches", variant: "destructive" });
       } else if (aiChats) {
         // Now fetch startup profile data separately for each startup_id
-        const enhancedMatches = await Promise.all(aiChats.map(async (chat) => {
+        const enhancedMatches = await Promise.all((aiChats || []).map(async (chat) => {
           // Default values for startup info
           const startup_id = chat.startup_id || '';
           const defaultStartup = {
@@ -75,13 +75,17 @@ export const MatchesTab = () => {
           // Fetch startup profile data separately
           let startupProfileData = null;
           if (chat.startup_id) {
-            const { data: profileData } = await supabase
+            const { data: profileData, error: profileError } = await supabase
               .from('startup_profiles')
-              .select('stage, location, industry, bio, raised_amount, tagline')
+              .select('stage, location, industry, bio, raised_amount, tagline, looking_for_funding, looking_for_design_partner')
               .eq('id', chat.startup_id)
               .maybeSingle();
               
-            startupProfileData = profileData;
+            if (profileError) {
+              console.error("Error fetching startup profile:", profileError);
+            } else {
+              startupProfileData = profileData;
+            }
           }
           
           // Check if ai_match_feed_status exists
@@ -99,12 +103,14 @@ export const MatchesTab = () => {
             id: profileData ? profileData.id : startup_id,
             name: profileData ? profileData.name : defaultStartup.name,
             score: chat.match_score || 0,
-            stage: startupProfileData ? startupProfileData.stage : defaultStartup.stage,
-            location: startupProfileData ? startupProfileData.location : defaultStartup.location,
-            industry: startupProfileData ? startupProfileData.industry : defaultStartup.industry,
-            bio: startupProfileData ? startupProfileData.bio : defaultStartup.bio,
-            raised_amount: startupProfileData ? startupProfileData.raised_amount : defaultStartup.raised_amount,
-            tagline: startupProfileData ? startupProfileData.tagline : defaultStartup.tagline,
+            stage: startupProfileData?.stage || defaultStartup.stage,
+            location: startupProfileData?.location || defaultStartup.location,
+            industry: startupProfileData?.industry || defaultStartup.industry,
+            bio: startupProfileData?.bio || defaultStartup.bio,
+            raised_amount: startupProfileData?.raised_amount || defaultStartup.raised_amount,
+            tagline: startupProfileData?.tagline || defaultStartup.tagline,
+            lookingForFunding: startupProfileData?.looking_for_funding || false,
+            lookingForDesignPartner: startupProfileData?.looking_for_design_partner || false,
             matchSummary: chat.summary || "No summary available",
             chatId: chat.id,
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
@@ -142,7 +148,7 @@ export const MatchesTab = () => {
         console.error("Error fetching confirmed matches:", mutualError);
       } else if (mutualMatches) {
         // Now fetch startup profile data separately for each startup_id
-        const enhancedConfirmedMatches = await Promise.all(mutualMatches.map(async (match) => {
+        const enhancedConfirmedMatches = await Promise.all((mutualMatches || []).map(async (match) => {
           // Default values for startup info
           const startup_id = match.startup_id || '';
           const defaultStartup = {
@@ -162,27 +168,31 @@ export const MatchesTab = () => {
           // Fetch startup profile data separately
           let startupProfileData = null;
           if (match.startup_id) {
-            const { data: profileData } = await supabase
+            const { data: profileData, error: profileError } = await supabase
               .from('startup_profiles')
               .select('stage, location, industry, bio, raised_amount, tagline, looking_for_funding, looking_for_design_partner')
               .eq('id', match.startup_id)
               .maybeSingle();
               
-            startupProfileData = profileData;
+            if (profileError) {
+              console.error("Error fetching startup profile:", profileError);
+            } else {
+              startupProfileData = profileData;
+            }
           }
           
           return {
             id: profileData ? profileData.id : startup_id,
             name: profileData ? profileData.name : defaultStartup.name,
             score: match.match_score || 0,
-            stage: startupProfileData ? startupProfileData.stage : defaultStartup.stage,
-            location: startupProfileData ? startupProfileData.location : defaultStartup.location,
-            industry: startupProfileData ? startupProfileData.industry : defaultStartup.industry,
-            bio: startupProfileData ? startupProfileData.bio : defaultStartup.bio,
-            raised_amount: startupProfileData ? startupProfileData.raised_amount : defaultStartup.raised_amount,
-            tagline: startupProfileData ? startupProfileData.tagline : defaultStartup.tagline,
-            lookingForFunding: startupProfileData ? startupProfileData.looking_for_funding : false,
-            lookingForDesignPartner: startupProfileData ? startupProfileData.looking_for_design_partner : false
+            stage: startupProfileData?.stage || defaultStartup.stage,
+            location: startupProfileData?.location || defaultStartup.location,
+            industry: startupProfileData?.industry || defaultStartup.industry,
+            bio: startupProfileData?.bio || defaultStartup.bio,
+            raised_amount: startupProfileData?.raised_amount || defaultStartup.raised_amount,
+            tagline: startupProfileData?.tagline || defaultStartup.tagline,
+            lookingForFunding: startupProfileData?.looking_for_funding || false,
+            lookingForDesignPartner: startupProfileData?.looking_for_design_partner || false
           };
         }));
         
