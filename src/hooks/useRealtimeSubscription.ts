@@ -22,7 +22,7 @@ export function useRealtimeSubscription<T>(
     // Subscribe to events
     events.forEach(event => {
       newChannel.on(
-        'postgres_changes',
+        'postgres_changes' as any, // Type assertion to bypass the type error
         {
           event,
           schema: 'public',

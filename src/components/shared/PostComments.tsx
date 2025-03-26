@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -167,11 +166,8 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
 
       console.log('Comment added successfully:', data);
       
-      // Also update the post's comment count
-      await supabase
-        .from('posts')
-        .update({ comments_count: comments.length + 1 })
-        .eq('id', postId);
+      // Update the post's comment count using our RPC function
+      await updatePostCommentCount(1);
 
       setNewComment('');
       
