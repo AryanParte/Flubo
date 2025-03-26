@@ -16,7 +16,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 declare module '@supabase/supabase-js' {
   interface SupabaseClient<Database> {
     from<T extends string>(table: T): T extends keyof Database['public']['Tables'] 
-      ? PostgrestQueryBuilder<Database['public']['Tables'][T]['Row']> 
+      ? PostgrestQueryBuilder<Database['public']['Tables'][T]['Row'], any, any> 
       : T extends 'posts' 
         ? PostgrestQueryBuilder<{
             id: string;
@@ -27,7 +27,7 @@ declare module '@supabase/supabase-js' {
             comments_count: number;
             hashtags: string[];
             created_at: string;
-          }> 
-        : PostgrestQueryBuilder<any>;
+          }, any, any> 
+        : PostgrestQueryBuilder<any, any, any>;
   }
 }
