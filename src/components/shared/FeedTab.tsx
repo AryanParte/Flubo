@@ -126,40 +126,87 @@ export function FeedTab() {
   const fetchPosts = async (filter = 'latest') => {
     setIsLoadingPosts(true);
     try {
-      // In a production app, fetch real posts from Supabase
-      // No mock posts here - we've removed the placeholder posts
+      // Fetch real posts from Supabase
+      let query = supabase
+        .from('posts')
+        .select(`
+          id,
+          content,
+          image_url,
+          hashtags,
+          likes,
+          comments_count,
+          created_at,
+          user_id,
+          profiles (
+            id,
+            name,
+            user_type
+          )
+        `);
       
-      // Simulate an empty response for now as we're removing mock data
-      // In a real implementation, you would fetch actual posts from a 'posts' table
-      const emptyPosts: Post[] = [];
-      
-      // Apply filtering (would work with real posts)
-      let filteredPosts = [...emptyPosts];
+      // Apply sorting based on filter
       switch (filter) {
         case 'latest':
-          filteredPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          query = query.order('created_at', { ascending: false });
           break;
         case 'trending':
-          filteredPosts.sort((a, b) => b.comments + b.likes - (a.comments + a.likes));
+          query = query.order('comments_count', { ascending: false }).order('likes', { ascending: false });
           break;
         case 'top':
-          filteredPosts.sort((a, b) => b.likes - a.likes);
+          query = query.order('likes', { ascending: false });
           break;
         case 'most-viewed':
-          filteredPosts.sort((a, b) => (b.likes * 2 + b.comments) - (a.likes * 2 + a.comments));
+          // For now, just using likes as proxy for views
+          query = query.order('likes', { ascending: false });
           break;
         default:
+          query = query.order('created_at', { ascending: false });
           break;
       }
       
-      // Collect all unique hashtags
-      const allHashtags = new Set<string>();
-      filteredPosts.forEach(post => {
-        post.hashtags?.forEach(tag => allHashtags.add(tag));
-      });
+      const { data, error } = await query;
       
-      setHashtags(Array.from(allHashtags));
-      setPosts(filteredPosts);
+      if (error) {
+        console.error("Error fetching posts:", error);
+        throw error;
+      }
+      
+      if (data) {
+        // Format posts
+        const formattedPosts: Post[] = data.map(post => {
+          // Get user liked status
+          // This would normally check if current user has liked
+          const isLiked = false;
+          
+          return {
+            id: post.id,
+            author: {
+              id: post.user_id,
+              name: post.profiles?.name || 'Unknown User',
+              role: post.profiles?.user_type === 'startup' ? 'Business' : 'Investor',
+              avatar: '/placeholder.svg'
+            },
+            content: post.content,
+            timestamp: formatRelativeTime(post.created_at),
+            likes: post.likes || 0,
+            comments: post.comments_count || 0,
+            isLiked,
+            hashtags: post.hashtags,
+            image_url: post.image_url,
+            created_at: post.created_at
+          };
+        });
+        
+        // Collect all unique hashtags
+        const allHashtags = new Set<string>();
+        formattedPosts.forEach(post => {
+          post.hashtags?.forEach(tag => allHashtags.add(tag));
+        });
+        
+        setHashtags(Array.from(allHashtags));
+        setPosts(formattedPosts);
+      }
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast({
@@ -207,19 +254,52 @@ export function FeedTab() {
   
   // Handle liking a post
   const handleLike = async (postId: string) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        const wasLiked = post.isLiked;
-        return {
-          ...post,
-          likes: wasLiked ? post.likes - 1 : post.likes + 1,
-          isLiked: !wasLiked
-        };
-      }
-      return post;
-    }));
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to like posts",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // In a real implementation, this would update the likes in Supabase
+    try {
+      // Find the post
+      const postToUpdate = posts.find(p => p.id === postId);
+      if (!postToUpdate) return;
+      
+      const newLikeCount = postToUpdate.isLiked ? postToUpdate.likes - 1 : postToUpdate.likes + 1;
+      
+      // Update post in database
+      const { error } = await supabase
+        .from('posts')
+        .update({ likes: newLikeCount })
+        .eq('id', postId);
+        
+      if (error) {
+        console.error("Error updating like count:", error);
+        throw error;
+      }
+      
+      // Update UI
+      setPosts(posts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            likes: newLikeCount,
+            isLiked: !post.isLiked
+          };
+        }
+        return post;
+      }));
+    } catch (error) {
+      console.error("Error handling like:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update like status",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle creating a new post
@@ -228,6 +308,15 @@ export function FeedTab() {
       toast({
         title: "Cannot create empty post",
         description: "Please add some content or an image to your post",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create posts",
         variant: "destructive",
       });
       return;
@@ -245,34 +334,48 @@ export function FeedTab() {
         imageUrl = await uploadImage(selectedImage);
       }
       
-      // In a real implementation, this would save to Supabase
-      // Example of how it would be implemented:
-      // const { data, error } = await supabase.from('posts').insert({
-      //   user_id: user?.id,
-      //   content: newPostContent,
-      //   hashtags: extractedHashtags,
-      //   image_url: imageUrl,
-      // }).select();
+      // Insert post into Supabase
+      const { data, error } = await supabase
+        .from('posts')
+        .insert({
+          user_id: user.id,
+          content: newPostContent,
+          hashtags: extractedHashtags,
+          image_url: imageUrl,
+          likes: 0,
+          comments_count: 0
+        })
+        .select();
       
-      const newPost: Post = {
-        id: Date.now().toString(),
-        author: {
-          id: user?.id || 'anonymous',
-          name: userProfile?.name || (user?.user_metadata?.name as string) || 'Anonymous User',
-          role: userProfile?.user_type === 'startup' ? 'Business' : 'Investor',
-          avatar: '/placeholder.svg'
-        },
-        content: newPostContent,
-        timestamp: 'Just now',
-        likes: 0,
-        comments: 0,
-        isLiked: false,
-        hashtags: extractedHashtags,
-        image_url: imageUrl,
-        created_at: new Date().toISOString()
-      };
+      if (error) {
+        console.error("Error creating post:", error);
+        throw error;
+      }
       
-      setPosts([newPost, ...posts]);
+      // Add to local state
+      if (data && data.length > 0) {
+        const newPost: Post = {
+          id: data[0].id,
+          author: {
+            id: user.id,
+            name: userProfile?.name || (user?.user_metadata?.name as string) || 'Anonymous User',
+            role: userProfile?.user_type === 'startup' ? 'Business' : 'Investor',
+            avatar: '/placeholder.svg'
+          },
+          content: newPostContent,
+          timestamp: 'Just now',
+          likes: 0,
+          comments: 0,
+          isLiked: false,
+          hashtags: extractedHashtags,
+          image_url: imageUrl,
+          created_at: new Date().toISOString()
+        };
+        
+        setPosts([newPost, ...posts]);
+      }
+      
+      // Clear form
       setNewPostContent('');
       setSelectedImage(null);
       setImagePreviewUrl(null);
@@ -294,16 +397,73 @@ export function FeedTab() {
   };
   
   // Filter by hashtag
-  const filterByHashtag = (tag: string) => {
-    const filtered = posts.filter(post => 
-      post.hashtags?.includes(tag)
-    );
-    setPosts(filtered);
+  const filterByHashtag = async (tag: string) => {
+    setIsLoadingPosts(true);
     
-    toast({
-      title: `Showing posts with #${tag}`,
-      description: `${filtered.length} posts found`,
-    });
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          content,
+          image_url,
+          hashtags,
+          likes,
+          comments_count,
+          created_at,
+          user_id,
+          profiles (
+            id,
+            name,
+            user_type
+          )
+        `)
+        .contains('hashtags', [tag]);
+      
+      if (error) {
+        console.error("Error filtering posts:", error);
+        throw error;
+      }
+      
+      if (data) {
+        // Format posts
+        const filteredPosts: Post[] = data.map(post => {
+          return {
+            id: post.id,
+            author: {
+              id: post.user_id,
+              name: post.profiles?.name || 'Unknown User',
+              role: post.profiles?.user_type === 'startup' ? 'Business' : 'Investor',
+              avatar: '/placeholder.svg'
+            },
+            content: post.content,
+            timestamp: formatRelativeTime(post.created_at),
+            likes: post.likes || 0,
+            comments: post.comments_count || 0,
+            isLiked: false,
+            hashtags: post.hashtags,
+            image_url: post.image_url,
+            created_at: post.created_at
+          };
+        });
+        
+        setPosts(filteredPosts);
+        
+        toast({
+          title: `Showing posts with #${tag}`,
+          description: `${filteredPosts.length} posts found`,
+        });
+      }
+    } catch (error) {
+      console.error("Error filtering by hashtag:", error);
+      toast({
+        title: "Error",
+        description: "Failed to filter posts",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPosts(false);
+    }
   };
   
   // Load posts when component mounts or filter changes
