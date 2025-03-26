@@ -29,7 +29,7 @@ export function useRealtimeSubscription<T>(
           table,
           ...(filter && { filter })
         },
-        (payload: RealtimePostgresChangesPayload<T>) => {
+        (payload: any) => {
           console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callback) {
             callback({

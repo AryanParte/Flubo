@@ -32,22 +32,40 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
     (payload) => {
       console.log('Received post_likes update:', payload);
       if (payload.new?.post_id === postId || payload.old?.post_id === postId) {
-        // Refresh like status if the update is for the current post
-        if (user) {
-          checkLikeStatus();
-        }
-        
         // Update likes count based on the event type
         if (payload.eventType === 'INSERT') {
           console.log('Incrementing likes count due to INSERT event');
           setLikesCount(prevCount => prevCount + 1);
+          
+          // Update isLiked if the current user is the one who liked
+          if (user && payload.new?.user_id === user.id) {
+            setIsLiked(true);
+          }
         } else if (payload.eventType === 'DELETE') {
           console.log('Decrementing likes count due to DELETE event');
           setLikesCount(prevCount => Math.max(0, prevCount - 1));
+          
+          // Update isLiked if the current user is the one who unliked
+          if (user && payload.old?.user_id === user.id) {
+            setIsLiked(false);
+          }
         }
       }
     },
     `post_id=eq.${postId}`
+  );
+  
+  // Also listen to updates on the post itself for like count changes
+  useRealtimeSubscription(
+    'posts',
+    ['UPDATE'],
+    (payload: any) => {
+      console.log('Received posts update:', payload);
+      if (payload.new?.id === postId && payload.new?.likes !== likesCount) {
+        console.log('Updating like count from post update:', payload.new.likes);
+        setLikesCount(payload.new.likes);
+      }
+    }
   );
   
   // Check if post is already liked by this user
@@ -119,6 +137,13 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         }
         
         console.log('Like removed successfully');
+        
+        // Also update the post like count directly for immediate feedback
+        await supabase
+          .from('posts')
+          .update({ likes: Math.max(0, likesCount - 1) })
+          .eq('id', postId);
+          
         // Local update for immediate UI feedback
         setIsLiked(false);
         setLikesCount(prev => Math.max(0, prev - 1));
@@ -138,6 +163,13 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         }
         
         console.log('Like added successfully');
+        
+        // Also update the post like count directly for immediate feedback
+        await supabase
+          .from('posts')
+          .update({ likes: likesCount + 1 })
+          .eq('id', postId);
+          
         // Local update for immediate UI feedback
         setIsLiked(true);
         setLikesCount(prev => prev + 1);

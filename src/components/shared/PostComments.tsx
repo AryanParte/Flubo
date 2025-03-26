@@ -104,29 +104,85 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     ['INSERT', 'UPDATE', 'DELETE'],
     (payload) => {
       console.log('Received comment update:', payload);
+      
       if (payload.eventType === 'INSERT' && payload.new.post_id === postId) {
-        // Add new comment to state
-        console.log('Adding new comment to state:', payload.new);
-        setComments(prev => [...prev, payload.new]);
-        if (onCommentCountChange) {
-          onCommentCountChange(comments.length + 1);
-        }
+        // Fetch the complete comment with profile information
+        const fetchNewComment = async () => {
+          const { data, error } = await supabase
+            .from('comments')
+            .select(`
+              id,
+              post_id,
+              user_id,
+              content,
+              created_at,
+              profiles (
+                id,
+                name,
+                user_type
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single();
+            
+          if (error) {
+            console.error("Error fetching new comment:", error);
+            return;
+          }
+          
+          if (data) {
+            // Add new comment to state
+            console.log('Adding new comment to state with profile:', data);
+            setComments(prev => [...prev, data as Comment]);
+            if (onCommentCountChange) {
+              onCommentCountChange(prev => prev + 1);
+            }
+            
+            // Also update the post's comment count in the database
+            if (payload.new.user_id !== user?.id) {
+              // Only update if this wasn't triggered by the current user's action
+              // (to avoid duplicate updates)
+              updatePostCommentCount(1);
+            }
+          }
+        };
+        
+        fetchNewComment();
       } else if (payload.eventType === 'UPDATE' && payload.new.post_id === postId) {
         // Update existing comment
         console.log('Updating existing comment:', payload.new);
         setComments(prev => 
-          prev.map(comment => comment.id === payload.new.id ? payload.new : comment)
+          prev.map(comment => comment.id === payload.new.id ? 
+            { ...comment, ...payload.new } : comment)
         );
       } else if (payload.eventType === 'DELETE' && payload.old.post_id === postId) {
         // Remove deleted comment
         console.log('Removing deleted comment:', payload.old);
         setComments(prev => prev.filter(comment => comment.id !== payload.old.id));
         if (onCommentCountChange) {
-          onCommentCountChange(comments.length - 1);
+          onCommentCountChange(prev => Math.max(0, prev - 1));
         }
+        
+        // Update the post's comment count
+        updatePostCommentCount(-1);
       }
     },
     `post_id=eq.${postId}`
+  );
+
+  // Also listen to updates on the posts table for comment count changes
+  useRealtimeSubscription(
+    'posts',
+    ['UPDATE'],
+    (payload: any) => {
+      console.log('Received posts update:', payload);
+      if (payload.new?.id === postId && 
+          payload.new?.comments_count !== undefined && 
+          comments.length !== payload.new.comments_count) {
+        console.log('Post comments count changed, refetching comments');
+        fetchComments();
+      }
+    }
   );
 
   async function handleAddComment() {
@@ -159,7 +215,18 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           user_id: user.id,
           content: newComment.trim()
         })
-        .select();
+        .select(`
+          id,
+          post_id,
+          user_id,
+          content,
+          created_at,
+          profiles (
+            id,
+            name,
+            user_type
+          )
+        `);
 
       if (error) {
         console.error("Error posting comment:", error);
