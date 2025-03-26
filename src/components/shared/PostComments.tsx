@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, SendHorizontal } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { safeQueryResult } from "@/lib/supabase-helpers";
 
 export type Comment = {
   id: string;
@@ -210,31 +209,14 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
 
     try {
       console.log('Adding comment for post:', postId, 'user:', user.id, 'content:', newComment);
-      
-      // First, check that the user has a profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-        
-      if (profileError) {
-        console.error("Error checking user profile:", profileError);
-        throw new Error("Failed to verify user profile. Please try again.");
-      }
-      
-      const commentData = {
-        post_id: postId,
-        user_id: user.id,
-        profile_id: profileData.id, // Use the verified profile ID
-        content: newComment.trim()
-      };
-      
-      console.log('Comment data being sent:', commentData);
-      
       const { data, error } = await supabase
         .from('comments')
-        .insert(commentData)
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          profile_id: user.id,
+          content: newComment.trim()
+        })
         .select(`
           id,
           post_id,
@@ -277,9 +259,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       console.error("Error posting comment:", error);
       toast({
         title: "Error",
-        description: typeof error === 'object' && error !== null && 'message' in error 
-          ? String(error.message) 
-          : "Failed to post your comment",
+        description: "Failed to post your comment",
         variant: "destructive",
       });
     } finally {
