@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Mail, Briefcase, Building, MapPin, Tags, DollarSign, Loader2 } from "lucide-react";
+import { Mail, Briefcase, Building, MapPin, Tags, DollarSign, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { InvestorAIChat } from "./InvestorAIChat";
 
 interface InvestorCardProps {
   investor: Investor;
@@ -151,25 +152,29 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
       </CardContent>
       
       <CardFooter className="px-6 pb-6 pt-0">
-        <Button
-          variant="accent"
-          size="sm"
-          className="w-full flex items-center justify-center"
-          onClick={handleMessageInvestor}
-          disabled={sendingMessage === investor.id}
-        >
-          {sendingMessage === investor.id ? (
-            <>
-              <Loader2 size={14} className="mr-2 animate-spin" />
-              Connecting...
-            </>
-          ) : (
-            <>
-              <Mail size={14} className="mr-2" />
-              Connect
-            </>
-          )}
-        </Button>
+        <div className="flex w-full space-x-2">
+          <InvestorAIChat investor={investor} />
+          
+          <Button
+            variant="accent"
+            size="sm"
+            className="flex-1 flex items-center justify-center"
+            onClick={handleMessageInvestor}
+            disabled={sendingMessage === investor.id}
+          >
+            {sendingMessage === investor.id ? (
+              <>
+                <Loader2 size={14} className="mr-2 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Mail size={14} className="mr-2" />
+                Connect
+              </>
+            )}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

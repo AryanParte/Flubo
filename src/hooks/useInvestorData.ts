@@ -52,9 +52,27 @@ export const useInvestorData = () => {
           )
           .subscribe();
           
+        // Also set up realtime subscription for AI persona chats
+        const aiChatsChannel = supabase
+          .channel('ai-persona-chats-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'ai_persona_chats'
+            },
+            (payload) => {
+              console.log("AI persona chat updated, refreshing data:", payload);
+              fetchInvestors();
+            }
+          )
+          .subscribe();
+          
         return () => {
           supabase.removeChannel(channel);
           supabase.removeChannel(prefsChannel);
+          supabase.removeChannel(aiChatsChannel);
         };
       };
       
@@ -93,12 +111,30 @@ export const useInvestorData = () => {
         preferencesMap.set(pref.user_id, pref);
       });
       
+      // Fetch AI chats for this startup user
+      const { data: aiChatsData, error: aiChatsError } = await supabase
+        .from('ai_persona_chats')
+        .select('investor_id, match_score')
+        .eq('startup_id', user?.id)
+        .eq('completed', true);
+        
+      if (aiChatsError) throw aiChatsError;
+      
+      // Create a map of AI chat match scores by investor_id
+      const aiMatchScoresMap = new Map();
+      aiChatsData?.forEach(chat => {
+        aiMatchScoresMap.set(chat.investor_id, chat.match_score);
+      });
+      
       console.log("Found investors:", profilesData?.length || 0);
       
       // Transform the data to include all investor details
       const enhancedInvestors = profilesData?.map(investor => {
         // Get preferences for this investor if they exist
         const preferences = preferencesMap.get(investor.id);
+        
+        // Get AI chat match score if it exists
+        const aiMatchScore = aiMatchScoresMap.get(investor.id);
         
         return {
           id: investor.id,
@@ -118,7 +154,8 @@ export const useInvestorData = () => {
             ? `${preferences.min_investment} - ${preferences.max_investment}`
             : preferences?.min_investment
               ? `${preferences.min_investment}+`
-              : undefined
+              : undefined,
+          match_score: aiMatchScore || null
         };
       }) || [];
       

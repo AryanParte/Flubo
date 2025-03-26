@@ -16,4 +16,5 @@ export interface Investor {
   max_investment?: string;
   preferred_stages?: string[];
   preferred_sectors?: string[];
+  match_score?: number | null;
 }
