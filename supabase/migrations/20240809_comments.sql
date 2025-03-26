@@ -39,14 +39,5 @@ CREATE POLICY "Users can delete their own comments"
 -- Enable replica identity full for realtime functionality
 ALTER TABLE public.comments REPLICA IDENTITY FULL;
 
--- Enable realtime for comments table
-INSERT INTO supabase_realtime.realtime_channels (name)
-VALUES ('post-comments')
-ON CONFLICT (name) DO NOTHING;
-
-INSERT INTO supabase_realtime.subscription (entity, filters, claims)
-VALUES ('public:comments', '{}', '{"role":"authenticated"}')
-ON CONFLICT DO NOTHING;
-
--- Add replica identity to posts table for real-time updates
+-- Enable replica identity to posts table for real-time updates
 ALTER TABLE public.posts REPLICA IDENTITY FULL;

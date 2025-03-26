@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/use-toast';
@@ -18,7 +18,7 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
   // Check if post is already liked by this user
-  useState(() => {
+  useEffect(() => {
     const checkLikeStatus = async () => {
       if (!user) return;
       

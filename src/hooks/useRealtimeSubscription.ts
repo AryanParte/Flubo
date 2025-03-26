@@ -15,7 +15,9 @@ export function useRealtimeSubscription<T>(
 
   useEffect(() => {
     // Create a channel for the table
-    const newChannel = supabase.channel(`public:${table}${filter ? `:${filter}` : ''}`);
+    const channelName = `public:${table}${filter ? `:${filter}` : ''}`;
+    console.log(`Creating realtime channel: ${channelName}`);
+    const newChannel = supabase.channel(channelName);
 
     // Subscribe to events
     events.forEach(event => {
@@ -28,6 +30,7 @@ export function useRealtimeSubscription<T>(
           ...(filter && { filter })
         },
         payload => {
+          console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callback) {
             callback({
               new: payload.new as T,
@@ -40,12 +43,16 @@ export function useRealtimeSubscription<T>(
     });
 
     // Subscribe to the channel
-    newChannel.subscribe();
+    newChannel.subscribe((status) => {
+      console.log(`Realtime subscription status for ${table}:`, status);
+    });
+    
     setChannel(newChannel);
 
     // Cleanup on unmount
     return () => {
       if (newChannel) {
+        console.log(`Removing realtime channel for ${table}`);
         supabase.removeChannel(newChannel);
       }
     };
