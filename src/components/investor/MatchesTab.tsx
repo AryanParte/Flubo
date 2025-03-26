@@ -37,7 +37,7 @@ export const MatchesTab = () => {
           match_score,
           summary,
           startup_id,
-          startup_profiles (
+          profiles:startup_id (
             id,
             name,
             stage,
@@ -72,11 +72,11 @@ export const MatchesTab = () => {
             tagline: "No tagline available"
           };
           
-          // Safely check if startup_profiles exists and is a valid object
+          // Safely check if profiles exists and is a valid object
           // We'll use type assertion here to handle the null check
-          const startupData = chat.startup_profiles && 
-                             typeof chat.startup_profiles === 'object' ? 
-                             chat.startup_profiles as Record<string, any> : null;
+          const startupData = chat.profiles && 
+                             typeof chat.profiles === 'object' ? 
+                             chat.profiles as Record<string, any> : null;
           
           // Check if ai_match_feed_status exists and is an array with at least one element
           const statusItems = Array.isArray(chat.ai_match_feed_status) ? chat.ai_match_feed_status : [];
@@ -113,7 +113,7 @@ export const MatchesTab = () => {
           startup_id,
           match_score,
           status,
-          startup_profiles (
+          profiles:startup_id (
             id,
             name,
             stage,
@@ -145,11 +145,11 @@ export const MatchesTab = () => {
             tagline: "No tagline available"
           };
           
-          // Safely check if startup_profiles exists and is a valid object
+          // Safely check if profiles exists and is a valid object
           // We'll use type assertion here to handle the null check
-          const startupData = match.startup_profiles && 
-                             typeof match.startup_profiles === 'object' ? 
-                             match.startup_profiles as Record<string, any> : null;
+          const startupData = match.profiles && 
+                             typeof match.profiles === 'object' ? 
+                             match.profiles as Record<string, any> : null;
           
           return {
             id: startupData ? startupData.id : startup_id,
