@@ -13,30 +13,56 @@ export const useInvestorData = () => {
   const [filteredInvestors, setFilteredInvestors] = useState<Investor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Setup a real-time subscription to profiles changes
   useEffect(() => {
     if (user) {
+      const setupRealtimeSubscription = async () => {
+        // Set up realtime subscription for profile changes
+        const channel = supabase
+          .channel('investor-profiles-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'profiles',
+              filter: "user_type=eq.investor"
+            },
+            (payload) => {
+              console.log("Investor profile updated, refreshing data:", payload);
+              fetchInvestors();
+            }
+          )
+          .subscribe();
+          
+        // Also set up realtime subscription for investor preferences
+        const prefsChannel = supabase
+          .channel('investor-preferences-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'investor_preferences'
+            },
+            (payload) => {
+              console.log("Investor preferences updated, refreshing data:", payload);
+              fetchInvestors();
+            }
+          )
+          .subscribe();
+          
+        return () => {
+          supabase.removeChannel(channel);
+          supabase.removeChannel(prefsChannel);
+        };
+      };
+      
+      const cleanup = setupRealtimeSubscription();
       fetchInvestors();
       
-      // Set up realtime subscription for profile changes
-      const channel = supabase
-        .channel('profiles-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'profiles',
-            filter: "user_type=eq.investor"
-          },
-          () => {
-            console.log("Investor profile updated, refreshing data");
-            fetchInvestors();
-          }
-        )
-        .subscribe();
-        
       return () => {
-        supabase.removeChannel(channel);
+        cleanup.then(unsub => unsub);
       };
     }
   }, [user]);

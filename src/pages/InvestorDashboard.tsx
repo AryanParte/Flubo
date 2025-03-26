@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2, Rss } from "lucide-react";
@@ -19,6 +20,31 @@ const InvestorDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
+  const [userName, setUserName] = useState("");
+  
+  // Fetch user profile data
+  useEffect(() => {
+    if (user) {
+      const fetchUserProfile = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching user profile:", error);
+          return;
+        }
+        
+        if (data && data.name) {
+          setUserName(data.name);
+        }
+      };
+      
+      fetchUserProfile();
+    }
+  }, [user]);
   
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +124,7 @@ const InvestorDashboard = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
               <h1 className="text-2xl font-bold">Investor Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Welcome back, Alex Morgan</p>
+              <p className="text-muted-foreground mt-1">Welcome back, {userName || "Investor"}</p>
             </div>
             
             <div className="mt-4 md:mt-0 flex items-center space-x-4">

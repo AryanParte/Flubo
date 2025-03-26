@@ -1,20 +1,24 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 import { Edit, Upload, Check, BriefcaseBusiness, Building, Globe, DollarSign } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
 
 export const ProfileTab = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [investor, setInvestor] = useState({
-    name: "Alex Morgan",
-    title: "Managing Partner",
-    firm: "Blue Venture Capital",
-    location: "New York, NY",
-    website: "https://bluevc.com",
-    bio: "Experienced investor focused on early-stage technology startups. Previously founded two successful SaaS companies. Looking for innovative solutions in healthcare, fintech, and enterprise software.",
+    name: "",
+    title: "",
+    firm: "",
+    location: "",
+    website: "",
+    bio: "",
     investmentCriteria: {
       stages: ["Seed", "Series A"],
       checkSize: "$250K - $2M",
@@ -33,13 +37,112 @@ export const ProfileTab = () => {
     }
   });
 
-  const handleEditToggle = () => {
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) throw profileError;
+        
+        const { data: preferencesData, error: preferencesError } = await supabase
+          .from('investor_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (preferencesError) throw preferencesError;
+        
+        setInvestor(prev => ({
+          ...prev,
+          name: profileData?.name || "Unnamed Investor",
+          title: profileData?.position || prev.title,
+          firm: profileData?.company || prev.firm,
+          investmentCriteria: {
+            ...prev.investmentCriteria,
+            stages: preferencesData?.preferred_stages || prev.investmentCriteria.stages,
+            sectors: preferencesData?.preferred_sectors || prev.investmentCriteria.sectors,
+            checkSize: preferencesData?.min_investment && preferencesData?.max_investment 
+              ? `${preferencesData.min_investment} - ${preferencesData.max_investment}`
+              : prev.investmentCriteria.checkSize
+          }
+        }));
+        
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load profile",
+          description: "Could not retrieve your investor profile."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProfileData();
+  }, [user]);
+
+  const handleEditToggle = async () => {
     if (editing) {
-      // Save changes
-      toast({
-        title: "Profile updated",
-        description: "Your investor profile has been saved",
-      });
+      try {
+        if (!user) return;
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            name: investor.name,
+            position: investor.title,
+            company: investor.firm
+          })
+          .eq('id', user.id);
+          
+        if (profileError) throw profileError;
+        
+        let minInvestment = null;
+        let maxInvestment = null;
+        
+        if (investor.investmentCriteria.checkSize) {
+          const parts = investor.investmentCriteria.checkSize.split('-').map(p => p.trim());
+          if (parts.length === 2) {
+            minInvestment = parts[0];
+            maxInvestment = parts[1];
+          } else if (parts.length === 1) {
+            minInvestment = parts[0];
+          }
+        }
+        
+        const { error: preferencesError } = await supabase
+          .from('investor_preferences')
+          .upsert({
+            user_id: user.id,
+            preferred_stages: investor.investmentCriteria.stages,
+            preferred_sectors: investor.investmentCriteria.sectors,
+            min_investment: minInvestment,
+            max_investment: maxInvestment
+          }, { onConflict: 'user_id' });
+          
+        if (preferencesError) throw preferencesError;
+        
+        toast({
+          title: "Profile updated",
+          description: "Your investor profile has been saved",
+        });
+      } catch (error) {
+        console.error("Error saving profile data:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to save profile",
+          description: "Could not update your investor profile."
+        });
+      }
     }
     setEditing(!editing);
   };
@@ -80,7 +183,6 @@ export const ProfileTab = () => {
 
   const handleCriteriaChange = (field: string, value: string) => {
     if (field === "stages" || field === "sectors" || field === "regions") {
-      // Convert comma-separated string to array
       const valueArray = value.split(',').map(item => item.trim());
       setInvestor(prev => ({
         ...prev,
@@ -100,15 +202,23 @@ export const ProfileTab = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-accent mr-2" />
+        <p>Loading profile...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
-      {/* Header with avatar and edit button */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div className="flex items-center gap-4">
           <div className="relative group">
             <Avatar className="h-24 w-24 border-2 border-border">
               <AvatarFallback className="text-2xl font-bold bg-accent/10 text-accent">
-                AM
+                {investor.name ? investor.name.charAt(0) : "?"}
               </AvatarFallback>
             </Avatar>
             {editing && (
@@ -173,7 +283,6 @@ export const ProfileTab = () => {
         </Button>
       </div>
 
-      {/* Personal Info */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Investor Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,7 +346,6 @@ export const ProfileTab = () => {
         </div>
       </div>
 
-      {/* Portfolio Stats */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Portfolio Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -289,7 +397,6 @@ export const ProfileTab = () => {
         </div>
       </div>
 
-      {/* Investment Criteria */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Investment Criteria</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -348,7 +455,6 @@ export const ProfileTab = () => {
         </div>
       </div>
 
-      {/* Preferences */}
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Investment Preferences</h2>
         <div className="space-y-4">
@@ -393,3 +499,4 @@ export const ProfileTab = () => {
     </div>
   );
 };
+
