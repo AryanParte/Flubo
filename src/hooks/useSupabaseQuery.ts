@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { PostgrestError } from '@supabase/supabase-js';
 
-type SupabaseQueryResult<T> = {
+export type SupabaseQueryResult<T> = {
   data: T | null;
   error: PostgrestError | null;
 };

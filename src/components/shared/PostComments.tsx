@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, SendHorizontal } from "lucide-react";
-import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { useSupabaseQuery, SupabaseQueryResult } from "@/hooks/useSupabaseQuery";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 export type Comment = {
@@ -32,7 +32,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Fetch comments for this post
   const { data: comments, loading: loadingComments, error } = useSupabaseQuery<Comment[]>(() => 
     supabase
       .from('comments')
@@ -51,11 +50,10 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
       .then(({ data, error }) => {
-        return { data, error };
+        return { data, error } as SupabaseQueryResult<Comment[]>;
       })
   , [postId]);
 
-  // Subscribe to real-time updates for new comments
   useRealtimeSubscription<Comment>(
     'comments',
     ['INSERT', 'UPDATE', 'DELETE'],
@@ -71,14 +69,12 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     `post_id=eq.${postId}`
   );
 
-  // Update comment count when comments load
   useEffect(() => {
     if (comments && onCommentCountChange) {
       onCommentCountChange(comments.length);
     }
   }, [comments, onCommentCountChange]);
 
-  // Handle adding a new comment
   async function handleAddComment() {
     if (!user) {
       toast({
@@ -143,7 +139,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     }
   }
 
-  // Format relative time for comments
   function formatRelativeTime(timestamp: string): string {
     const date = new Date(timestamp);
     const now = new Date();

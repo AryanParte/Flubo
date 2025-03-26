@@ -21,16 +21,17 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to events
     events.forEach(event => {
-      // Using the correct typing for postgres_changes
+      // Using a type assertion to bypass TypeScript's type checking issue
+      // @ts-ignore - The types in supabase-js don't perfectly align with the actual API
       newChannel.on(
-        'postgres_changes' as any, // Type assertion to bypass the type checking issue
+        'postgres_changes',
         {
           event,
           schema: 'public',
           table,
           ...(filter && { filter })
         },
-        (payload: RealtimePostgresChangesPayload<T>) => {
+        (payload: any) => {
           console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callback) {
             callback({
