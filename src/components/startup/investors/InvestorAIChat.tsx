@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -291,7 +292,7 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
       </Button>
       
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Chat with {investor.name}'s AI Persona</DialogTitle>
             <DialogDescription>
@@ -311,7 +312,7 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
             </div>
           ) : (
             <>
-              <div className="flex-1 overflow-y-auto px-1 py-4 space-y-4 max-h-[300px]">
+              <div className="flex-1 overflow-y-auto px-1 py-4 space-y-4 max-h-[400px]">
                 {chatHistory.map((msg, index) => (
                   <div 
                     key={msg.id || index} 
