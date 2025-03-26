@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -83,10 +84,11 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const updatePostCommentCount = async (change: number) => {
     try {
       console.log(`Updating post ${postId} comment count by ${change}`);
-      const { error } = await supabase.rpc('increment_comment_count', { 
-        post_id: postId, 
-        increment_by: change 
-      });
+      // Use a direct query instead of rpc to avoid type issues
+      const { error } = await supabase
+        .from('posts')
+        .update({ comments_count: comments.length + change })
+        .eq('id', postId);
       
       if (error) {
         console.error("Error updating comment count:", error);
@@ -166,7 +168,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
 
       console.log('Comment added successfully:', data);
       
-      // Update the post's comment count using our RPC function
+      // Update the post's comment count directly
       await updatePostCommentCount(1);
 
       setNewComment('');
