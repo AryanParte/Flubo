@@ -53,6 +53,23 @@ type Post = {
   created_at: string;
 };
 
+// Define our custom type for working with posts data from Supabase
+type PostRecord = {
+  id: string;
+  user_id: string;
+  content: string;
+  image_url: string | null;
+  likes: number;
+  comments_count: number;
+  hashtags: string[];
+  created_at: string;
+  profiles?: {
+    id: string;
+    name: string | null;
+    user_type: string | null;
+  } | null;
+};
+
 export function FeedTab() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -126,7 +143,7 @@ export function FeedTab() {
   const fetchPosts = async (filter = 'latest') => {
     setIsLoadingPosts(true);
     try {
-      // Fetch real posts from Supabase
+      // Fetch real posts from Supabase with a custom type assertion
       let query = supabase
         .from('posts')
         .select(`
@@ -143,7 +160,7 @@ export function FeedTab() {
             name,
             user_type
           )
-        `);
+        `) as any;
       
       // Apply sorting based on filter
       switch (filter) {
@@ -174,7 +191,7 @@ export function FeedTab() {
       
       if (data) {
         // Format posts
-        const formattedPosts: Post[] = data.map(post => {
+        const formattedPosts: Post[] = (data as PostRecord[]).map(post => {
           // Get user liked status
           // This would normally check if current user has liked
           const isLiked = false;
@@ -274,7 +291,7 @@ export function FeedTab() {
       const { error } = await supabase
         .from('posts')
         .update({ likes: newLikeCount })
-        .eq('id', postId);
+        .eq('id', postId) as any;
         
       if (error) {
         console.error("Error updating like count:", error);
@@ -334,7 +351,7 @@ export function FeedTab() {
         imageUrl = await uploadImage(selectedImage);
       }
       
-      // Insert post into Supabase
+      // Insert post into Supabase with type assertion
       const { data, error } = await supabase
         .from('posts')
         .insert({
@@ -345,7 +362,7 @@ export function FeedTab() {
           likes: 0,
           comments_count: 0
         })
-        .select();
+        .select() as any;
       
       if (error) {
         console.error("Error creating post:", error);
@@ -418,7 +435,7 @@ export function FeedTab() {
             user_type
           )
         `)
-        .contains('hashtags', [tag]);
+        .contains('hashtags', [tag]) as any;
       
       if (error) {
         console.error("Error filtering posts:", error);
@@ -427,7 +444,7 @@ export function FeedTab() {
       
       if (data) {
         // Format posts
-        const filteredPosts: Post[] = data.map(post => {
+        const filteredPosts: Post[] = (data as PostRecord[]).map(post => {
           return {
             id: post.id,
             author: {
