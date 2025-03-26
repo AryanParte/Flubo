@@ -54,3 +54,20 @@ export type StartupNotificationSettings = {
   created_at: string;
   updated_at: string;
 };
+
+// Add a Post type definition for the posts table
+export type Post = {
+  id: string;
+  user_id: string;
+  content: string;
+  image_url: string | null;
+  likes: number;
+  comments_count: number;
+  hashtags: string[];
+  created_at: string;
+  profiles?: {
+    id: string;
+    name: string | null;
+    user_type: string | null;
+  } | null;
+};
