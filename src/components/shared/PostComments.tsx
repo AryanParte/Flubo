@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -87,12 +88,12 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   }, [postId]);
   
   // Update posts table comment count
-  const updatePostCommentCount = async (change: number) => {
+  const updatePostCommentCount = async (count: number) => {
     try {
-      console.log(`Updating post ${postId} comment count by ${change}`);
+      console.log(`Updating post ${postId} comment count to ${count}`);
       const { error } = await supabase
         .from('posts')
-        .update({ comments_count: comments.length + change })
+        .update({ comments_count: count })
         .eq('id', postId);
       
       if (error) {
@@ -137,30 +138,34 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           
           if (data) {
             console.log('Adding new comment to state with profile:', data);
-            setComments(prev => [...prev, data as Comment]);
+            const updatedComments = [...comments, data as Comment];
+            setComments(updatedComments);
+            
             if (onCommentCountChange) {
-              onCommentCountChange(comments.length + 1);
+              onCommentCountChange(updatedComments.length);
             }
             
             if (payload.new.user_id !== user?.id) {
-              updatePostCommentCount(1);
+              updatePostCommentCount(updatedComments.length);
             }
           }
         };
         
         fetchNewComment();
       } else if (payload.eventType === 'UPDATE' && payload.new.post_id === postId) {
-        setComments(prev => 
-          prev.map(comment => comment.id === payload.new.id ? 
-            { ...comment, ...payload.new } : comment)
+        const updatedComments = comments.map(comment => 
+          comment.id === payload.new.id ? { ...comment, ...payload.new } : comment
         );
+        setComments(updatedComments);
       } else if (payload.eventType === 'DELETE' && payload.old.post_id === postId) {
-        setComments(prev => prev.filter(comment => comment.id !== payload.old.id));
+        const updatedComments = comments.filter(comment => comment.id !== payload.old.id);
+        setComments(updatedComments);
+        
         if (onCommentCountChange) {
-          onCommentCountChange(comments.length - 1);
+          onCommentCountChange(updatedComments.length);
         }
         
-        updatePostCommentCount(-1);
+        updatePostCommentCount(updatedComments.length);
       }
     },
     `post_id=eq.${postId}`
@@ -233,15 +238,17 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
 
       console.log('Comment added successfully:', data);
       
-      await updatePostCommentCount(1);
-
       setNewComment('');
       
       if (data && data[0]) {
-        setComments(prev => [...prev, data[0] as Comment]);
+        const updatedComments = [...comments, data[0] as Comment];
+        setComments(updatedComments);
+        
         if (onCommentCountChange) {
-          onCommentCountChange(comments.length + 1);
+          onCommentCountChange(updatedComments.length);
         }
+        
+        await updatePostCommentCount(updatedComments.length);
       }
       
       toast({
