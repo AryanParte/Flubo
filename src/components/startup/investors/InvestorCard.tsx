@@ -87,19 +87,7 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
       
       <CardFooter className="px-6 pb-6 pt-0">
         <div className="w-full">
-          <Button 
-            variant="accent" 
-            className="w-full" 
-            onClick={() => {
-              if (document.getElementById(`ai-chat-${investor.id}`)) {
-                document.getElementById(`ai-chat-${investor.id}`)?.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-          >
-            <Bot size={16} className="mr-2" />
-            Chat with AI Assistant
-          </Button>
-          <div id={`ai-chat-${investor.id}`} className="mt-4">
+          <div id={`ai-chat-${investor.id}`} className="mt-1">
             <InvestorAIChat investor={investor} />
           </div>
         </div>
