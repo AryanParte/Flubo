@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { MessageSquare, ThumbsUp, ThumbsDown, Eye, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,16 +44,7 @@ export const MatchesTab = () => {
             email,
             company,
             position
-          ),
-          startup_profiles!ai_persona_chats_startup_id_fkey (
-            stage,
-            location,
-            industry,
-            bio,
-            raised_amount,
-            tagline
-          ),
-          ai_match_feed_status (status)
+          )
         `)
         .eq('investor_id', user?.id)
         .eq('completed', true)
@@ -62,8 +54,8 @@ export const MatchesTab = () => {
         console.error("Error fetching AI matches:", aiError);
         toast({ title: "Error", description: "Failed to load AI matches", variant: "destructive" });
       } else if (aiChats) {
-        // Transform the data for our Startup type
-        const transformedAiMatches = aiChats.map(chat => {
+        // Now fetch startup profile data separately for each startup_id
+        const enhancedMatches = await Promise.all(aiChats.map(async (chat) => {
           // Default values for startup info
           const startup_id = chat.startup_id || '';
           const defaultStartup = {
@@ -80,12 +72,28 @@ export const MatchesTab = () => {
           // Get profile data
           const profileData = chat.profiles;
           
-          // Get startup profile data
-          const startupProfileData = chat.startup_profiles;
+          // Fetch startup profile data separately
+          let startupProfileData = null;
+          if (chat.startup_id) {
+            const { data: profileData } = await supabase
+              .from('startup_profiles')
+              .select('stage, location, industry, bio, raised_amount, tagline')
+              .eq('id', chat.startup_id)
+              .maybeSingle();
+              
+            startupProfileData = profileData;
+          }
           
-          // Check if ai_match_feed_status exists and is an array with at least one element
-          const statusItems = Array.isArray(chat.ai_match_feed_status) ? chat.ai_match_feed_status : [];
-          const status = statusItems.length > 0 ? statusItems[0]?.status : 'new';
+          // Check if ai_match_feed_status exists
+          const { data: statusData } = await supabase
+            .from('ai_match_feed_status')
+            .select('status')
+            .eq('investor_id', user?.id)
+            .eq('startup_id', chat.startup_id)
+            .eq('chat_id', chat.id)
+            .maybeSingle();
+          
+          const status = statusData?.status || 'new';
           
           return {
             id: profileData ? profileData.id : startup_id,
@@ -101,10 +109,10 @@ export const MatchesTab = () => {
             chatId: chat.id,
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
           };
-        });
+        }));
 
         // Filter out ignored matches
-        const filteredMatches = transformedAiMatches.filter(
+        const filteredMatches = enhancedMatches.filter(
           match => match.matchStatus !== 'ignored'
         );
         
@@ -124,14 +132,6 @@ export const MatchesTab = () => {
             email,
             company,
             position
-          ),
-          startup_profiles!investor_matches_startup_id_fkey (
-            stage,
-            location,
-            industry,
-            bio,
-            raised_amount,
-            tagline
           )
         `)
         .eq('investor_id', user?.id)
@@ -141,7 +141,8 @@ export const MatchesTab = () => {
       if (mutualError) {
         console.error("Error fetching confirmed matches:", mutualError);
       } else if (mutualMatches) {
-        const transformedConfirmedMatches = mutualMatches.map(match => {
+        // Now fetch startup profile data separately for each startup_id
+        const enhancedConfirmedMatches = await Promise.all(mutualMatches.map(async (match) => {
           // Default values for startup info
           const startup_id = match.startup_id || '';
           const defaultStartup = {
@@ -158,8 +159,17 @@ export const MatchesTab = () => {
           // Get profile data
           const profileData = match.profiles;
           
-          // Get startup profile data
-          const startupProfileData = match.startup_profiles;
+          // Fetch startup profile data separately
+          let startupProfileData = null;
+          if (match.startup_id) {
+            const { data: profileData } = await supabase
+              .from('startup_profiles')
+              .select('stage, location, industry, bio, raised_amount, tagline, looking_for_funding, looking_for_design_partner')
+              .eq('id', match.startup_id)
+              .maybeSingle();
+              
+            startupProfileData = profileData;
+          }
           
           return {
             id: profileData ? profileData.id : startup_id,
@@ -170,11 +180,13 @@ export const MatchesTab = () => {
             industry: startupProfileData ? startupProfileData.industry : defaultStartup.industry,
             bio: startupProfileData ? startupProfileData.bio : defaultStartup.bio,
             raised_amount: startupProfileData ? startupProfileData.raised_amount : defaultStartup.raised_amount,
-            tagline: startupProfileData ? startupProfileData.tagline : defaultStartup.tagline
+            tagline: startupProfileData ? startupProfileData.tagline : defaultStartup.tagline,
+            lookingForFunding: startupProfileData ? startupProfileData.looking_for_funding : false,
+            lookingForDesignPartner: startupProfileData ? startupProfileData.looking_for_design_partner : false
           };
-        });
+        }));
         
-        setConfirmedMatches(transformedConfirmedMatches);
+        setConfirmedMatches(enhancedConfirmedMatches);
       }
     } catch (error) {
       console.error("Error in fetchMatches:", error);
@@ -398,14 +410,14 @@ export const MatchesTab = () => {
               <div className="bg-gradient-to-r from-accent/20 to-accent/5 p-5">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="font-bold text-xl">{currentMatch.name}</h3>
+                    <h3 className="font-bold text-xl">{aiMatches[currentMatchIndex]?.name}</h3>
                     <div className="flex items-center text-sm text-muted-foreground">
-                      <span className="pr-2 mr-2 border-r border-border">{currentMatch.stage}</span>
-                      <span>{currentMatch.location}</span>
+                      <span className="pr-2 mr-2 border-r border-border">{aiMatches[currentMatchIndex]?.stage}</span>
+                      <span>{aiMatches[currentMatchIndex]?.location}</span>
                     </div>
                   </div>
                   <div className="bg-accent/10 text-accent text-lg font-medium rounded-full px-4 py-2 flex items-center">
-                    {currentMatch.score}% Match
+                    {aiMatches[currentMatchIndex]?.score}% Match
                   </div>
                 </div>
               </div>
@@ -414,20 +426,20 @@ export const MatchesTab = () => {
               <div className="p-6">
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Match Summary</h4>
-                  <p className="text-muted-foreground">{currentMatch.matchSummary}</p>
+                  <p className="text-muted-foreground">{aiMatches[currentMatchIndex]?.matchSummary}</p>
                 </div>
                 
                 <div className="mb-6">
-                  <h4 className="font-medium mb-2">About {currentMatch.name}</h4>
-                  <p className="text-muted-foreground mb-3">{currentMatch.bio || currentMatch.tagline}</p>
+                  <h4 className="font-medium mb-2">About {aiMatches[currentMatchIndex]?.name}</h4>
+                  <p className="text-muted-foreground mb-3">{aiMatches[currentMatchIndex]?.bio || aiMatches[currentMatchIndex]?.tagline}</p>
                   
                   <div className="flex items-center text-sm mb-2">
                     <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground mr-2">
-                      {currentMatch.industry}
+                      {aiMatches[currentMatchIndex]?.industry}
                     </div>
-                    {currentMatch.raised_amount && currentMatch.raised_amount !== "N/A" && (
+                    {aiMatches[currentMatchIndex]?.raised_amount && aiMatches[currentMatchIndex]?.raised_amount !== "N/A" && (
                       <div className="text-muted-foreground">
-                        Raised: {currentMatch.raised_amount}
+                        Raised: {aiMatches[currentMatchIndex]?.raised_amount}
                       </div>
                     )}
                   </div>
@@ -438,7 +450,7 @@ export const MatchesTab = () => {
                   <Button 
                     variant="secondary"
                     className="flex-1 flex justify-center items-center"
-                    onClick={() => handleIgnoreStartup(currentMatch)}
+                    onClick={() => handleIgnoreStartup(aiMatches[currentMatchIndex])}
                   >
                     <ThumbsDown size={16} className="mr-1" />
                     <span>Not Interested</span>
@@ -446,7 +458,7 @@ export const MatchesTab = () => {
                   <Button 
                     variant="outline"
                     className="flex-1 flex justify-center items-center"
-                    onClick={() => handleViewChat(currentMatch.chatId!)}
+                    onClick={() => handleViewChat(aiMatches[currentMatchIndex]?.chatId!)}
                   >
                     <Eye size={16} className="mr-1" />
                     <span>View Conversation</span>
@@ -457,7 +469,7 @@ export const MatchesTab = () => {
                   <Button 
                     variant="default"
                     className="flex-1 flex justify-center items-center"
-                    onClick={() => handleFollowStartup(currentMatch)}
+                    onClick={() => handleFollowStartup(aiMatches[currentMatchIndex])}
                   >
                     <ThumbsUp size={16} className="mr-1" />
                     <span>Follow</span>
@@ -465,7 +477,7 @@ export const MatchesTab = () => {
                   <Button 
                     variant="accent"
                     className="flex-1 flex justify-center items-center"
-                    onClick={() => handleRequestDemo(currentMatch)}
+                    onClick={() => handleRequestDemo(aiMatches[currentMatchIndex])}
                   >
                     <MessageSquare size={16} className="mr-1" />
                     <span>Request Demo</span>
