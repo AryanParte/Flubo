@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +12,7 @@ export type Comment = {
   id: string;
   post_id: string;
   user_id: string;
+  profile_id: string;
   content: string;
   created_at: string;
   profiles?: {
@@ -45,6 +45,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           id,
           post_id,
           user_id,
+          profile_id,
           content,
           created_at,
           profiles (
@@ -70,6 +71,11 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       }
     } catch (error) {
       console.error("Error in fetchComments:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load comments",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +90,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const updatePostCommentCount = async (change: number) => {
     try {
       console.log(`Updating post ${postId} comment count by ${change}`);
-      // Use a direct query instead of rpc to avoid type issues
       const { error } = await supabase
         .from('posts')
         .update({ comments_count: comments.length + change })
@@ -106,7 +111,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       console.log('Received comment update:', payload);
       
       if (payload.eventType === 'INSERT' && payload.new.post_id === postId) {
-        // Fetch the complete comment with profile information
         const fetchNewComment = async () => {
           const { data, error } = await supabase
             .from('comments')
@@ -114,6 +118,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
               id,
               post_id,
               user_id,
+              profile_id,
               content,
               created_at,
               profiles (
@@ -131,18 +136,13 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           }
           
           if (data) {
-            // Add new comment to state
             console.log('Adding new comment to state with profile:', data);
             setComments(prev => [...prev, data as Comment]);
-            // Update the comment count - using the new total count
             if (onCommentCountChange) {
               onCommentCountChange(comments.length + 1);
             }
             
-            // Also update the post's comment count in the database
             if (payload.new.user_id !== user?.id) {
-              // Only update if this wasn't triggered by the current user's action
-              // (to avoid duplicate updates)
               updatePostCommentCount(1);
             }
           }
@@ -150,22 +150,16 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         
         fetchNewComment();
       } else if (payload.eventType === 'UPDATE' && payload.new.post_id === postId) {
-        // Update existing comment
-        console.log('Updating existing comment:', payload.new);
         setComments(prev => 
           prev.map(comment => comment.id === payload.new.id ? 
             { ...comment, ...payload.new } : comment)
         );
       } else if (payload.eventType === 'DELETE' && payload.old.post_id === postId) {
-        // Remove deleted comment
-        console.log('Removing deleted comment:', payload.old);
         setComments(prev => prev.filter(comment => comment.id !== payload.old.id));
-        // Update comment count - using the new total after deletion
         if (onCommentCountChange) {
           onCommentCountChange(comments.length - 1);
         }
         
-        // Update the post's comment count
         updatePostCommentCount(-1);
       }
     },
@@ -215,12 +209,14 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         .insert({
           post_id: postId,
           user_id: user.id,
+          profile_id: user.id,
           content: newComment.trim()
         })
         .select(`
           id,
           post_id,
           user_id,
+          profile_id,
           content,
           created_at,
           profiles (
@@ -237,16 +233,12 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
 
       console.log('Comment added successfully:', data);
       
-      // Update the post's comment count directly
       await updatePostCommentCount(1);
 
       setNewComment('');
       
-      // Local UI update for immediate feedback
       if (data && data[0]) {
         setComments(prev => [...prev, data[0] as Comment]);
-        
-        // Use the new total count directly instead of a function
         if (onCommentCountChange) {
           onCommentCountChange(comments.length + 1);
         }
