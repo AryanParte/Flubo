@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -32,27 +33,29 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { data: comments, loading: loadingComments, error } = useSupabaseQuery<Comment[]>(() => 
-    supabase
-      .from('comments')
-      .select(`
-        id,
-        post_id,
-        user_id,
-        content,
-        created_at,
-        profiles (
+  const { data: comments, loading: loadingComments, error } = useSupabaseQuery<Comment[]>(() => {
+    return new Promise<SupabaseQueryResult<Comment[]>>((resolve) => {
+      supabase
+        .from('comments')
+        .select(`
           id,
-          name,
-          user_type
-        )
-      `)
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true })
-      .then(({ data, error }) => {
-        return { data, error } as SupabaseQueryResult<Comment[]>;
-      })
-  , [postId]);
+          post_id,
+          user_id,
+          content,
+          created_at,
+          profiles (
+            id,
+            name,
+            user_type
+          )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true })
+        .then(({ data, error }) => {
+          resolve({ data, error });
+        });
+    });
+  }, [postId]);
 
   useRealtimeSubscription<Comment>(
     'comments',

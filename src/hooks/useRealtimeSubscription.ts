@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -21,8 +21,8 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to events
     events.forEach(event => {
-      // Using a type assertion to bypass TypeScript's type checking issue
-      // @ts-ignore - The types in supabase-js don't perfectly align with the actual API
+      // Need to use any type here because of Supabase's API typing limitations
+      // @ts-ignore - The Supabase types don't match the actual API functionality
       newChannel.on(
         'postgres_changes',
         {
