@@ -152,7 +152,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
       // Update the chat history
       setChatHistory([{
         id: msgData.id,
-        chat_id: chatId,
         content: welcomeMessage,
         sender_type: 'ai'
       }]);
