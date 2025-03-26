@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -98,85 +99,15 @@ export function FeedTab() {
   const fetchPosts = async (filter = 'latest') => {
     setIsLoadingPosts(true);
     try {
-      // In a real implementation, this would fetch from a 'posts' table in Supabase
-      // Since this is a demo, we'll continue with mock data for now but with a structure
-      // that would work with Supabase
+      // In a production app, fetch real posts from Supabase
+      // No mock posts here - we've removed the placeholder posts
       
-      // Mock data with hashtags
-      const mockPosts: Post[] = [
-        {
-          id: '1',
-          author: {
-            id: 'user-1',
-            name: 'Jane Cooper',
-            role: 'Investor | Founder of TechVentures',
-            avatar: '/placeholder.svg'
-          },
-          content: 'Just met with an amazing fintech startup that\'s revolutionizing how small businesses access capital. Looking forward to potentially joining their journey! #VentureCapital #Fintech',
-          timestamp: '2 hours ago',
-          likes: 24,
-          comments: 5,
-          isLiked: false,
-          hashtags: ['VentureCapital', 'Fintech'],
-          image_url: null,
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '2',
-          author: {
-            id: 'user-2',
-            name: 'Alex Morgan',
-            role: 'Business | CEO at GreenTech Solutions',
-            avatar: '/placeholder.svg'
-          },
-          content: 'Excited to announce that we\'ve just closed our seed round! $1.5M to help us build the future of sustainable energy solutions. Thanks to all our investors who believed in our vision. #Funding #CleanTech #Startup',
-          timestamp: '5 hours ago',
-          likes: 88,
-          comments: 12,
-          isLiked: true,
-          hashtags: ['Funding', 'CleanTech', 'Startup'],
-          image_url: 'https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?q=80&w=1974&auto=format&fit=crop',
-          created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '3',
-          author: {
-            id: 'user-3',
-            name: 'Robert Chen',
-            role: 'Investor | Partner at Blue Ventures',
-            avatar: '/placeholder.svg'
-          },
-          content: 'What\'s the biggest challenge you\'re facing in raising your Series A? Share your experiences below, and I\'ll try to provide some insights from an investor\'s perspective. #StartupAdvice #VentureCapital',
-          timestamp: '1 day ago',
-          likes: 45,
-          comments: 32,
-          isLiked: false,
-          hashtags: ['StartupAdvice', 'VentureCapital'],
-          image_url: null,
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '4',
-          author: {
-            id: 'user-4',
-            name: 'Maria Silva',
-            role: 'Business | Founder of HealthAI',
-            avatar: '/placeholder.svg'
-          },
-          content: 'Looking for technical co-founders with experience in ML and healthcare. We\'re building an AI platform to improve patient outcomes and reduce healthcare costs. DM if interested or can make introductions! #CoFounder #HealthTech #AI',
-          timestamp: '2 days ago',
-          likes: 19,
-          comments: 8,
-          isLiked: false,
-          hashtags: ['CoFounder', 'HealthTech', 'AI'],
-          image_url: null,
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
+      // Simulate an empty response for now as we're removing mock data
+      // In a real implementation, you would fetch actual posts from a 'posts' table
+      const emptyPosts: Post[] = [];
       
-      let filteredPosts = [...mockPosts];
-      
-      // Apply filtering
+      // Apply filtering (would work with real posts)
+      let filteredPosts = [...emptyPosts];
       switch (filter) {
         case 'latest':
           filteredPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -188,7 +119,6 @@ export function FeedTab() {
           filteredPosts.sort((a, b) => b.likes - a.likes);
           break;
         case 'most-viewed':
-          // In a real app, we'd track views. For now, we'll use a combination of likes and comments
           filteredPosts.sort((a, b) => (b.likes * 2 + b.comments) - (a.likes * 2 + a.comments));
           break;
         default:
@@ -238,14 +168,14 @@ export function FeedTab() {
   
   // Upload image to storage (in a real app, this would upload to Supabase Storage)
   const uploadImage = async (file: File): Promise<string | null> => {
-    // Mock implementation
-    // In production, you'd use supabase.storage.from('images').upload(...)
-    return new Promise(resolve => {
-      setTimeout(() => {
-        // Return mock URL
-        resolve(imagePreviewUrl);
-      }, 500);
-    });
+    try {
+      // In a real implementation, you'd use Supabase Storage
+      // For now, just return the preview URL
+      return imagePreviewUrl;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      return null;
+    }
   };
   
   // Handle liking a post
@@ -263,12 +193,6 @@ export function FeedTab() {
     }));
     
     // In a real implementation, this would update the likes in Supabase
-    // Example:
-    // if (post.isLiked) {
-    //   await supabase.from('post_likes').delete().match({ post_id: postId, user_id: user.id });
-    // } else {
-    //   await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
-    // }
   };
   
   // Handle creating a new post
@@ -295,9 +219,9 @@ export function FeedTab() {
       }
       
       // In a real implementation, this would save to Supabase
-      // Example:
+      // Example of how it would be implemented:
       // const { data, error } = await supabase.from('posts').insert({
-      //   user_id: user.id,
+      //   user_id: user?.id,
       //   content: newPostContent,
       //   hashtags: extractedHashtags,
       //   image_url: imageUrl,
