@@ -32,10 +32,14 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const { user } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { data: comments, loading: loadingComments, error } = useSupabaseQuery<Comment[]>(() => {
-    return new Promise<SupabaseQueryResult<Comment[]>>((resolve) => {
-      supabase
+  // Fetch initial comments
+  const fetchComments = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
         .from('comments')
         .select(`
           id,
@@ -50,33 +54,57 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           )
         `)
         .eq('post_id', postId)
-        .order('created_at', { ascending: true })
-        .then(({ data, error }) => {
-          resolve({ data, error });
-        });
-    });
+        .order('created_at', { ascending: true });
+        
+      if (error) {
+        console.error("Error fetching comments:", error);
+        throw error;
+      }
+      
+      if (data) {
+        setComments(data as Comment[]);
+        if (onCommentCountChange) {
+          onCommentCountChange(data.length);
+        }
+      }
+    } catch (error) {
+      console.error("Error in fetchComments:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Initial fetch
+  useEffect(() => {
+    fetchComments();
   }, [postId]);
-
+  
+  // Setup realtime subscription for comments
   useRealtimeSubscription<Comment>(
     'comments',
     ['INSERT', 'UPDATE', 'DELETE'],
     (payload) => {
-      if (comments && onCommentCountChange) {
-        if (payload.eventType === 'INSERT') {
+      if (payload.eventType === 'INSERT' && payload.new.post_id === postId) {
+        // Add new comment to state
+        setComments(prev => [...prev, payload.new]);
+        if (onCommentCountChange) {
           onCommentCountChange(comments.length + 1);
-        } else if (payload.eventType === 'DELETE') {
+        }
+      } else if (payload.eventType === 'UPDATE' && payload.new.post_id === postId) {
+        // Update existing comment
+        setComments(prev => 
+          prev.map(comment => comment.id === payload.new.id ? payload.new : comment)
+        );
+      } else if (payload.eventType === 'DELETE' && payload.old.post_id === postId) {
+        // Remove deleted comment
+        setComments(prev => prev.filter(comment => comment.id !== payload.old.id));
+        if (onCommentCountChange) {
           onCommentCountChange(comments.length - 1);
         }
       }
     },
     `post_id=eq.${postId}`
   );
-
-  useEffect(() => {
-    if (comments && onCommentCountChange) {
-      onCommentCountChange(comments.length);
-    }
-  }, [comments, onCommentCountChange]);
 
   async function handleAddComment() {
     if (!user) {
@@ -113,16 +141,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         throw error;
       }
 
-      const { error: updateError } = await supabase
-        .from('posts')
-        .update({ 
-          comments_count: (comments?.length || 0) + 1 
-        })
-        .eq('id', postId);
-
-      if (updateError) {
-        console.error("Error updating comment count:", updateError);
-      }
+      // No need to manually update the UI since we have realtime subscription
 
       setNewComment('');
       
@@ -165,15 +184,11 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     return `${years} year${years !== 1 ? 's' : ''} ago`;
   }
 
-  if (error) {
-    return <div className="text-red-500 p-4">Error loading comments: {error.message}</div>;
-  }
-
   return (
     <div className="space-y-4 mt-4">
-      <h3 className="font-medium text-sm">{comments?.length || 0} Comments</h3>
+      <h3 className="font-medium text-sm">{comments.length || 0} Comments</h3>
       
-      {loadingComments ? (
+      {isLoading ? (
         <div className="flex justify-center py-4">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>

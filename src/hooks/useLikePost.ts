@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/use-toast';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 type LikeStatus = {
   isLiked: boolean;
@@ -11,37 +12,68 @@ type LikeStatus = {
   isLoading: boolean;
 };
 
+type PostLike = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  created_at: string;
+};
+
 export function useLikePost(postId: string, initialLikesCount: number): LikeStatus {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [likesCount, setLikesCount] = useState<number>(initialLikesCount);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
-  // Check if post is already liked by this user
-  useEffect(() => {
-    const checkLikeStatus = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('post_likes')
-          .select('id')
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
-          console.error("Error checking like status:", error);
-          return;
+  // Listen to real-time updates for post likes
+  useRealtimeSubscription<PostLike>(
+    'post_likes',
+    ['INSERT', 'DELETE'],
+    (payload) => {
+      if (payload.new?.post_id === postId || payload.old?.post_id === postId) {
+        // Refresh like status if the update is for the current post
+        if (user) {
+          checkLikeStatus();
         }
         
-        setIsLiked(!!data);
-      } catch (error) {
-        console.error("Error in checkLikeStatus:", error);
+        // Update likes count based on the event type
+        if (payload.eventType === 'INSERT') {
+          setLikesCount(prevCount => prevCount + 1);
+        } else if (payload.eventType === 'DELETE') {
+          setLikesCount(prevCount => Math.max(0, prevCount - 1));
+        }
       }
-    };
+    },
+    `post_id=eq.${postId}`
+  );
+  
+  // Check if post is already liked by this user
+  const checkLikeStatus = async () => {
+    if (!user) return;
     
-    checkLikeStatus();
+    try {
+      const { data, error } = await supabase
+        .from('post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+        console.error("Error checking like status:", error);
+        return;
+      }
+      
+      setIsLiked(!!data);
+    } catch (error) {
+      console.error("Error in checkLikeStatus:", error);
+    }
+  };
+  
+  useEffect(() => {
+    if (user) {
+      checkLikeStatus();
+    }
   }, [postId, user]);
   
   const toggleLike = async () => {
@@ -70,19 +102,8 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
           throw deleteLikeError;
         }
         
-        // Update post likes count
-        const { error: updatePostError } = await supabase
-          .from('posts')
-          .update({ likes: likesCount - 1 })
-          .eq('id', postId);
-          
-        if (updatePostError) {
-          console.error("Error updating post likes count:", updatePostError);
-          throw updatePostError;
-        }
-        
+        // No need to update post likes count as the realtime subscription will handle this
         setIsLiked(false);
-        setLikesCount(prev => prev - 1);
       } else {
         // Add like
         const { error: addLikeError } = await supabase
@@ -97,19 +118,8 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
           throw addLikeError;
         }
         
-        // Update post likes count
-        const { error: updatePostError } = await supabase
-          .from('posts')
-          .update({ likes: likesCount + 1 })
-          .eq('id', postId);
-          
-        if (updatePostError) {
-          console.error("Error updating post likes count:", updatePostError);
-          throw updatePostError;
-        }
-        
+        // No need to update post likes count as the realtime subscription will handle this
         setIsLiked(true);
-        setLikesCount(prev => prev + 1);
       }
     } catch (error) {
       console.error("Error toggling like:", error);
