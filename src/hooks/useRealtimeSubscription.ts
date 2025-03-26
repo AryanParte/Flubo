@@ -21,8 +21,9 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to events
     events.forEach(event => {
-      // Use type assertion for the Supabase realtime API
-      // @ts-expect-error - The Supabase types don't match the actual API functionality
+      // We need to bypass TypeScript's type checking here because the Supabase types
+      // don't accurately reflect the actual API functionality for realtime subscriptions
+      // @ts-ignore
       newChannel.on(
         'postgres_changes',
         {
