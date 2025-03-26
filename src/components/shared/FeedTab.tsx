@@ -11,16 +11,12 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { 
   Image, 
-  MessageSquare, 
-  ThumbsUp, 
-  Share, 
-  MoreHorizontal, 
-  SendHorizontal, 
   Loader2,
   TrendingUp,
   Clock,
   ArrowUp,
-  Eye 
+  Eye,
+  SendHorizontal
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,27 +27,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-
-// Post type definition
-type PostAuthor = {
-  id: string;
-  name: string;
-  role: string;
-  avatar: string;
-};
-
-type Post = {
-  id: string;
-  author: PostAuthor;
-  content: string;
-  timestamp: string;
-  likes: number;
-  comments: number;
-  isLiked: boolean;
-  hashtags?: string[];
-  image_url?: string | null;
-  created_at: string;
-};
+import { Post, PostProps } from "./Post";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 // Define our custom type for working with posts data from Supabase
 type PostRecord = {
@@ -72,7 +49,7 @@ type PostRecord = {
 
 export function FeedTab() {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostProps[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPostingContent, setIsPostingContent] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
@@ -81,6 +58,31 @@ export function FeedTab() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<{name: string | null, user_type: string | null} | null>(null);
+  
+  // Subscribe to real-time post updates
+  useRealtimeSubscription<PostRecord>(
+    'posts',
+    ['INSERT', 'UPDATE'],
+    (payload) => {
+      if (payload.eventType === 'INSERT') {
+        // Add new post to the state
+        fetchPosts(selectedFilter);
+      } else if (payload.eventType === 'UPDATE') {
+        // Update existing post in the state
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post.id === payload.new.id 
+              ? {
+                  ...post,
+                  likes: payload.new.likes,
+                  comments: payload.new.comments_count,
+                }
+              : post
+          )
+        );
+      }
+    }
+  );
   
   // Extract hashtags from post content
   const extractHashtags = (content: string): string[] => {
@@ -191,11 +193,7 @@ export function FeedTab() {
       
       if (data) {
         // Format posts
-        const formattedPosts: Post[] = (data as PostRecord[]).map(post => {
-          // Get user liked status
-          // This would normally check if current user has liked
-          const isLiked = false;
-          
+        const formattedPosts: PostProps[] = (data as PostRecord[]).map(post => {
           return {
             id: post.id,
             author: {
@@ -208,10 +206,8 @@ export function FeedTab() {
             timestamp: formatRelativeTime(post.created_at),
             likes: post.likes || 0,
             comments: post.comments_count || 0,
-            isLiked,
             hashtags: post.hashtags,
             image_url: post.image_url,
-            created_at: post.created_at
           };
         });
         
@@ -269,56 +265,6 @@ export function FeedTab() {
     }
   };
   
-  // Handle liking a post
-  const handleLike = async (postId: string) => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to like posts",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Find the post
-      const postToUpdate = posts.find(p => p.id === postId);
-      if (!postToUpdate) return;
-      
-      const newLikeCount = postToUpdate.isLiked ? postToUpdate.likes - 1 : postToUpdate.likes + 1;
-      
-      // Update post in database
-      const { error } = await supabase
-        .from('posts')
-        .update({ likes: newLikeCount })
-        .eq('id', postId) as any;
-        
-      if (error) {
-        console.error("Error updating like count:", error);
-        throw error;
-      }
-      
-      // Update UI
-      setPosts(posts.map(post => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            likes: newLikeCount,
-            isLiked: !post.isLiked
-          };
-        }
-        return post;
-      }));
-    } catch (error) {
-      console.error("Error handling like:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update like status",
-        variant: "destructive",
-      });
-    }
-  };
-  
   // Handle creating a new post
   const handleCreatePost = async () => {
     if (!newPostContent.trim() && !selectedImage) {
@@ -367,29 +313,6 @@ export function FeedTab() {
       if (error) {
         console.error("Error creating post:", error);
         throw error;
-      }
-      
-      // Add to local state
-      if (data && data.length > 0) {
-        const newPost: Post = {
-          id: data[0].id,
-          author: {
-            id: user.id,
-            name: userProfile?.name || (user?.user_metadata?.name as string) || 'Anonymous User',
-            role: userProfile?.user_type === 'startup' ? 'Business' : 'Investor',
-            avatar: '/placeholder.svg'
-          },
-          content: newPostContent,
-          timestamp: 'Just now',
-          likes: 0,
-          comments: 0,
-          isLiked: false,
-          hashtags: extractedHashtags,
-          image_url: imageUrl,
-          created_at: new Date().toISOString()
-        };
-        
-        setPosts([newPost, ...posts]);
       }
       
       // Clear form
@@ -444,7 +367,7 @@ export function FeedTab() {
       
       if (data) {
         // Format posts
-        const filteredPosts: Post[] = (data as PostRecord[]).map(post => {
+        const filteredPosts: PostProps[] = (data as PostRecord[]).map(post => {
           return {
             id: post.id,
             author: {
@@ -457,10 +380,8 @@ export function FeedTab() {
             timestamp: formatRelativeTime(post.created_at),
             likes: post.likes || 0,
             comments: post.comments_count || 0,
-            isLiked: false,
             hashtags: post.hashtags,
             image_url: post.image_url,
-            created_at: post.created_at
           };
         });
         
@@ -667,84 +588,11 @@ export function FeedTab() {
     return (
       <div className="space-y-4">
         {posts.map((post) => (
-          <Card key={post.id} className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex space-x-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={post.author.avatar} alt={post.author.name} />
-                  <AvatarFallback>{post.author.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{post.author.name}</p>
-                  <p className="text-sm text-muted-foreground">{post.author.role}</p>
-                  <p className="text-xs text-muted-foreground">{post.timestamp}</p>
-                </div>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Save Post</DropdownMenuItem>
-                  <DropdownMenuItem>Follow {post.author.name}</DropdownMenuItem>
-                  <DropdownMenuItem>Report Post</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            
-            <div className="mt-3">
-              <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-              
-              {post.hashtags && post.hashtags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {post.hashtags.map(tag => (
-                    <Badge 
-                      key={tag} 
-                      variant="secondary" 
-                      className="text-xs cursor-pointer hover:bg-accent"
-                      onClick={() => filterByHashtag(tag)}
-                    >
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {post.image_url && (
-              <div className="mt-3">
-                <img 
-                  src={post.image_url} 
-                  alt="Post attachment" 
-                  className="rounded-md max-h-96 object-cover w-full" 
-                />
-              </div>
-            )}
-            
-            <Separator className="my-3" />
-            
-            <div className="flex justify-between">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={post.isLiked ? "text-primary" : ""}
-                onClick={() => handleLike(post.id)}
-              >
-                <ThumbsUp className={`h-4 w-4 mr-2 ${post.isLiked ? "fill-primary" : ""}`} />
-                {post.likes}
-              </Button>
-              <Button variant="ghost" size="sm">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                {post.comments}
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Share className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            </div>
-          </Card>
+          <Post 
+            key={post.id} 
+            {...post} 
+            onHashtagClick={filterByHashtag}
+          />
         ))}
       </div>
     );
