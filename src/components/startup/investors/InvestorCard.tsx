@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Mail, Briefcase, Building, MapPin, Tags, DollarSign, Loader2, Bot } from "lucide-react";
+import { Briefcase, Building, MapPin, Tags, DollarSign, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -9,10 +9,6 @@ import {
   CardFooter
 } from "@/components/ui/card";
 import { Investor } from "../../../types/investor";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { InvestorAIChat } from "./InvestorAIChat";
 
@@ -21,68 +17,6 @@ interface InvestorCardProps {
 }
 
 export const InvestorCard = ({ investor }: InvestorCardProps) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [sendingMessage, setSendingMessage] = useState<string | null>(null);
-
-  const handleMessageInvestor = async () => {
-    try {
-      setSendingMessage(investor.id);
-      
-      // Check if there's already a conversation with this investor
-      const { data: existingMessages, error: messageError } = await supabase
-        .from('messages')
-        .select('id')
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${investor.id}),and(sender_id.eq.${investor.id},recipient_id.eq.${user.id})`)
-        .limit(1);
-        
-      if (messageError) throw messageError;
-      
-      // If there's no existing conversation, create an initial message
-      if (!existingMessages || existingMessages.length === 0) {
-        // Get the authenticated user's name from profiles table
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError) throw profileError;
-        
-        const userName = profileData?.name || "Unknown Startup";
-        
-        // Create initial message from startup to investor
-        const { error } = await supabase
-          .from('messages')
-          .insert({
-            content: `Hello from ${userName}! We're interested in connecting with you.`,
-            sender_id: user.id,
-            recipient_id: investor.id,
-            sent_at: new Date().toISOString()
-          });
-          
-        if (error) throw error;
-      }
-      
-      toast({
-        title: "Investor contacted",
-        description: `You can now message ${investor.name} directly.`,
-      });
-      
-      // Navigate to messages page - use /business/messages instead of /startup/messages
-      navigate('/business/messages');
-    } catch (error) {
-      console.error("Error messaging investor:", error);
-      toast({
-        title: "Error",
-        description: "Failed to contact investor",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingMessage(null);
-    }
-  };
-
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -152,28 +86,8 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
       </CardContent>
       
       <CardFooter className="px-6 pb-6 pt-0">
-        <div className="flex w-full space-x-2">
+        <div className="w-full">
           <InvestorAIChat investor={investor} />
-          
-          <Button
-            variant="accent"
-            size="sm"
-            className="flex-1 flex items-center justify-center"
-            onClick={handleMessageInvestor}
-            disabled={sendingMessage === investor.id}
-          >
-            {sendingMessage === investor.id ? (
-              <>
-                <Loader2 size={14} className="mr-2 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <Mail size={14} className="mr-2" />
-                Connect
-              </>
-            )}
-          </Button>
         </div>
       </CardFooter>
     </Card>

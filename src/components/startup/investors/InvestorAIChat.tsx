@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -33,14 +32,12 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
   const [isChatCompleted, setIsChatCompleted] = useState(false);
   const [completingChat, setCompletingChat] = useState(false);
   
-  // Scroll to bottom of messages
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatHistory]);
   
-  // Initialize chat when dialog opens
   useEffect(() => {
     if (open && user) {
       initializeChat();
@@ -53,7 +50,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
     try {
       setInitializing(true);
       
-      // First, check if a chat already exists between this startup and investor
       const { data: existingChat, error: chatError } = await supabase
         .from('ai_persona_chats')
         .select('*')
@@ -63,7 +59,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
       
       if (chatError) throw chatError;
       
-      // Fetch startup profile information to provide context to the AI
       const { data: startupProfile, error: profileError } = await supabase
         .from('startup_profiles')
         .select('*')
@@ -83,7 +78,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
         setChatId(existingChat.id);
         setIsChatCompleted(existingChat.completed || false);
         
-        // Get chat history
         const { data: messages, error: messagesError } = await supabase
           .from('ai_persona_messages')
           .select('*')
@@ -95,11 +89,9 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
         if (messages && messages.length > 0) {
           setChatHistory(messages);
         } else {
-          // Add welcome message
           await sendWelcomeMessage(existingChat.id);
         }
       } else {
-        // Create new chat
         const { data: newChat, error: createError } = await supabase
           .from('ai_persona_chats')
           .insert({
@@ -115,7 +107,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
         console.log("Created new chat:", newChat);
         setChatId(newChat.id);
         
-        // Add welcome message
         await sendWelcomeMessage(newChat.id);
       }
     } catch (error) {
@@ -134,7 +125,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
     if (!chatId) return;
     
     try {
-      // First record the system welcome message in the database
       const welcomeMessage = "Hi there! I'm interested in learning more about your startup. Could you tell me about what you're building and what problem you're solving?";
       
       const { data: msgData, error: msgError } = await supabase
@@ -149,7 +139,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
         
       if (msgError) throw msgError;
       
-      // Update the chat history
       setChatHistory([{
         id: msgData.id,
         content: welcomeMessage,
@@ -167,7 +156,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
     try {
       setLoading(true);
       
-      // Store the user's message in the database
       const { data: msgData, error: msgError } = await supabase
         .from('ai_persona_messages')
         .insert({
@@ -180,7 +168,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
         
       if (msgError) throw msgError;
       
-      // Update local chat history
       const updatedHistory = [...chatHistory, {
         id: msgData.id,
         sender_type: 'startup',
@@ -190,7 +177,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
       setChatHistory(updatedHistory);
       setMessage("");
       
-      // Call the edge function to get the AI response
       const response = await supabase.functions.invoke('investor-ai-persona', {
         body: {
           message: message,
@@ -215,7 +201,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
       
       const { response: aiResponse, matchScore, matchSummary } = response.data;
       
-      // Store the AI response in the database
       const { data: aiMsgData, error: aiMsgError } = await supabase
         .from('ai_persona_messages')
         .insert({
@@ -228,14 +213,12 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
         
       if (aiMsgError) throw aiMsgError;
       
-      // Update local chat history
       setChatHistory([...updatedHistory, {
         id: aiMsgData.id,
         sender_type: 'ai',
         content: aiResponse
       }]);
       
-      // Update the chat with match score and summary if provided
       if (matchScore !== null && matchSummary) {
         console.log("Updating chat with match score:", matchScore);
         
@@ -268,7 +251,6 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
     try {
       setCompletingChat(true);
       
-      // Mark the chat as completed
       const { error: updateError } = await supabase
         .from('ai_persona_chats')
         .update({
@@ -301,12 +283,11 @@ export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
     <>
       <Button 
         onClick={() => setOpen(true)} 
-        variant="outline" 
-        size="sm"
-        className="flex items-center space-x-1"
+        variant="accent"
+        className="w-full flex items-center justify-center"
       >
-        <Bot size={14} className="mr-1" />
-        Try AI Chat
+        <Bot size={16} className="mr-2" />
+        Chat with AI Assistant
       </Button>
       
       <Dialog open={open} onOpenChange={setOpen}>
