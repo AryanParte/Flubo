@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
@@ -6,6 +7,7 @@ import { MessagesTab } from "@/components/startup/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/use-toast";
 
 const StartupMessages = () => {
   const { user, loading: authLoading } = useAuth();
@@ -18,43 +20,28 @@ const StartupMessages = () => {
     } else if (!authLoading) {
       setLoading(false);
       
-      if (user) {
-        console.log("Startup user loaded:", user.id);
-        
-        const checkUserProfile = async () => {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+      // Initialize realtime when we load the messages page
+      const initializeRealtime = async () => {
+        try {
+          console.log("Initializing realtime for startup messages");
+          const { data, error } = await supabase.functions.invoke('enable-realtime');
           
           if (error) {
-            console.error("Error checking user profile:", error);
+            console.error("Failed to enable realtime:", error);
+            toast({
+              title: "Realtime Update Issue",
+              description: "There was a problem enabling instant message updates",
+              variant: "destructive",
+            });
           } else {
-            console.log("User profile found:", data);
-            
-            const checkMessages = async () => {
-              const { data: messages, error: msgError } = await supabase
-                .from('messages')
-                .select('*')
-                .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
-              
-              if (msgError) {
-                console.error("Error checking messages:", msgError);
-              } else {
-                console.log("Messages for startup user:", messages?.length || 0);
-                if (messages?.length > 0) {
-                  console.log("Sample message:", messages[0]);
-                }
-              }
-            };
-            
-            checkMessages();
+            console.log("Realtime enabled successfully:", data);
           }
-        };
-        
-        checkUserProfile();
-      }
+        } catch (error) {
+          console.error("Error initializing realtime:", error);
+        }
+      };
+      
+      initializeRealtime();
     }
   }, [user, authLoading, navigate]);
 

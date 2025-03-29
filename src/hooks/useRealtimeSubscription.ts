@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -12,12 +12,22 @@ export function useRealtimeSubscription<T>(
   filter?: string
 ) {
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const callbackRef = useRef(callback);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  // Update the callback ref when the callback changes
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
   useEffect(() => {
-    // Create a unique channel name to avoid conflicts
-    const channelName = `public:${table}${filter ? `:${filter}` : ''}:${Math.random().toString(36).substring(2, 15)}`;
+    // Create a unique channel name with a stable ID to avoid recreating channels
+    const stableId = Math.random().toString(36).substring(2, 15);
+    const channelName = `public:${table}${filter ? `:${filter}` : ''}:${stableId}`;
     console.log(`Creating realtime channel: ${channelName}`);
+    
     const newChannel = supabase.channel(channelName);
+    channelRef.current = newChannel;
 
     // Subscribe to events with better error handling
     events.forEach(event => {
@@ -31,8 +41,8 @@ export function useRealtimeSubscription<T>(
         },
         (payload: any) => {
           console.log(`Realtime ${event} event for ${table}:`, payload);
-          if (callback) {
-            callback({
+          if (callbackRef.current) {
+            callbackRef.current({
               new: payload.new as T,
               old: payload.old as T,
               eventType: event
@@ -42,7 +52,7 @@ export function useRealtimeSubscription<T>(
       );
     });
 
-    // Subscribe to the channel with better logging
+    // Subscribe to the channel with better logging and reconnection logic
     newChannel.subscribe((status) => {
       console.log(`Realtime subscription status for ${table}:`, status);
       
@@ -50,7 +60,9 @@ export function useRealtimeSubscription<T>(
         console.log(`Subscription timed out for ${table}, reconnecting...`);
         // Attempt to resubscribe after timeout
         setTimeout(() => {
-          newChannel.subscribe();
+          if (channelRef.current === newChannel) {
+            newChannel.subscribe();
+          }
         }, 2000);
       }
       
@@ -63,12 +75,13 @@ export function useRealtimeSubscription<T>(
 
     // Improved cleanup on unmount
     return () => {
-      if (newChannel) {
-        console.log(`Removing realtime channel for ${table}`);
+      console.log(`Removing realtime channel for ${table}`);
+      if (channelRef.current === newChannel) {
         supabase.removeChannel(newChannel);
+        channelRef.current = null;
       }
     };
-  }, [table, events, callback, filter]);
+  }, [table, JSON.stringify(events), filter]); // Stringify events array to avoid recreation
 
   return channel;
 }

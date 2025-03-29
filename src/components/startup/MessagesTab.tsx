@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ type Conversation = {
   avatar: string;
   user_type: string;
   messages: {
+    id?: string;
     sender: "you" | "them";
     text: string;
     time: string;
@@ -43,104 +44,15 @@ export const MessagesTab = () => {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const firstLoadRef = useRef(true);
   
   const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messageEndRef.current?.scrollIntoTime({ behavior: "smooth" });
   };
 
-  useEffect(() => {
+  const processMessages = useCallback((messages: any[]) => {
     if (!userId) return;
-
-    const fetchConversations = async () => {
-      try {
-        console.log("Fetching messages for user:", userId);
-        
-        const { data: messages, error } = await supabase
-          .from('messages')
-          .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
-          .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-          .order('sent_at', { ascending: true });
-
-        if (error) {
-          console.error("Error fetching messages:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load messages",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
-        console.log("Messages fetched:", messages?.length || 0);
-        processMessages(messages || []);
-      } catch (error) {
-        console.error("Error processing conversations:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchConversations();
     
-    const initializeRealtime = async () => {
-      try {
-        const { error } = await supabase.functions.invoke('enable-realtime');
-        if (error) {
-          console.error("Failed to enable realtime:", error);
-        } else {
-          console.log("Realtime enabled successfully");
-        }
-      } catch (error) {
-        console.error("Error initializing realtime:", error);
-      }
-    };
-    
-    initializeRealtime();
-  }, [userId]);
-  
-  useRealtimeSubscription<Message>(
-    'messages',
-    ['INSERT', 'UPDATE', 'DELETE'],
-    (payload) => {
-      console.log("Realtime message update:", payload);
-      
-      if (userId && 
-          (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
-           payload.old?.sender_id === userId || payload.old?.recipient_id === userId)) {
-        
-        const fetchUpdatedMessages = async () => {
-          try {
-            const { data: messages, error } = await supabase
-              .from('messages')
-              .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
-              .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-              .order('sent_at', { ascending: true });
-              
-            if (error) {
-              console.error("Error fetching updated messages:", error);
-              return;
-            }
-            
-            console.log("Refreshing messages after realtime update:", messages?.length || 0);
-            processMessages(messages || []);
-            
-            if (payload.eventType === 'INSERT' && payload.new?.recipient_id === userId) {
-              toast({
-                title: "New Message",
-                description: "You have received a new message",
-              });
-            }
-          } catch (error) {
-            console.error("Error processing realtime update:", error);
-          }
-        };
-        
-        fetchUpdatedMessages();
-      }
-    }
-  );
-
-  const processMessages = (messages: any[]) => {
     const conversationMap = new Map();
     
     messages.forEach((msg: any) => {
@@ -196,12 +108,75 @@ export const MessagesTab = () => {
     
     setConversations(conversationsArray);
     
-    if (conversationsArray.length > 0 && !selectedChat) {
+    if (conversationsArray.length > 0 && !selectedChat && firstLoadRef.current) {
       setSelectedChat(conversationsArray[0].id);
+      firstLoadRef.current = false;
     }
     
     setLoading(false);
-  };
+  }, [userId, selectedChat]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!userId) return;
+    
+    try {
+      setLoading(true);
+      console.log("Fetching messages for user:", userId);
+      
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
+        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+        .order('sent_at', { ascending: true });
+
+      if (error) {
+        console.error("Error fetching messages:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load messages",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log("Messages fetched:", messages?.length || 0);
+      processMessages(messages || []);
+    } catch (error) {
+      console.error("Error processing conversations:", error);
+      setLoading(false);
+    }
+  }, [userId, processMessages]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchMessages();
+    }
+  }, [userId, fetchMessages]);
+  
+  const handleRealtimeUpdate = useCallback((payload: { new: Message; old: Message; eventType: string }) => {
+    console.log("Realtime message update:", payload);
+    
+    if (userId && 
+        (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
+         payload.old?.sender_id === userId || payload.old?.recipient_id === userId)) {
+      
+      fetchMessages();
+      
+      if (payload.eventType === 'INSERT' && payload.new?.recipient_id === userId) {
+        toast({
+          title: "New Message",
+          description: "You have received a new message",
+        });
+      }
+    }
+  }, [userId, fetchMessages]);
+
+  useRealtimeSubscription<Message>(
+    'messages',
+    ['INSERT', 'UPDATE', 'DELETE'],
+    handleRealtimeUpdate
+  );
 
   const formatMessageTime = (timestamp: string) => {
     if (!timestamp) return "Unknown";
@@ -255,34 +230,13 @@ export const MessagesTab = () => {
         return;
       }
       
-      const newMessage = {
-        sender: "you" as const,
-        text: message.trim(),
-        time: formatMessageTime(new Date().toISOString())
-      };
-      
-      setConversations(prevConversations => 
-        prevConversations.map(convo => {
-          if (convo.id === selectedChat) {
-            return {
-              ...convo,
-              messages: [...convo.messages, newMessage],
-              lastMessage: message.trim(),
-              time: formatMessageTime(new Date().toISOString())
-            };
-          }
-          return convo;
-        })
-      );
+      console.log("Message sent successfully:", data);
       
       setMessage("");
       
-      scrollToBottom();
-      
-      toast({
-        title: "Message sent",
-        description: "Your message has been sent successfully",
-      });
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
     } catch (error) {
       console.error("Error in handleSendMessage:", error);
       toast({
@@ -303,6 +257,9 @@ export const MessagesTab = () => {
 
   const handleChatSelect = (chatId: string) => {
     setSelectedChat(chatId);
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
   };
 
   const getUserTypeLabel = (userType: string): string => {
@@ -403,7 +360,7 @@ export const MessagesTab = () => {
             {selectedChatData.messages.length > 0 ? (
               selectedChatData.messages.map((msg, index) => (
                 <div 
-                  key={index} 
+                  key={msg.id || index} 
                   className={`flex ${msg.sender === 'you' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div 
