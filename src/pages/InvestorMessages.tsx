@@ -24,6 +24,30 @@ const InvestorMessages = () => {
       if (user) {
         console.log("Investor user loaded:", user.id);
         
+        // Initialize realtime for messages (same as startup messages)
+        const initializeRealtime = async () => {
+          try {
+            console.log("Initializing realtime for investor messages");
+            
+            supabase.functions.invoke('enable-realtime')
+              .then(({ data, error }) => {
+                if (error) {
+                  console.log("Note: Edge Function for realtime returned an error, but messages should still work:", error);
+                } else {
+                  console.log("Realtime initialization response:", data);
+                }
+              })
+              .catch(err => {
+                console.log("Error calling realtime function (continuing anyway):", err);
+              });
+            
+          } catch (error) {
+            console.error("Error in initializeRealtime function:", error);
+          }
+        };
+        
+        initializeRealtime();
+        
         // Check if this user exists in profiles table
         const checkUserProfile = async () => {
           const { data, error } = await supabase

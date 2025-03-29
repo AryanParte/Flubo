@@ -24,20 +24,24 @@ const StartupMessages = () => {
       const initializeRealtime = async () => {
         try {
           console.log("Initializing realtime for startup messages");
-          const { data, error } = await supabase.functions.invoke('enable-realtime');
           
-          if (error) {
-            console.error("Failed to enable realtime:", error);
-            toast({
-              title: "Realtime Update Issue",
-              description: "There was a problem enabling instant message updates",
-              variant: "destructive",
+          // Attempt to enable realtime via the Edge Function, but don't block UI if it fails
+          supabase.functions.invoke('enable-realtime')
+            .then(({ data, error }) => {
+              if (error) {
+                console.log("Note: Edge Function for realtime returned an error, but messages should still work:", error);
+                // Don't show toast to user as it's not critical and might be confusing
+              } else {
+                console.log("Realtime initialization response:", data);
+              }
+            })
+            .catch(err => {
+              console.log("Error calling realtime function (continuing anyway):", err);
             });
-          } else {
-            console.log("Realtime enabled successfully:", data);
-          }
+          
         } catch (error) {
-          console.error("Error initializing realtime:", error);
+          console.error("Error in initializeRealtime function:", error);
+          // Continue despite errors - realtime should still work through client channels
         }
       };
       

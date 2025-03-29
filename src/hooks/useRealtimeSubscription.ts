@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -14,16 +14,18 @@ export function useRealtimeSubscription<T>(
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
   const callbackRef = useRef(callback);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const subscriptionIdRef = useRef<string>(`${table}_${Math.random().toString(36).substring(2, 9)}`);
 
   // Update the callback ref when the callback changes
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
 
-  useEffect(() => {
-    // Create a unique channel name with a stable ID to avoid recreating channels
-    const stableId = Math.random().toString(36).substring(2, 15);
-    const channelName = `public:${table}${filter ? `:${filter}` : ''}:${stableId}`;
+  const createChannelIfNeeded = useCallback(() => {
+    if (channelRef.current) return;
+    
+    // Create a unique channel name with a stable ID that won't change on re-renders
+    const channelName = `public:${table}:${subscriptionIdRef.current}`;
     console.log(`Creating realtime channel: ${channelName}`);
     
     const newChannel = supabase.channel(channelName);
@@ -54,7 +56,7 @@ export function useRealtimeSubscription<T>(
 
     // Subscribe to the channel with better logging and reconnection logic
     newChannel.subscribe((status) => {
-      console.log(`Realtime subscription status for ${table}:`, status);
+      console.log(`Realtime subscription status for ${table} (${subscriptionIdRef.current}):`, status);
       
       if (status === 'TIMED_OUT') {
         console.log(`Subscription timed out for ${table}, reconnecting...`);
@@ -68,20 +70,34 @@ export function useRealtimeSubscription<T>(
       
       if (status === 'CHANNEL_ERROR') {
         console.error(`Channel error for ${table}`);
+        
+        // Attempt to recreate channel after error
+        setTimeout(() => {
+          if (channelRef.current === newChannel) {
+            console.log(`Attempting to reconnect channel for ${table}`);
+            supabase.removeChannel(newChannel);
+            channelRef.current = null;
+            createChannelIfNeeded();
+          }
+        }, 5000);
       }
     });
     
     setChannel(newChannel);
+  }, [table, events, filter]);
+
+  useEffect(() => {
+    createChannelIfNeeded();
 
     // Improved cleanup on unmount
     return () => {
-      console.log(`Removing realtime channel for ${table}`);
-      if (channelRef.current === newChannel) {
-        supabase.removeChannel(newChannel);
+      console.log(`Removing realtime channel for ${table} (${subscriptionIdRef.current})`);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [table, JSON.stringify(events), filter]); // Stringify events array to avoid recreation
+  }, [table, createChannelIfNeeded]);
 
   return channel;
 }
