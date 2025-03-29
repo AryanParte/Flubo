@@ -47,7 +47,7 @@ export const MessagesTab = () => {
   const firstLoadRef = useRef(true);
   
   const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoTime({ behavior: "smooth" });
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const processMessages = useCallback((messages: any[]) => {
