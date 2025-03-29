@@ -14,15 +14,15 @@ export function useRealtimeSubscription<T>(
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    // Create a channel for the table
-    const channelName = `public:${table}${filter ? `:${filter}` : ''}`;
+    // Create a unique channel name to avoid conflicts
+    const channelName = `public:${table}${filter ? `:${filter}` : ''}:${Math.random().toString(36).substring(2, 15)}`;
     console.log(`Creating realtime channel: ${channelName}`);
     const newChannel = supabase.channel(channelName);
 
-    // Subscribe to events
+    // Subscribe to events with better error handling
     events.forEach(event => {
       newChannel.on(
-        'postgres_changes' as any, // Type assertion to bypass the type error
+        'postgres_changes' as any,
         {
           event,
           schema: 'public',
@@ -42,14 +42,26 @@ export function useRealtimeSubscription<T>(
       );
     });
 
-    // Subscribe to the channel
+    // Subscribe to the channel with better logging
     newChannel.subscribe((status) => {
       console.log(`Realtime subscription status for ${table}:`, status);
+      
+      if (status === 'TIMED_OUT') {
+        console.log(`Subscription timed out for ${table}, reconnecting...`);
+        // Attempt to resubscribe after timeout
+        setTimeout(() => {
+          newChannel.subscribe();
+        }, 2000);
+      }
+      
+      if (status === 'CHANNEL_ERROR') {
+        console.error(`Channel error for ${table}`);
+      }
     });
     
     setChannel(newChannel);
 
-    // Cleanup on unmount
+    // Improved cleanup on unmount
     return () => {
       if (newChannel) {
         console.log(`Removing realtime channel for ${table}`);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 type Message = {
   id: string;
@@ -48,7 +48,6 @@ export const MessagesTab = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Fetch conversations
   useEffect(() => {
     if (!userId) return;
 
@@ -56,7 +55,6 @@ export const MessagesTab = () => {
       try {
         console.log("Fetching messages for user:", userId);
         
-        // Get all messages for this user (sent or received)
         const { data: messages, error } = await supabase
           .from('messages')
           .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
@@ -75,77 +73,7 @@ export const MessagesTab = () => {
         }
 
         console.log("Messages fetched:", messages?.length || 0);
-        if (messages?.length > 0) {
-          console.log("Sample message:", messages[0]);
-        }
-        
-        // Group messages by conversation partner
-        const conversationMap = new Map();
-        
-        messages.forEach((msg: any) => {
-          const isUserSender = msg.sender_id === userId;
-          const partnerId = isUserSender ? msg.recipient_id : msg.sender_id;
-          const partnerData = isUserSender ? msg.recipient : msg.sender;
-          
-          if (!partnerData) {
-            console.log("Missing partner data for message:", msg);
-            return; // Skip if partner data is missing
-          }
-          
-          // Include all conversation partners (both investors and businesses)
-          if (!conversationMap.has(partnerId)) {
-            conversationMap.set(partnerId, {
-              id: partnerId,
-              name: partnerData.name || "Unknown User",
-              avatar: partnerData.name ? partnerData.name.charAt(0).toUpperCase() : "?",
-              user_type: partnerData.user_type || "unknown",
-              messages: [],
-              lastMessage: "",
-              time: "",
-              unread: 0
-            });
-          }
-          
-          const convo = conversationMap.get(partnerId);
-          convo.messages.push({
-            id: msg.id,
-            sender: isUserSender ? "you" : "them",
-            text: msg.content,
-            time: formatMessageTime(msg.sent_at)
-          });
-          
-          // Count unread messages
-          if (!isUserSender && !msg.read_at) {
-            convo.unread += 1;
-          }
-        });
-        
-        // Sort messages within each conversation
-        conversationMap.forEach(convo => {
-          convo.messages.sort((a: any, b: any) => 
-            new Date(a.time).getTime() - new Date(b.time).getTime()
-          );
-          
-          // Set last message info
-          if (convo.messages.length > 0) {
-            const lastMsg = convo.messages[convo.messages.length - 1];
-            convo.lastMessage = lastMsg.text;
-            convo.time = lastMsg.time;
-          }
-        });
-        
-        // Convert map to array and sort by latest message
-        const conversationsArray = Array.from(conversationMap.values());
-        console.log("Conversations processed:", conversationsArray.length);
-        
-        setConversations(conversationsArray);
-        
-        // Select first conversation if available and none selected
-        if (conversationsArray.length > 0 && !selectedChat) {
-          setSelectedChat(conversationsArray[0].id);
-        }
-        
-        setLoading(false);
+        processMessages(messages || []);
       } catch (error) {
         console.error("Error processing conversations:", error);
         setLoading(false);
@@ -153,73 +81,127 @@ export const MessagesTab = () => {
     };
 
     fetchConversations();
-
-    // Set up real-time subscription for new messages
-    const channel = supabase
-      .channel('startup-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `or(recipient_id.eq.${userId},sender_id.eq.${userId})`,
-        },
-        (payload) => {
-          console.log("Realtime message update received:", payload);
-          // Force a refresh of conversations when a message is added, updated, or deleted
-          fetchConversations();
-        }
-      )
-      .subscribe((status) => {
-        console.log("Message subscription status:", status);
-      });
-
-    console.log("Subscription to realtime messages initialized for user");
-
-    return () => {
-      console.log("Cleaning up subscription to realtime messages");
-      supabase.removeChannel(channel);
-    };
-  }, [userId]);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [conversations, selectedChat]);
-
-  // Mark messages as read when selecting a chat
-  useEffect(() => {
-    if (!userId || !selectedChat) return;
-
-    const markMessagesAsRead = async () => {
+    
+    const initializeRealtime = async () => {
       try {
-        const { error } = await supabase
-          .from('messages')
-          .update({ read_at: new Date().toISOString() })
-          .eq('sender_id', selectedChat)
-          .eq('recipient_id', userId)
-          .is('read_at', null);
-
+        const { error } = await supabase.functions.invoke('enable-realtime');
         if (error) {
-          console.error("Error marking messages as read:", error);
+          console.error("Failed to enable realtime:", error);
         } else {
-          // Update local state to reflect read messages
-          setConversations(prevConversations => 
-            prevConversations.map(convo => 
-              convo.id === selectedChat 
-                ? { ...convo, unread: 0 } 
-                : convo
-            )
-          );
+          console.log("Realtime enabled successfully");
         }
       } catch (error) {
-        console.error("Error in markMessagesAsRead:", error);
+        console.error("Error initializing realtime:", error);
       }
     };
+    
+    initializeRealtime();
+  }, [userId]);
+  
+  useRealtimeSubscription<Message>(
+    'messages',
+    ['INSERT', 'UPDATE', 'DELETE'],
+    (payload) => {
+      console.log("Realtime message update:", payload);
+      
+      if (userId && 
+          (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
+           payload.old?.sender_id === userId || payload.old?.recipient_id === userId)) {
+        
+        const fetchUpdatedMessages = async () => {
+          try {
+            const { data: messages, error } = await supabase
+              .from('messages')
+              .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
+              .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+              .order('sent_at', { ascending: true });
+              
+            if (error) {
+              console.error("Error fetching updated messages:", error);
+              return;
+            }
+            
+            console.log("Refreshing messages after realtime update:", messages?.length || 0);
+            processMessages(messages || []);
+            
+            if (payload.eventType === 'INSERT' && payload.new?.recipient_id === userId) {
+              toast({
+                title: "New Message",
+                description: "You have received a new message",
+              });
+            }
+          } catch (error) {
+            console.error("Error processing realtime update:", error);
+          }
+        };
+        
+        fetchUpdatedMessages();
+      }
+    }
+  );
 
-    markMessagesAsRead();
-  }, [userId, selectedChat]);
+  const processMessages = (messages: any[]) => {
+    const conversationMap = new Map();
+    
+    messages.forEach((msg: any) => {
+      const isUserSender = msg.sender_id === userId;
+      const partnerId = isUserSender ? msg.recipient_id : msg.sender_id;
+      const partnerData = isUserSender ? msg.recipient : msg.sender;
+      
+      if (!partnerData) {
+        console.log("Missing partner data for message:", msg);
+        return; // Skip if partner data is missing
+      }
+      
+      if (!conversationMap.has(partnerId)) {
+        conversationMap.set(partnerId, {
+          id: partnerId,
+          name: partnerData.name || "Unknown User",
+          avatar: partnerData.name ? partnerData.name.charAt(0).toUpperCase() : "?",
+          user_type: partnerData.user_type || "unknown",
+          messages: [],
+          lastMessage: "",
+          time: "",
+          unread: 0
+        });
+      }
+      
+      const convo = conversationMap.get(partnerId);
+      convo.messages.push({
+        id: msg.id,
+        sender: isUserSender ? "you" : "them",
+        text: msg.content,
+        time: formatMessageTime(msg.sent_at)
+      });
+      
+      if (!isUserSender && !msg.read_at) {
+        convo.unread += 1;
+      }
+    });
+    
+    conversationMap.forEach(convo => {
+      convo.messages.sort((a: any, b: any) => 
+        new Date(a.time).getTime() - new Date(b.time).getTime()
+      );
+      
+      if (convo.messages.length > 0) {
+        const lastMsg = convo.messages[convo.messages.length - 1];
+        convo.lastMessage = lastMsg.text;
+        convo.time = lastMsg.time;
+      }
+    });
+    
+    const conversationsArray = Array.from(conversationMap.values());
+    console.log("Conversations processed:", conversationsArray.length);
+    
+    setConversations(conversationsArray);
+    
+    if (conversationsArray.length > 0 && !selectedChat) {
+      setSelectedChat(conversationsArray[0].id);
+    }
+    
+    setLoading(false);
+  };
 
   const formatMessageTime = (timestamp: string) => {
     if (!timestamp) return "Unknown";
@@ -229,15 +211,12 @@ export const MessagesTab = () => {
     const diffDays = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
-      // Today - show time
       return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
       return "Yesterday";
     } else if (diffDays < 7) {
-      // This week - show day name
       return messageDate.toLocaleDateString([], { weekday: 'long' });
     } else {
-      // Older - show date
       return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
@@ -256,7 +235,6 @@ export const MessagesTab = () => {
     try {
       setSendingMessage(true);
       
-      // Insert message to database
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -277,7 +255,6 @@ export const MessagesTab = () => {
         return;
       }
       
-      // Update local state
       const newMessage = {
         sender: "you" as const,
         text: message.trim(),
@@ -298,10 +275,8 @@ export const MessagesTab = () => {
         })
       );
       
-      // Clear input field
       setMessage("");
       
-      // Scroll to bottom
       scrollToBottom();
       
       toast({
@@ -330,7 +305,6 @@ export const MessagesTab = () => {
     setSelectedChat(chatId);
   };
 
-  // Get user type label
   const getUserTypeLabel = (userType: string): string => {
     switch (userType) {
       case 'investor':
@@ -353,7 +327,6 @@ export const MessagesTab = () => {
 
   return (
     <div className="border border-border rounded-lg bg-background/50 flex h-[calc(100vh-15rem)]">
-      {/* Chat list */}
       <div className="w-1/3 border-r border-border">
         <div className="p-3 border-b border-border">
           <div className="relative">
@@ -407,10 +380,8 @@ export const MessagesTab = () => {
         </div>
       </div>
       
-      {/* Chat area */}
       {selectedChatData ? (
         <div className="flex-1 flex flex-col">
-          {/* Chat header */}
           <div className="p-3 border-b border-border flex justify-between items-center">
             <div className="flex items-center">
               <Avatar className="h-8 w-8 mr-2">
@@ -428,7 +399,6 @@ export const MessagesTab = () => {
             </Button>
           </div>
           
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {selectedChatData.messages.length > 0 ? (
               selectedChatData.messages.map((msg, index) => (
@@ -456,7 +426,6 @@ export const MessagesTab = () => {
             <div ref={messageEndRef} />
           </div>
           
-          {/* Message input */}
           <form onSubmit={handleSendMessage} className="border-t border-border p-3 flex items-center">
             <Button 
               type="button" 

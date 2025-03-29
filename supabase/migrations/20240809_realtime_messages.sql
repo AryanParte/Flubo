@@ -1,3 +1,4 @@
+
 -- Function to set replica identity full on messages table
 CREATE OR REPLACE FUNCTION public.set_messages_replica_identity()
 RETURNS void
