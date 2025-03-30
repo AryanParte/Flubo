@@ -12,10 +12,12 @@ const StartupProfile = () => {
   const [showFollowing, setShowFollowing] = useState(false);
 
   const handleShowFollowers = () => {
+    console.log("Opening followers modal");
     setShowFollowers(true);
   };
 
   const handleShowFollowing = () => {
+    console.log("Opening following modal");
     setShowFollowing(true);
   };
 

@@ -246,15 +246,23 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
   const followStatsSection = (
     <div className="flex items-center space-x-6 mt-2">
       <button 
-        onClick={onShowFollowers}
+        onClick={() => {
+          console.log("Followers button clicked in investor profile");
+          if (onShowFollowers) onShowFollowers();
+        }}
         className="flex items-center space-x-1 hover:text-accent transition-colors cursor-pointer"
+        type="button"
       >
         <Users size={14} className="text-muted-foreground" />
         <span className="text-sm"><strong>{followersCount}</strong> followers</span>
       </button>
       <button 
-        onClick={onShowFollowing}
+        onClick={() => {
+          console.log("Following button clicked in investor profile");
+          if (onShowFollowing) onShowFollowing();
+        }}
         className="flex items-center space-x-1 hover:text-accent transition-colors cursor-pointer"
+        type="button"
       >
         <User size={14} className="text-muted-foreground" />
         <span className="text-sm"><strong>{followingCount}</strong> following</span>

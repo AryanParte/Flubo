@@ -27,6 +27,7 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
   
   useEffect(() => {
     if (open && userId) {
+      console.log(`Modal opened for ${type}, fetching users for ID: ${userId}`);
       fetchUsers();
     }
   }, [open, userId, type]);
@@ -62,6 +63,7 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
         usersData = data.map(item => item.profiles);
       }
       
+      console.log("Fetched users data:", usersData);
       setUsers(usersData || []);
       
       // Initialize follow status for each user
@@ -118,6 +120,8 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
   const getProfilePath = (userId: string, userType: string) => {
     return userType === 'startup' ? `/business/profile/${userId}` : `/investor/profile/${userId}`;
   };
+
+  console.log("UserListModal render state:", { open, userId, type, usersCount: users.length });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
