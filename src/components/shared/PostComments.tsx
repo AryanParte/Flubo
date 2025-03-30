@@ -46,7 +46,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           id,
           post_id,
           user_id,
-          profile_id,
           content,
           created_at,
           profiles (
@@ -119,7 +118,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
               id,
               post_id,
               user_id,
-              profile_id,
               content,
               created_at,
               profiles (
@@ -214,14 +212,12 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         .insert({
           post_id: postId,
           user_id: user.id,
-          profile_id: user.id,
           content: newComment.trim()
         })
         .select(`
           id,
           post_id,
           user_id,
-          profile_id,
           content,
           created_at,
           profiles (

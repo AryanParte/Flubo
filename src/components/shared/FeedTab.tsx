@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ import { Badge } from "@/components/ui/badge";
 import { Post, PostProps } from "./Post";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
-// Define our custom type for working with posts data from Supabase
 type PostRecord = {
   id: string;
   user_id: string;
@@ -59,16 +57,13 @@ export function FeedTab() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<{name: string | null, user_type: string | null} | null>(null);
   
-  // Subscribe to real-time post updates
   useRealtimeSubscription<PostRecord>(
     'posts',
     ['INSERT', 'UPDATE'],
     (payload) => {
       if (payload.eventType === 'INSERT') {
-        // Add new post to the state
         fetchPosts(selectedFilter);
       } else if (payload.eventType === 'UPDATE') {
-        // Update existing post in the state
         setPosts(prevPosts => 
           prevPosts.map(post => 
             post.id === payload.new.id 
@@ -84,14 +79,12 @@ export function FeedTab() {
     }
   );
   
-  // Extract hashtags from post content
   const extractHashtags = (content: string): string[] => {
     const regex = /#[\w]+/g;
     const matches = content.match(regex) || [];
-    return matches.map(tag => tag.substring(1)); // Remove # from tag
+    return matches.map(tag => tag.substring(1));
   };
   
-  // Format timestamp to relative time (e.g., "2 hours ago")
   const formatRelativeTime = (timestamp: string): string => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -115,7 +108,6 @@ export function FeedTab() {
     return `${years} year${years !== 1 ? 's' : ''} ago`;
   };
 
-  // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
@@ -141,11 +133,9 @@ export function FeedTab() {
     fetchUserProfile();
   }, [user]);
   
-  // Fetch posts from Supabase
   const fetchPosts = async (filter = 'latest') => {
     setIsLoadingPosts(true);
     try {
-      // Fetch real posts from Supabase with a custom type assertion
       let query = supabase
         .from('posts')
         .select(`
@@ -164,7 +154,6 @@ export function FeedTab() {
           )
         `) as any;
       
-      // Apply sorting based on filter
       switch (filter) {
         case 'latest':
           query = query.order('created_at', { ascending: false });
@@ -176,7 +165,6 @@ export function FeedTab() {
           query = query.order('likes', { ascending: false });
           break;
         case 'most-viewed':
-          // For now, just using likes as proxy for views
           query = query.order('likes', { ascending: false });
           break;
         default:
@@ -192,7 +180,6 @@ export function FeedTab() {
       }
       
       if (data) {
-        // Format posts
         const formattedPosts: PostProps[] = (data as PostRecord[]).map(post => {
           return {
             id: post.id,
@@ -211,7 +198,6 @@ export function FeedTab() {
           };
         });
         
-        // Collect all unique hashtags
         const allHashtags = new Set<string>();
         formattedPosts.forEach(post => {
           post.hashtags?.forEach(tag => allHashtags.add(tag));
@@ -232,13 +218,11 @@ export function FeedTab() {
     }
   };
   
-  // Handle file selection for image upload
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedImage(file);
       
-      // Create a preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreviewUrl(reader.result as string);
@@ -247,17 +231,13 @@ export function FeedTab() {
     }
   };
   
-  // Remove selected image
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setImagePreviewUrl(null);
   };
   
-  // Upload image to storage (in a real app, this would upload to Supabase Storage)
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
-      // In a real implementation, you'd use Supabase Storage
-      // For now, just return the preview URL
       return imagePreviewUrl;
     } catch (error) {
       console.error("Error uploading image:", error);
@@ -265,7 +245,6 @@ export function FeedTab() {
     }
   };
   
-  // Handle creating a new post
   const handleCreatePost = async () => {
     if (!newPostContent.trim() && !selectedImage) {
       toast({
@@ -288,16 +267,13 @@ export function FeedTab() {
     setIsPostingContent(true);
     
     try {
-      // Extract hashtags
       const extractedHashtags = extractHashtags(newPostContent);
       
-      // Upload image if one is selected
       let imageUrl = null;
       if (selectedImage) {
         imageUrl = await uploadImage(selectedImage);
       }
       
-      // Insert post into Supabase with type assertion
       const { data, error } = await supabase
         .from('posts')
         .insert({
@@ -315,7 +291,6 @@ export function FeedTab() {
         throw error;
       }
       
-      // Clear form
       setNewPostContent('');
       setSelectedImage(null);
       setImagePreviewUrl(null);
@@ -336,7 +311,6 @@ export function FeedTab() {
     }
   };
   
-  // Filter by hashtag
   const filterByHashtag = async (tag: string) => {
     setIsLoadingPosts(true);
     
@@ -366,7 +340,6 @@ export function FeedTab() {
       }
       
       if (data) {
-        // Format posts
         const filteredPosts: PostProps[] = (data as PostRecord[]).map(post => {
           return {
             id: post.id,
@@ -404,14 +377,58 @@ export function FeedTab() {
     }
   };
   
-  // Load posts when component mounts or filter changes
   useEffect(() => {
     fetchPosts(selectedFilter);
   }, [selectedFilter]);
   
+  function renderFeed() {
+    if (isLoadingPosts) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3].map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-3 w-[150px]" />
+                </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+    
+    if (posts.length === 0) {
+      return (
+        <Card className="p-8 text-center">
+          <h3 className="text-xl font-semibold mb-2">No posts found</h3>
+          <p className="text-muted-foreground">Be the first to share something with the community!</p>
+        </Card>
+      );
+    }
+    
+    return (
+      <div className="space-y-4">
+        {posts.map((post) => (
+          <Post 
+            key={post.id} 
+            {...post} 
+            onHashtagClick={filterByHashtag}
+          />
+        ))}
+      </div>
+    );
+  }
+  
   return (
     <div className="flex flex-col space-y-6 max-w-3xl mx-auto">
-      {/* Create Post Card */}
       <Card className="p-4">
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10">
@@ -428,7 +445,6 @@ export function FeedTab() {
               onChange={(e) => setNewPostContent(e.target.value)}
             />
             
-            {/* Image preview */}
             {imagePreviewUrl && (
               <div className="relative">
                 <img 
@@ -482,7 +498,6 @@ export function FeedTab() {
         </div>
       </Card>
       
-      {/* Filter Tabs */}
       <Tabs defaultValue="latest" onValueChange={setSelectedFilter}>
         <TabsList className="grid grid-cols-4 mb-4">
           <TabsTrigger value="latest">
@@ -503,7 +518,6 @@ export function FeedTab() {
           </TabsTrigger>
         </TabsList>
         
-        {/* Popular Hashtags */}
         {hashtags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {hashtags.slice(0, 5).map(tag => (
@@ -550,51 +564,4 @@ export function FeedTab() {
       </Tabs>
     </div>
   );
-  
-  // Helper function to render the feed
-  function renderFeed() {
-    if (isLoadingPosts) {
-      return (
-        <div className="space-y-4">
-          {[1, 2, 3].map((_, i) => (
-            <Card key={i} className="p-4">
-              <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[200px]" />
-                  <Skeleton className="h-3 w-[150px]" />
-                </div>
-              </div>
-              <div className="space-y-2 mt-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            </Card>
-          ))}
-        </div>
-      );
-    }
-    
-    if (posts.length === 0) {
-      return (
-        <Card className="p-8 text-center">
-          <h3 className="text-xl font-semibold mb-2">No posts found</h3>
-          <p className="text-muted-foreground">Be the first to share something with the community!</p>
-        </Card>
-      );
-    }
-    
-    return (
-      <div className="space-y-4">
-        {posts.map((post) => (
-          <Post 
-            key={post.id} 
-            {...post} 
-            onHashtagClick={filterByHashtag}
-          />
-        ))}
-      </div>
-    );
-  }
 }
