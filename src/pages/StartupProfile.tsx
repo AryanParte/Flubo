@@ -11,6 +11,14 @@ const StartupProfile = () => {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
 
+  const handleShowFollowers = () => {
+    setShowFollowers(true);
+  };
+
+  const handleShowFollowing = () => {
+    setShowFollowing(true);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -18,8 +26,8 @@ const StartupProfile = () => {
         <div className="container mx-auto px-4 md:px-6">
           <h1 className="text-2xl font-bold mb-8">Business Profile</h1>
           <ProfileTab 
-            onShowFollowers={() => setShowFollowers(true)}
-            onShowFollowing={() => setShowFollowing(true)}
+            onShowFollowers={handleShowFollowers}
+            onShowFollowing={handleShowFollowing}
           />
         </div>
       </main>

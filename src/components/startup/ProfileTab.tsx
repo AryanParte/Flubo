@@ -524,14 +524,14 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
     <div className="flex items-center space-x-6 mt-2">
       <button 
         onClick={onShowFollowers}
-        className="flex items-center space-x-1 hover:text-accent transition-colors"
+        className="flex items-center space-x-1 hover:text-accent transition-colors cursor-pointer"
       >
         <Users size={14} className="text-muted-foreground" />
         <span className="text-sm"><strong>{followersCount}</strong> followers</span>
       </button>
       <button 
         onClick={onShowFollowing}
-        className="flex items-center space-x-1 hover:text-accent transition-colors"
+        className="flex items-center space-x-1 hover:text-accent transition-colors cursor-pointer"
       >
         <User size={14} className="text-muted-foreground" />
         <span className="text-sm"><strong>{followingCount}</strong> following</span>
