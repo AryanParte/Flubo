@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,8 @@ export const MessagesTab = () => {
           messages: [],
           lastMessage: "",
           time: "",
-          unread: 0
+          unread: 0,
+          last_message_time: new Date(0) // Add this to track the actual timestamp
         });
       }
       
@@ -85,6 +87,12 @@ export const MessagesTab = () => {
         text: msg.content,
         time: formatMessageTime(msg.sent_at)
       });
+      
+      // Track the most recent message time for sorting
+      const msgTime = new Date(msg.sent_at);
+      if (msgTime > convo.last_message_time) {
+        convo.last_message_time = msgTime;
+      }
       
       if (!isUserSender && !msg.read_at) {
         convo.unread += 1;
@@ -103,7 +111,11 @@ export const MessagesTab = () => {
       }
     });
     
-    const conversationsArray = Array.from(conversationMap.values());
+    // Convert to array and sort by most recent message
+    const conversationsArray = Array.from(conversationMap.values()).sort((a, b) => 
+      b.last_message_time.getTime() - a.last_message_time.getTime()
+    );
+    
     console.log("Conversations processed:", conversationsArray.length);
     
     setConversations(conversationsArray);
@@ -153,6 +165,56 @@ export const MessagesTab = () => {
       fetchMessages();
     }
   }, [userId, fetchMessages]);
+  
+  // Mark messages as read when selecting a chat
+  useEffect(() => {
+    const markMessagesAsRead = async () => {
+      if (!userId || !selectedChat) return;
+      
+      try {
+        // Find unread messages from the selected chat partner
+        const unreadMessages = await supabase
+          .from('messages')
+          .select('id')
+          .eq('sender_id', selectedChat)
+          .eq('recipient_id', userId)
+          .is('read_at', null);
+          
+        if (unreadMessages.error) {
+          console.error("Error finding unread messages:", unreadMessages.error);
+          return;
+        }
+        
+        if (unreadMessages.data && unreadMessages.data.length > 0) {
+          console.log(`Marking ${unreadMessages.data.length} messages as read`);
+          
+          // Update all unread messages from this sender
+          const { error: updateError } = await supabase
+            .from('messages')
+            .update({ read_at: new Date().toISOString() })
+            .eq('sender_id', selectedChat)
+            .eq('recipient_id', userId)
+            .is('read_at', null);
+            
+          if (updateError) {
+            console.error("Error marking messages as read:", updateError);
+          } else {
+            // Update local state to remove unread indicators
+            setConversations(prev => prev.map(convo => {
+              if (convo.id === selectedChat) {
+                return { ...convo, unread: 0 };
+              }
+              return convo;
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error in markMessagesAsRead:", error);
+      }
+    };
+    
+    markMessagesAsRead();
+  }, [selectedChat, userId]);
   
   const handleRealtimeUpdate = useCallback((payload: { new: Message; old: Message; eventType: string }) => {
     console.log("Realtime message update:", payload);
