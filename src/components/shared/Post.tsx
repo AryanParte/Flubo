@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { PostComments } from "./PostComments";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { ProfilePreview } from "./ProfilePreview";
+import { SharePostDialog } from "./SharePostDialog";
 
 export type PostAuthor = {
   id: string;
@@ -64,6 +66,7 @@ export function Post({
   const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(initialComments);
   const { isLiked, likesCount, toggleLike, isLoading } = useLikePost(id, likes);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   
   useEffect(() => {
     const fetchCommentCount = async () => {
@@ -103,12 +106,16 @@ export function Post({
   };
   
   const handleSharePost = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/post/${id}`).then(() => {
+    if (!user) {
       toast({
-        title: "Link copied",
-        description: "Post link copied to clipboard",
+        title: "Login required",
+        description: "Please log in to share posts",
+        variant: "destructive",
       });
-    });
+      return;
+    }
+    
+    setShowShareDialog(true);
   };
   
   return (
@@ -214,6 +221,15 @@ export function Post({
         <PostComments 
           postId={id} 
           onCommentCountChange={setCommentsCount}
+        />
+      )}
+      
+      {showShareDialog && (
+        <SharePostDialog
+          isOpen={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          postId={id}
+          postContent={content}
         />
       )}
     </Card>
