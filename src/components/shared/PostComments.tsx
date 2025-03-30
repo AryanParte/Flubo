@@ -13,10 +13,9 @@ export type Comment = {
   id: string;
   post_id: string;
   user_id: string;
-  profile_id: string;
   content: string;
   created_at: string;
-  profiles?: {
+  user_profile?: {
     id: string;
     name: string | null;
     user_type: string | null;
@@ -47,12 +46,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           post_id,
           user_id,
           content,
-          created_at,
-          profiles (
-            id,
-            name,
-            user_type
-          )
+          created_at
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
@@ -64,9 +58,34 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       
       if (data) {
         console.log('Fetched comments:', data);
-        setComments(data as Comment[]);
+        
+        // Now we need to fetch user profiles separately
+        const commentsWithProfiles = await Promise.all(
+          data.map(async (comment) => {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('id, name, user_type')
+              .eq('id', comment.user_id)
+              .single();
+              
+            if (profileError) {
+              console.error("Error fetching profile for comment:", profileError);
+              return {
+                ...comment,
+                user_profile: null
+              };
+            }
+            
+            return {
+              ...comment,
+              user_profile: profileData
+            };
+          })
+        );
+        
+        setComments(commentsWithProfiles as Comment[]);
         if (onCommentCountChange) {
-          onCommentCountChange(data.length);
+          onCommentCountChange(commentsWithProfiles.length);
         }
       }
     } catch (error) {
@@ -112,31 +131,39 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       
       if (payload.eventType === 'INSERT' && payload.new.post_id === postId) {
         const fetchNewComment = async () => {
-          const { data, error } = await supabase
+          // Fetch the new comment
+          const { data: commentData, error: commentError } = await supabase
             .from('comments')
             .select(`
               id,
               post_id,
               user_id,
               content,
-              created_at,
-              profiles (
-                id,
-                name,
-                user_type
-              )
+              created_at
             `)
             .eq('id', payload.new.id)
             .single();
             
-          if (error) {
-            console.error("Error fetching new comment:", error);
+          if (commentError) {
+            console.error("Error fetching new comment:", commentError);
             return;
           }
           
-          if (data) {
-            console.log('Adding new comment to state with profile:', data);
-            const updatedComments = [...comments, data as Comment];
+          // Fetch the associated profile
+          if (commentData) {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('id, name, user_type')
+              .eq('id', commentData.user_id)
+              .single();
+              
+            const newCommentWithProfile = {
+              ...commentData,
+              user_profile: profileError ? null : profileData
+            };
+            
+            console.log('Adding new comment to state with profile:', newCommentWithProfile);
+            const updatedComments = [...comments, newCommentWithProfile as Comment];
             setComments(updatedComments);
             
             if (onCommentCountChange) {
@@ -214,18 +241,7 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           user_id: user.id,
           content: newComment.trim()
         })
-        .select(`
-          id,
-          post_id,
-          user_id,
-          content,
-          created_at,
-          profiles (
-            id,
-            name,
-            user_type
-          )
-        `);
+        .select();
 
       if (error) {
         console.error("Error posting comment:", error);
@@ -236,8 +252,20 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       
       setNewComment('');
       
+      // Instead of directly adding the comment to the state, we'll fetch it with the profile
       if (data && data[0]) {
-        const updatedComments = [...comments, data[0] as Comment];
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, name, user_type')
+          .eq('id', user.id)
+          .single();
+          
+        const newCommentWithProfile = {
+          ...data[0],
+          user_profile: profileError ? null : profileData
+        };
+        
+        const updatedComments = [...comments, newCommentWithProfile as Comment];
         setComments(updatedComments);
         
         if (onCommentCountChange) {
@@ -303,13 +331,13 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="/placeholder.svg" />
                     <AvatarFallback>
-                      {comment.profiles?.name?.charAt(0) || 'U'}
+                      {comment.user_profile?.name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="bg-muted p-3 rounded-lg">
                       <div className="flex justify-between items-center mb-1">
-                        <p className="text-sm font-medium">{comment.profiles?.name || 'Anonymous'}</p>
+                        <p className="text-sm font-medium">{comment.user_profile?.name || 'Anonymous'}</p>
                         <p className="text-xs text-muted-foreground">{formatRelativeTime(comment.created_at)}</p>
                       </div>
                       <p className="text-sm">{comment.content}</p>
