@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { Edit, Upload, Trash, Check, Loader2, Video, Link } from "lucide-react";
+import { Edit, Upload, Trash, Check, Loader2, Video, Link, User, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useFollowUser } from "@/hooks/useFollowUser";
 
 const emptyStartupProfile = {
   name: "",
@@ -52,17 +53,44 @@ export const ProfileTab = () => {
   const [error, setError] = useState<string | null>(null);
   const [profileCreationAttempted, setProfileCreationAttempted] = useState(false);
   const [startup, setStartup] = useState(emptyStartupProfile);
+  const [postCount, setPostCount] = useState<number>(0);
+  const { 
+    followersCount, 
+    followingCount, 
+    loadFollowData 
+  } = useFollowUser();
 
   useEffect(() => {
     if (profileId) {
       console.log("Fetching profile for ID:", profileId);
       fetchStartupProfile();
+      fetchPostCount();
+      loadFollowData(profileId);
     } else {
       console.log("No profile ID available");
       setLoading(false);
       setError("No profile ID available");
     }
   }, [profileId]);
+
+  const fetchPostCount = async () => {
+    if (!profileId) return;
+    
+    try {
+      const { count, error } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profileId);
+      
+      if (error) {
+        console.error("Error fetching post count:", error);
+      } else if (count !== null) {
+        setPostCount(count);
+      }
+    } catch (error) {
+      console.error("Error in fetchPostCount:", error);
+    }
+  };
 
   const fetchStartupProfile = async () => {
     try {
@@ -525,6 +553,21 @@ export const ProfileTab = () => {
             ) : (
               <p className="text-muted-foreground">{startup.tagline}</p>
             )}
+            
+            <div className="flex items-center space-x-6 mt-2">
+              <div className="flex items-center space-x-1">
+                <Users size={14} className="text-muted-foreground" />
+                <span className="text-sm"><strong>{followersCount}</strong> followers</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <User size={14} className="text-muted-foreground" />
+                <span className="text-sm"><strong>{followingCount}</strong> following</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Link size={14} className="text-muted-foreground" />
+                <span className="text-sm"><strong>{postCount}</strong> posts</span>
+              </div>
+            </div>
           </div>
         </div>
         {isOwnProfile && (
