@@ -40,7 +40,12 @@ const emptyStartupProfile = {
   }
 };
 
-export const ProfileTab = () => {
+interface ProfileTabProps {
+  onShowFollowers?: () => void;
+  onShowFollowing?: () => void;
+}
+
+export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps) => {
   const { user } = useAuth();
   const params = useParams();
   const navigate = useNavigate();
@@ -515,6 +520,29 @@ export const ProfileTab = () => {
     );
   }
 
+  const followStatsSection = (
+    <div className="flex items-center space-x-6 mt-2">
+      <button 
+        onClick={onShowFollowers}
+        className="flex items-center space-x-1 hover:text-accent transition-colors"
+      >
+        <Users size={14} className="text-muted-foreground" />
+        <span className="text-sm"><strong>{followersCount}</strong> followers</span>
+      </button>
+      <button 
+        onClick={onShowFollowing}
+        className="flex items-center space-x-1 hover:text-accent transition-colors"
+      >
+        <User size={14} className="text-muted-foreground" />
+        <span className="text-sm"><strong>{followingCount}</strong> following</span>
+      </button>
+      <div className="flex items-center space-x-1">
+        <Link size={14} className="text-muted-foreground" />
+        <span className="text-sm"><strong>{postCount}</strong> posts</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -554,20 +582,7 @@ export const ProfileTab = () => {
               <p className="text-muted-foreground">{startup.tagline}</p>
             )}
             
-            <div className="flex items-center space-x-6 mt-2">
-              <div className="flex items-center space-x-1">
-                <Users size={14} className="text-muted-foreground" />
-                <span className="text-sm"><strong>{followersCount}</strong> followers</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <User size={14} className="text-muted-foreground" />
-                <span className="text-sm"><strong>{followingCount}</strong> following</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Link size={14} className="text-muted-foreground" />
-                <span className="text-sm"><strong>{postCount}</strong> posts</span>
-              </div>
-            </div>
+            {followStatsSection}
           </div>
         </div>
         {isOwnProfile && (

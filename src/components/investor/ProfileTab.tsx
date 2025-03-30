@@ -3,15 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { Edit, Upload, Check, BriefcaseBusiness, Building, Globe, DollarSign } from "lucide-react";
+import { Edit, Upload, Check, BriefcaseBusiness, Building, Globe, DollarSign, User, Users, Link } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { useFollowUser } from "@/hooks/useFollowUser";
+import { useParams } from "react-router-dom";
 
-export const ProfileTab = () => {
+interface ProfileTabProps {
+  onShowFollowers?: () => void;
+  onShowFollowing?: () => void;
+}
+
+export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps) => {
   const { user } = useAuth();
+  const { id: profileId } = useParams();
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [postCount, setPostCount] = useState<number>(0);
+  const { 
+    followersCount, 
+    followingCount, 
+    loadFollowData 
+  } = useFollowUser();
+  
   const [investor, setInvestor] = useState({
     name: "",
     title: "",
@@ -89,6 +104,32 @@ export const ProfileTab = () => {
     
     fetchProfileData();
   }, [user]);
+
+  useEffect(() => {
+    if (profileId) {
+      fetchPostCount();
+      loadFollowData(profileId);
+    }
+  }, [profileId]);
+
+  const fetchPostCount = async () => {
+    if (!profileId) return;
+    
+    try {
+      const { count, error } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profileId);
+      
+      if (error) {
+        console.error("Error fetching post count:", error);
+      } else if (count !== null) {
+        setPostCount(count);
+      }
+    } catch (error) {
+      console.error("Error in fetchPostCount:", error);
+    }
+  };
 
   const handleEditToggle = async () => {
     if (editing) {
@@ -201,6 +242,29 @@ export const ProfileTab = () => {
       }));
     }
   };
+
+  const followStatsSection = (
+    <div className="flex items-center space-x-6 mt-2">
+      <button 
+        onClick={onShowFollowers}
+        className="flex items-center space-x-1 hover:text-accent transition-colors"
+      >
+        <Users size={14} className="text-muted-foreground" />
+        <span className="text-sm"><strong>{followersCount}</strong> followers</span>
+      </button>
+      <button 
+        onClick={onShowFollowing}
+        className="flex items-center space-x-1 hover:text-accent transition-colors"
+      >
+        <User size={14} className="text-muted-foreground" />
+        <span className="text-sm"><strong>{followingCount}</strong> following</span>
+      </button>
+      <div className="flex items-center space-x-1">
+        <Link size={14} className="text-muted-foreground" />
+        <span className="text-sm"><strong>{postCount}</strong> posts</span>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -499,4 +563,3 @@ export const ProfileTab = () => {
     </div>
   );
 };
-
