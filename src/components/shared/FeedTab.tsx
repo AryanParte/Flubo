@@ -1,5 +1,3 @@
-
-// Update only the fetchPosts function in FeedTab.tsx to ensure we're getting accurate like and comment counts
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,7 +13,7 @@ import {
   Loader2,
   TrendingUp,
   Clock,
-  ArrowUp,
+  UserCheck,
   Eye,
   SendHorizontal
 } from "lucide-react";
@@ -77,6 +75,16 @@ export function FeedTab() {
               : post
           )
         );
+      }
+    }
+  );
+  
+  useRealtimeSubscription(
+    'followers',
+    ['INSERT', 'DELETE'],
+    () => {
+      if (selectedFilter === 'following') {
+        fetchPosts('following');
       }
     }
   );
@@ -163,8 +171,34 @@ export function FeedTab() {
         case 'trending':
           query = query.order('comments_count', { ascending: false }).order('likes', { ascending: false });
           break;
-        case 'top':
-          query = query.order('likes', { ascending: false });
+        case 'following':
+          if (!user) {
+            setIsLoadingPosts(false);
+            setPosts([]);
+            return;
+          }
+          
+          const { data: followingData, error: followingError } = await supabase
+            .from('followers')
+            .select('following_id')
+            .eq('follower_id', user.id);
+            
+          if (followingError) {
+            console.error("Error fetching following list:", followingError);
+            throw followingError;
+          }
+          
+          if (!followingData || followingData.length === 0) {
+            setIsLoadingPosts(false);
+            setPosts([]);
+            return;
+          }
+          
+          const followingIds = followingData.map(item => item.following_id);
+          
+          query = query
+            .in('user_id', followingIds)
+            .order('created_at', { ascending: false });
           break;
         case 'most-viewed':
           query = query.order('likes', { ascending: false });
@@ -182,9 +216,7 @@ export function FeedTab() {
       }
       
       if (data) {
-        // For each post, check for actual count of likes and comments
         const postsWithUpdatedCounts = await Promise.all((data as PostRecord[]).map(async (post) => {
-          // Check actual likes count
           const { count: likesCount, error: likesError } = await supabase
             .from('post_likes')
             .select('id', { count: 'exact', head: true })
@@ -193,7 +225,6 @@ export function FeedTab() {
           if (likesError) {
             console.error(`Error counting likes for post ${post.id}:`, likesError);
           } else if (likesCount !== null && likesCount !== post.likes) {
-            // Update the post likes count in the database
             await supabase
               .from('posts')
               .update({ likes: likesCount })
@@ -202,7 +233,6 @@ export function FeedTab() {
             post.likes = likesCount;
           }
           
-          // Check actual comments count
           const { count: commentsCount, error: commentsError } = await supabase
             .from('comments')
             .select('id', { count: 'exact', head: true })
@@ -211,7 +241,6 @@ export function FeedTab() {
           if (commentsError) {
             console.error(`Error counting comments for post ${post.id}:`, commentsError);
           } else if (commentsCount !== null && commentsCount !== post.comments_count) {
-            // Update the post comments count in the database
             await supabase
               .from('posts')
               .update({ comments_count: commentsCount })
@@ -551,9 +580,9 @@ export function FeedTab() {
             <TrendingUp className="h-4 w-4 mr-2" />
             Trending
           </TabsTrigger>
-          <TabsTrigger value="top">
-            <ArrowUp className="h-4 w-4 mr-2" />
-            Top
+          <TabsTrigger value="following">
+            <UserCheck className="h-4 w-4 mr-2" />
+            Following
           </TabsTrigger>
           <TabsTrigger value="most-viewed">
             <Eye className="h-4 w-4 mr-2" />
@@ -598,8 +627,22 @@ export function FeedTab() {
         <TabsContent value="trending" className="m-0">
           {renderFeed()}
         </TabsContent>
-        <TabsContent value="top" className="m-0">
-          {renderFeed()}
+        <TabsContent value="following" className="m-0">
+          {user ? (
+            posts.length > 0 ? (
+              renderFeed()
+            ) : (
+              <Card className="p-8 text-center">
+                <h3 className="text-xl font-semibold mb-2">No posts from people you follow</h3>
+                <p className="text-muted-foreground mb-4">Start following users to see their posts in your feed</p>
+              </Card>
+            )
+          ) : (
+            <Card className="p-8 text-center">
+              <h3 className="text-xl font-semibold mb-2">Please log in</h3>
+              <p className="text-muted-foreground">You need to be logged in to see posts from people you follow</p>
+            </Card>
+          )}
         </TabsContent>
         <TabsContent value="most-viewed" className="m-0">
           {renderFeed()}

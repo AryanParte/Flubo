@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -66,7 +65,6 @@ export function Post({
   const [commentsCount, setCommentsCount] = useState(initialComments);
   const { isLiked, likesCount, toggleLike, isLoading } = useLikePost(id, likes);
   
-  // Fetch actual comment count when component mounts
   useEffect(() => {
     const fetchCommentCount = async () => {
       if (!showComments) {
@@ -84,7 +82,6 @@ export function Post({
           if (count !== null && count !== commentsCount) {
             setCommentsCount(count);
             
-            // Update the post's comments_count in database if it's different
             if (count !== initialComments) {
               await supabase
                 .from('posts')
@@ -101,13 +98,11 @@ export function Post({
     fetchCommentCount();
   }, [id, initialComments]);
   
-  // Handle comment box toggle
   const handleCommentToggle = () => {
     setShowComments(!showComments);
   };
   
   const handleSharePost = () => {
-    // Copy post URL to clipboard
     navigator.clipboard.writeText(`${window.location.origin}/post/${id}`).then(() => {
       toast({
         title: "Link copied",
