@@ -230,6 +230,11 @@ export function Post({
           onClose={() => setShowShareDialog(false)}
           postId={id}
           postContent={content}
+          postImage={image_url}
+          postAuthor={{
+            name: author.name,
+            avatar: author.avatar
+          }}
         />
       )}
     </Card>

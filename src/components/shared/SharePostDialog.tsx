@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
 
 interface Contact {
   id: string;
@@ -23,13 +24,20 @@ interface SharePostDialogProps {
   onClose: () => void;
   postId: string;
   postContent: string;
+  postImage?: string | null;
+  postAuthor?: {
+    name: string;
+    avatar: string;
+  };
 }
 
 export const SharePostDialog = ({
   isOpen,
   onClose,
   postId,
-  postContent
+  postContent,
+  postImage,
+  postAuthor
 }: SharePostDialogProps) => {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
@@ -38,6 +46,35 @@ export const SharePostDialog = ({
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [postDetails, setPostDetails] = useState<any>(null);
+
+  // Fetch post details if author info wasn't provided
+  useEffect(() => {
+    const fetchPostDetails = async () => {
+      if (!postAuthor && postId) {
+        try {
+          const { data, error } = await supabase
+            .from('posts')
+            .select('content, image_url, user_id, profiles:user_id(name)')
+            .eq('id', postId)
+            .single();
+            
+          if (error) {
+            console.error("Error fetching post details:", error);
+            return;
+          }
+          
+          if (data) {
+            setPostDetails(data);
+          }
+        } catch (error) {
+          console.error("Error in fetchPostDetails:", error);
+        }
+      }
+    };
+    
+    fetchPostDetails();
+  }, [postId, postAuthor]);
 
   // Fetch the user's contacts (people they've messaged before)
   useEffect(() => {
@@ -114,9 +151,23 @@ export const SharePostDialog = ({
     try {
       setSending(true);
       
-      const shareMessage = message 
-        ? `${message}\n\nShared post: ${postContent.substring(0, 100)}${postContent.length > 100 ? '...' : ''}\n\nView full post: ${window.location.origin}/post/${postId}`
-        : `Shared post: ${postContent.substring(0, 100)}${postContent.length > 100 ? '...' : ''}\n\nView full post: ${window.location.origin}/post/${postId}`;
+      // Create a JSON representation of the post preview
+      const postPreview = {
+        id: postId,
+        content: postContent,
+        image_url: postImage,
+        author: postAuthor || (postDetails?.profiles ? { 
+          name: postDetails.profiles.name, 
+          avatar: postDetails.profiles.name.charAt(0).toUpperCase() 
+        } : null)
+      };
+      
+      // Create message content with the post preview
+      const shareMessage = JSON.stringify({
+        type: "shared_post",
+        message: message || "Shared a post with you",
+        post: postPreview
+      });
       
       // Insert message to database
       const { error } = await supabase
@@ -171,7 +222,36 @@ export const SharePostDialog = ({
           <DialogTitle>Share Post</DialogTitle>
         </DialogHeader>
         
-        <div className="mt-4 space-y-4">
+        <div className="mt-2 mb-4">
+          <Card className="p-3 bg-secondary/50 border border-border/50">
+            <div className="flex items-start space-x-2 mb-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>
+                  {postAuthor?.avatar || (postDetails?.profiles?.name.charAt(0).toUpperCase() || '?')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="font-medium text-sm truncate">
+                  {postAuthor?.name || postDetails?.profiles?.name || 'Unknown User'}
+                </p>
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground line-clamp-2 mb-2">
+              {postContent}
+            </div>
+            {postImage || postDetails?.image_url ? (
+              <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+                <img 
+                  src={postImage || postDetails?.image_url} 
+                  alt="Post image"
+                  className="object-cover w-full h-full"
+                />
+              </div>
+            ) : null}
+          </Card>
+        </div>
+        
+        <div className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input

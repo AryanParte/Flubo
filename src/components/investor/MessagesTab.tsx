@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 
 type Message = {
   id: string;
@@ -99,13 +99,11 @@ export const MessagesTab = () => {
     initializeRealtime();
   }, [userId]);
   
-  // Mark messages as read when selecting a chat
   useEffect(() => {
     const markMessagesAsRead = async () => {
       if (!userId || !selectedChat) return;
       
       try {
-        // Find unread messages from the selected chat partner
         const unreadMessages = await supabase
           .from('messages')
           .select('id')
@@ -121,7 +119,6 @@ export const MessagesTab = () => {
         if (unreadMessages.data && unreadMessages.data.length > 0) {
           console.log(`Marking ${unreadMessages.data.length} messages as read`);
           
-          // Update all unread messages from this sender
           const { error: updateError } = await supabase
             .from('messages')
             .update({ read_at: new Date().toISOString() })
@@ -132,7 +129,6 @@ export const MessagesTab = () => {
           if (updateError) {
             console.error("Error marking messages as read:", updateError);
           } else {
-            // Update local state to remove unread indicators
             setConversations(prev => prev.map(convo => {
               if (convo.id === selectedChat) {
                 return { ...convo, unread: 0 };
@@ -201,7 +197,7 @@ export const MessagesTab = () => {
       
       if (!partnerData) {
         console.log("Missing partner data for message:", msg);
-        return; // Skip if partner data is missing
+        return;
       }
       
       if (partnerData.user_type !== 'startup') {
@@ -218,7 +214,7 @@ export const MessagesTab = () => {
           lastMessage: "",
           time: "",
           unread: 0,
-          last_message_time: new Date(0) // Add this field to track actual timestamps
+          last_message_time: new Date(0)
         });
       }
       
@@ -230,7 +226,6 @@ export const MessagesTab = () => {
         time: formatMessageTime(msg.sent_at)
       });
       
-      // Track the most recent message time for sorting
       const msgTime = new Date(msg.sent_at);
       if (msgTime > convo.last_message_time) {
         convo.last_message_time = msgTime;
@@ -253,7 +248,6 @@ export const MessagesTab = () => {
       }
     });
     
-    // Convert to array and sort by most recent message
     const conversationsArray = Array.from(conversationMap.values()).sort((a, b) => 
       b.last_message_time.getTime() - a.last_message_time.getTime()
     );
@@ -332,7 +326,6 @@ export const MessagesTab = () => {
       setConversations(prevConversations => 
         prevConversations.map(convo => {
           if (convo.id === selectedChat) {
-            // Update the last_message_time for this conversation
             const updatedConvo = {
               ...convo,
               messages: [...convo.messages, newMessage],
@@ -343,7 +336,7 @@ export const MessagesTab = () => {
             return updatedConvo;
           }
           return convo;
-        }).sort((a, b) => b.last_message_time.getTime() - a.last_message_time.getTime()) // Re-sort by newest
+        }).sort((a, b) => b.last_message_time.getTime() - a.last_message_time.getTime())
       );
       
       setMessage("");
@@ -359,6 +352,32 @@ export const MessagesTab = () => {
     } finally {
       setSendingMessage(false);
     }
+  };
+
+  const renderMessageContent = (msg: any) => {
+    try {
+      const contentObj = JSON.parse(msg.text);
+      
+      if (contentObj.type === "shared_post" && contentObj.post) {
+        return (
+          <div>
+            {contentObj.message && (
+              <p className="text-sm mb-1">{contentObj.message}</p>
+            )}
+            <SharedPostPreview 
+              postId={contentObj.post.id}
+              content={contentObj.post.content}
+              imageUrl={contentObj.post.image_url}
+              author={contentObj.post.author}
+              compact
+            />
+          </div>
+        );
+      }
+    } catch (e) {
+    }
+    
+    return <p className="text-sm">{msg.text}</p>;
   };
 
   const filteredConversations = searchQuery 
@@ -455,13 +474,9 @@ export const MessagesTab = () => {
                   className={`flex ${msg.sender === 'you' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div 
-                    className={`max-w-[70%] p-3 rounded-lg ${
-                      msg.sender === 'you' 
-                        ? 'bg-accent text-white rounded-br-none' 
-                        : 'bg-secondary rounded-bl-none'
-                    }`}
+                    className={`max-w-[70%] p-3 rounded-lg ${msg.sender === 'you' ? 'bg-accent text-white rounded-br-none' : 'bg-secondary rounded-bl-none'}`}
                   >
-                    <p className="text-sm">{msg.text}</p>
+                    {renderMessageContent(msg)}
                     <p className="text-xs opacity-70 mt-1 text-right">{msg.time}</p>
                   </div>
                 </div>

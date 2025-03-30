@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 
 type Message = {
   id: string;
@@ -311,6 +311,35 @@ export const MessagesTab = () => {
     }
   };
 
+  const renderMessageContent = (msg: any) => {
+    // Check if message content is JSON and contains a shared post
+    try {
+      const contentObj = JSON.parse(msg.text);
+      
+      if (contentObj.type === "shared_post" && contentObj.post) {
+        return (
+          <div>
+            {contentObj.message && (
+              <p className="text-sm mb-1">{contentObj.message}</p>
+            )}
+            <SharedPostPreview 
+              postId={contentObj.post.id}
+              content={contentObj.post.content}
+              imageUrl={contentObj.post.image_url}
+              author={contentObj.post.author}
+              compact
+            />
+          </div>
+        );
+      }
+    } catch (e) {
+      // Not JSON or not a shared post, just render as regular text
+    }
+    
+    // Default text rendering
+    return <p className="text-sm">{msg.text}</p>;
+  };
+
   const filteredConversations = searchQuery 
     ? conversations.filter(convo => convo.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : conversations;
@@ -432,8 +461,7 @@ export const MessagesTab = () => {
                         : 'bg-secondary rounded-bl-none'
                     }`}
                   >
-                    <p className="text-sm">{msg.text}</p>
-                    <p className="text-xs opacity-70 mt-1 text-right">{msg.time}</p>
+                    {renderMessageContent(msg)}
                   </div>
                 </div>
               ))
