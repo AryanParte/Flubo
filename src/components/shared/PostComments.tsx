@@ -87,6 +87,9 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
         if (onCommentCountChange) {
           onCommentCountChange(commentsWithProfiles.length);
         }
+        
+        // Update post comment count in database if needed
+        updatePostCommentCount(commentsWithProfiles.length);
       }
     } catch (error) {
       console.error("Error in fetchComments:", error);

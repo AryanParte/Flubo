@@ -1,3 +1,5 @@
+
+// Update only the fetchPosts function in FeedTab.tsx to ensure we're getting accurate like and comment counts
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -180,7 +182,48 @@ export function FeedTab() {
       }
       
       if (data) {
-        const formattedPosts: PostProps[] = (data as PostRecord[]).map(post => {
+        // For each post, check for actual count of likes and comments
+        const postsWithUpdatedCounts = await Promise.all((data as PostRecord[]).map(async (post) => {
+          // Check actual likes count
+          const { count: likesCount, error: likesError } = await supabase
+            .from('post_likes')
+            .select('id', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+            
+          if (likesError) {
+            console.error(`Error counting likes for post ${post.id}:`, likesError);
+          } else if (likesCount !== null && likesCount !== post.likes) {
+            // Update the post likes count in the database
+            await supabase
+              .from('posts')
+              .update({ likes: likesCount })
+              .eq('id', post.id);
+              
+            post.likes = likesCount;
+          }
+          
+          // Check actual comments count
+          const { count: commentsCount, error: commentsError } = await supabase
+            .from('comments')
+            .select('id', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+            
+          if (commentsError) {
+            console.error(`Error counting comments for post ${post.id}:`, commentsError);
+          } else if (commentsCount !== null && commentsCount !== post.comments_count) {
+            // Update the post comments count in the database
+            await supabase
+              .from('posts')
+              .update({ comments_count: commentsCount })
+              .eq('id', post.id);
+              
+            post.comments_count = commentsCount;
+          }
+          
+          return post;
+        }));
+        
+        const formattedPosts: PostProps[] = postsWithUpdatedCounts.map(post => {
           return {
             id: post.id,
             author: {

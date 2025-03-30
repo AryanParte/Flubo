@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import {
 import { useLikePost } from "@/hooks/useLikePost";
 import { PostComments } from "./PostComments";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export type PostAuthor = {
   id: string;
@@ -54,9 +55,50 @@ export function Post({
   image_url,
   onHashtagClick 
 }: PostProps) {
+  const { user } = useAuth();
   const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(initialComments);
   const { isLiked, likesCount, toggleLike, isLoading } = useLikePost(id, likes);
+  
+  // Fetch actual comment count when component mounts
+  useEffect(() => {
+    const fetchCommentCount = async () => {
+      if (!showComments) {
+        try {
+          const { count, error } = await supabase
+            .from('comments')
+            .select('id', { count: 'exact', head: true })
+            .eq('post_id', id);
+            
+          if (error) {
+            console.error("Error fetching comment count:", error);
+            return;
+          }
+          
+          if (count !== null && count !== commentsCount) {
+            setCommentsCount(count);
+            
+            // Update the post's comments_count in database if it's different
+            if (count !== initialComments) {
+              await supabase
+                .from('posts')
+                .update({ comments_count: count })
+                .eq('id', id);
+            }
+          }
+        } catch (error) {
+          console.error("Error in fetchCommentCount:", error);
+        }
+      }
+    };
+    
+    fetchCommentCount();
+  }, [id, initialComments]);
+  
+  // Handle comment box toggle
+  const handleCommentToggle = () => {
+    setShowComments(!showComments);
+  };
   
   const handleSharePost = () => {
     // Copy post URL to clipboard
@@ -145,7 +187,7 @@ export function Post({
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={() => setShowComments(!showComments)}
+          onClick={handleCommentToggle}
         >
           <MessageSquare className="h-4 w-4 mr-2" />
           {commentsCount}

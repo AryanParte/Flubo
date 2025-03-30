@@ -61,52 +61,63 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
     ['UPDATE'],
     (payload: any) => {
       console.log('Received posts update:', payload);
-      if (payload.new?.id === postId && payload.new?.likes !== likesCount) {
+      if (payload.new?.id === postId && payload.new?.likes !== undefined) {
         console.log('Updating like count from post update:', payload.new.likes);
         setLikesCount(payload.new.likes);
       }
     }
   );
   
-  // Check if post is already liked by this user
-  const checkLikeStatus = async () => {
-    if (!user) return;
-    
+  // Fetch actual post likes count and check like status
+  const fetchLikesData = async () => {
     try {
-      console.log('Checking like status for post:', postId, 'user:', user.id);
-      const { data, error } = await supabase
+      // Get accurate like count
+      const { count: likesCount, error: countError } = await supabase
         .from('post_likes')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .single();
+        .select('id', { count: 'exact', head: true })
+        .eq('post_id', postId);
         
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
-        console.error("Error checking like status:", error);
-        return;
+      if (countError) {
+        console.error("Error fetching likes count:", countError);
+      } else if (likesCount !== null) {
+        console.log('Fetched likes count:', likesCount);
+        setLikesCount(likesCount);
+        
+        // Update post likes count in database if it's different
+        if (likesCount !== initialLikesCount) {
+          await supabase
+            .from('posts')
+            .update({ likes: likesCount })
+            .eq('id', postId);
+        }
       }
       
-      const liked = !!data;
-      console.log('Post is liked:', liked);
-      setIsLiked(liked);
+      // Check if current user has liked this post
+      if (user) {
+        const { data, error } = await supabase
+          .from('post_likes')
+          .select('id')
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .single();
+          
+        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+          console.error("Error checking like status:", error);
+        } else {
+          const liked = !!data;
+          console.log('Post is liked by current user:', liked);
+          setIsLiked(liked);
+        }
+      }
     } catch (error) {
-      console.error("Error in checkLikeStatus:", error);
+      console.error("Error in fetchLikesData:", error);
     }
   };
   
-  // Initial check for like status
+  // Initial data fetch
   useEffect(() => {
-    if (user) {
-      checkLikeStatus();
-    } else {
-      setIsLiked(false);
-    }
-  }, [postId, user]);
-  
-  // Also update the likes count based on initial prop update
-  useEffect(() => {
-    setLikesCount(initialLikesCount);
-  }, [initialLikesCount]);
+    fetchLikesData();
+  }, [postId, user, initialLikesCount]);
   
   const toggleLike = async () => {
     if (!user) {
@@ -138,15 +149,16 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         
         console.log('Like removed successfully');
         
-        // Also update the post like count directly for immediate feedback
+        // Update the post like count
+        const newCount = Math.max(0, likesCount - 1);
         await supabase
           .from('posts')
-          .update({ likes: Math.max(0, likesCount - 1) })
+          .update({ likes: newCount })
           .eq('id', postId);
           
         // Local update for immediate UI feedback
         setIsLiked(false);
-        setLikesCount(prev => Math.max(0, prev - 1));
+        setLikesCount(newCount);
       } else {
         // Add like
         console.log('Adding like for post:', postId, 'user:', user.id);
@@ -164,15 +176,16 @@ export function useLikePost(postId: string, initialLikesCount: number): LikeStat
         
         console.log('Like added successfully');
         
-        // Also update the post like count directly for immediate feedback
+        // Update the post like count
+        const newCount = likesCount + 1;
         await supabase
           .from('posts')
-          .update({ likes: likesCount + 1 })
+          .update({ likes: newCount })
           .eq('id', postId);
           
         // Local update for immediate UI feedback
         setIsLiked(true);
-        setLikesCount(prev => prev + 1);
+        setLikesCount(newCount);
       }
     } catch (error) {
       console.error("Error toggling like:", error);
