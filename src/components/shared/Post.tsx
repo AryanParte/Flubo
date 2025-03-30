@@ -20,10 +20,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { useLikePost } from "@/hooks/useLikePost";
 import { PostComments } from "./PostComments";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { ProfilePreview } from "./ProfilePreview";
 
 export type PostAuthor = {
   id: string;
@@ -119,7 +125,14 @@ export function Post({
             <AvatarFallback>{author.name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{author.name}</p>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <p className="font-medium cursor-pointer hover:underline">{author.name}</p>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80 p-0" align="start">
+                <ProfilePreview userId={author.id} />
+              </HoverCardContent>
+            </HoverCard>
             <p className="text-sm text-muted-foreground">{author.role}</p>
             <p className="text-xs text-muted-foreground">{timestamp}</p>
           </div>
