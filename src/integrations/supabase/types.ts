@@ -176,6 +176,27 @@ export type Database = {
           },
         ]
       }
+      followers: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       investor_ai_searches: {
         Row: {
           created_at: string
@@ -718,6 +739,18 @@ export type Database = {
           profile_email: string
         }
         Returns: undefined
+      }
+      get_followers_count: {
+        Args: {
+          user_id: string
+        }
+        Returns: number
+      }
+      get_following_count: {
+        Args: {
+          user_id: string
+        }
+        Returns: number
       }
     }
     Enums: {
