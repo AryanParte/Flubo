@@ -11,6 +11,7 @@ import {
 import { Investor } from "../../../types/investor";
 import { Badge } from "@/components/ui/badge";
 import { InvestorAIChat } from "./InvestorAIChat";
+import { InvestorProfilePopup } from "./InvestorProfilePopup";
 
 interface InvestorCardProps {
   investor: Investor;
@@ -31,7 +32,9 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
             )}
           </Avatar>
           <div className="flex-1">
-            <h3 className="font-medium text-base">{investor.name}</h3>
+            <h3 className="font-medium text-base">
+              <InvestorProfilePopup investor={investor} />
+            </h3>
             
             <div className="space-y-1 mt-2">
               <p className="text-xs text-muted-foreground flex items-center">
