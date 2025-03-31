@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { ProfilePreview } from "@/components/shared/ProfilePreview";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InvestorProfilePopupProps {
   investor: Investor;
@@ -47,7 +46,7 @@ export const InvestorProfilePopup = ({ investor }: InvestorProfilePopupProps) =>
         <HoverCardContent className="w-80">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-3">
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-10 w-10">
                 <AvatarFallback>{investor.name?.charAt(0) || 'I'}</AvatarFallback>
                 {investor.avatar_url && <AvatarImage src={investor.avatar_url} />}
               </Avatar>
@@ -57,10 +56,6 @@ export const InvestorProfilePopup = ({ investor }: InvestorProfilePopupProps) =>
               </div>
             </div>
           </div>
-          
-          {investor.bio && (
-            <p className="mt-3 text-xs text-muted-foreground line-clamp-3">{investor.bio}</p>
-          )}
           
           {investor.location && (
             <div className="mt-3 flex items-center text-xs text-muted-foreground">
@@ -80,13 +75,6 @@ export const InvestorProfilePopup = ({ investor }: InvestorProfilePopupProps) =>
             <div className="mt-1 flex items-center text-xs text-muted-foreground">
               <DollarSign className="h-3 w-3 mr-1" />
               <span>Investment: {investor.investment_size}</span>
-            </div>
-          )}
-          
-          {investor.preferred_stages && investor.preferred_stages.length > 0 && (
-            <div className="mt-1 flex items-start text-xs text-muted-foreground">
-              <Briefcase className="h-3 w-3 mr-1 mt-0.5" />
-              <span>Stages: {investor.preferred_stages.join(", ")}</span>
             </div>
           )}
           
