@@ -20,7 +20,12 @@ export const FindInvestorsTab = () => {
   
   return (
     <>
-      <InvestorList showSearch={true} showTabs={true} />
+      <InvestorList 
+        showSearch={true} 
+        showTabs={true} 
+        onShowFollowers={handleShowFollowers}
+        onShowFollowing={handleShowFollowing}
+      />
       
       {selectedUserId && (
         <>

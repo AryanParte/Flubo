@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Briefcase, Building, MapPin, Tags, DollarSign, Bot } from "lucide-react";
+import { Briefcase, Building, MapPin, Tags, DollarSign, Bot, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -12,12 +12,24 @@ import { Investor } from "../../../types/investor";
 import { Badge } from "@/components/ui/badge";
 import { InvestorAIChat } from "./InvestorAIChat";
 import { InvestorProfilePopup } from "./InvestorProfilePopup";
+import { useFollowUser } from "@/hooks/useFollowUser";
+import { useEffect } from "react";
 
 interface InvestorCardProps {
   investor: Investor;
+  onShowFollowers?: (userId: string) => void;
+  onShowFollowing?: (userId: string) => void;
 }
 
-export const InvestorCard = ({ investor }: InvestorCardProps) => {
+export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: InvestorCardProps) => {
+  const { followersCount, followingCount, loadFollowData } = useFollowUser();
+  
+  useEffect(() => {
+    if (investor?.id) {
+      loadFollowData(investor.id);
+    }
+  }, [investor?.id]);
+  
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -69,6 +81,25 @@ export const InvestorCard = ({ investor }: InvestorCardProps) => {
                   <span>{investor.investment_size}</span>
                 </p>
               )}
+              
+              <div className="flex items-center text-xs text-muted-foreground mt-2">
+                <Users size={12} className="mr-1 flex-shrink-0" />
+                <button 
+                  onClick={() => onShowFollowers?.(investor.id)}
+                  className="hover:underline cursor-pointer"
+                  type="button"
+                >
+                  <span>{followersCount} followers</span>
+                </button>
+                <span className="mx-1">·</span>
+                <button 
+                  onClick={() => onShowFollowing?.(investor.id)}
+                  className="hover:underline cursor-pointer"
+                  type="button"
+                >
+                  <span>{followingCount} following</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
