@@ -87,17 +87,17 @@ export const CompanyProfilePopup = ({ company, children }: CompanyProfilePopupPr
                   </div>
                 )}
                 
-                {company.founded && (
+                {company.founding_year && (
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                    <span>Founded {company.founded}</span>
+                    <span>Founded {company.founding_year}</span>
                   </div>
                 )}
                 
-                {company.employees && (
+                {company.team_size && (
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.employees} employees</span>
+                    <span>{company.team_size} employees</span>
                   </div>
                 )}
                 
