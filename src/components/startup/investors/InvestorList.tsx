@@ -10,11 +10,15 @@ import { useInvestorData } from "../../../hooks/useInvestorData";
 interface InvestorListProps {
   showSearch?: boolean;
   showTabs?: boolean;
+  onShowFollowers?: (userId: string) => void;
+  onShowFollowing?: (userId: string) => void;
 }
 
 export const InvestorList = ({ 
   showSearch = true, 
-  showTabs = true 
+  showTabs = true,
+  onShowFollowers,
+  onShowFollowing
 }: InvestorListProps) => {
   const { 
     investors,
@@ -113,7 +117,12 @@ export const InvestorList = ({
         {displayedInvestors.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {displayedInvestors.map((investor) => (
-              <InvestorCard key={investor.id} investor={investor} />
+              <InvestorCard 
+                key={investor.id} 
+                investor={investor} 
+                onShowFollowers={onShowFollowers}
+                onShowFollowing={onShowFollowing}
+              />
             ))}
           </div>
         ) : (

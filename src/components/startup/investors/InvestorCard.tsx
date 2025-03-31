@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Briefcase, Building, MapPin, Tags, DollarSign, Bot, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { InvestorAIChat } from "./InvestorAIChat";
 import { InvestorProfilePopup } from "./InvestorProfilePopup";
 import { useFollowUser } from "@/hooks/useFollowUser";
-import { useEffect } from "react";
 
 interface InvestorCardProps {
   investor: Investor;
