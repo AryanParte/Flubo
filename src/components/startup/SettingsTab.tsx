@@ -164,10 +164,13 @@ export const SettingsTab = () => {
                 <Switch
                   checked={Object.values(emailSettings).some(Boolean)}
                   onCheckedChange={(checked) => {
-                    const updatedSettings = {};
-                    Object.keys(emailSettings).forEach(key => {
-                      updatedSettings[key] = checked;
-                    });
+                    const updatedSettings: typeof emailSettings = {
+                      'new-match': checked,
+                      'messages': checked,
+                      'profile-views': checked,
+                      'funding-updates': checked,
+                      'newsletters': checked,
+                    };
                     setEmailSettings(updatedSettings);
                   }}
                 />
@@ -202,10 +205,11 @@ export const SettingsTab = () => {
                 <Switch
                   checked={Object.values(pushSettings).some(Boolean)}
                   onCheckedChange={(checked) => {
-                    const updatedSettings = {};
-                    Object.keys(pushSettings).forEach(key => {
-                      updatedSettings[key] = checked;
-                    });
+                    const updatedSettings: typeof pushSettings = {
+                      'push-matches': checked,
+                      'push-messages': checked,
+                      'push-reminders': checked,
+                    };
                     setPushSettings(updatedSettings);
                   }}
                 />
