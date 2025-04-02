@@ -37,8 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     console.log("Setting up auth state change listener");
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, currentSession) => {
-        console.log("Auth state changed:", _event, "User:", currentSession?.user?.id);
+      async (event, currentSession) => {
+        console.log("Auth state changed:", event, "User:", currentSession?.user?.id);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
@@ -50,15 +50,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .from('profiles')
               .select('user_type')
               .eq('id', currentSession.user.id)
-              .single();
+              .maybeSingle();
             
             if (error) {
               console.error("Error fetching user type:", error);
-              throw error;
+              setUserType(null);
+            } else if (data) {
+              console.log("User type fetched:", data.user_type);
+              setUserType(data.user_type as "startup" | "investor");
+            } else {
+              console.log("No user profile found");
+              setUserType(null);
             }
-            
-            console.log("User type fetched:", data.user_type);
-            setUserType(data.user_type as "startup" | "investor");
           } catch (error) {
             console.error("Error fetching user type:", error);
             setUserType(null);
@@ -86,15 +89,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('profiles')
             .select('user_type')
             .eq('id', currentSession.user.id)
-            .single();
+            .maybeSingle();
           
           if (error) {
             console.error("Error fetching initial user type:", error);
-            throw error;
+            setUserType(null);
+          } else if (data) {
+            console.log("Initial user type fetched:", data.user_type);
+            setUserType(data.user_type as "startup" | "investor");
+          } else {
+            console.log("No initial user profile found");
+            setUserType(null);
           }
-          
-          console.log("Initial user type fetched:", data.user_type);
-          setUserType(data.user_type as "startup" | "investor");
         } catch (error) {
           console.error("Error fetching initial user type:", error);
           setUserType(null);
@@ -142,6 +148,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error("Sign up error:", error);
+        toast({
+          title: "Sign up failed",
+          description: error.message,
+          variant: "destructive",
+        });
         throw error;
       }
 
@@ -201,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       console.error("Sign up error:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -242,14 +254,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from("profiles")
           .select("user_type")
           .eq("id", data.user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
           console.error("Error fetching profile:", profileError);
           // Still continue as the authentication was successful
-        } else {
+        } else if (profileData) {
           console.log("Profile fetched:", profileData);
           setUserType(profileData.user_type as "startup" | "investor");
+        } else {
+          console.log("No profile found for user, attempting to create one");
+          // Try to create a profile if it doesn't exist
+          try {
+            const { error: createProfileError } = await supabase
+              .from("profiles")
+              .insert([
+                {
+                  id: data.user.id,
+                  user_type: data.user.user_metadata.user_type || "startup",
+                  name: data.user.user_metadata.name || email,
+                  email: email,
+                }
+              ]);
+              
+            if (createProfileError) {
+              console.error("Error creating missing profile:", createProfileError);
+            } else {
+              console.log("Created missing profile for user");
+              setUserType((data.user.user_metadata.user_type as "startup" | "investor") || "startup");
+            }
+          } catch (createError) {
+            console.error("Error in profile creation:", createError);
+          }
         }
 
         toast({
@@ -257,7 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "You have successfully signed in",
         });
 
-        const fetchedUserType = profileData?.user_type || "startup";
+        const fetchedUserType = profileData?.user_type || data.user.user_metadata.user_type || "startup";
         console.log("Redirecting to:", fetchedUserType === "startup" ? "/business" : "/investor");
         navigate(fetchedUserType === "startup" ? "/business" : "/investor");
         return { success: true };

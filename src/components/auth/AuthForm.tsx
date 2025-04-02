@@ -43,6 +43,8 @@ export function AuthForm() {
       if (authMode === "signin") {
         console.log("Attempting sign in for:", email);
         const result = await signIn(email, password);
+        console.log("Sign in result:", result);
+        
         if (!result.success) {
           console.error("Sign in failed:", result.error);
           setError(result.error || "An unknown error occurred during sign in");
