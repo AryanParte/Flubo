@@ -92,9 +92,14 @@
     @apply border-border;
   }
 
+  html {
+    @apply scroll-smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
   }
 
   .glass-card {
@@ -106,7 +111,27 @@
   }
   
   .section-padding {
-    @apply px-4 py-16 sm:py-20 md:px-6 lg:px-8 xl:px-12;
+    @apply px-4 py-10 sm:py-16 md:px-6 lg:px-8 xl:px-12;
+  }
+
+  /* Card container to prevent overflow */
+  .card-container {
+    @apply break-words w-full overflow-hidden;
+  }
+  
+  /* Text truncation for long text */
+  .truncate-text {
+    @apply truncate;
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+  
+  /* Responsive containers */
+  .container-responsive {
+    @apply w-full px-4 sm:px-6 lg:px-8 mx-auto;
   }
 
   /* Custom scrollbar */
@@ -121,6 +146,21 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
   }
+
+  /* Responsive grid layouts */
+  .grid-cols-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+  }
+  
+  /* Responsive flex layouts */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row items-start sm:items-center;
+  }
+}
+
+/* Ensure dropdowns don't overflow on mobile */
+.dropdown-content {
+  @apply max-h-[70vh] overflow-y-auto;
 }
 
 .page-transition-enter {
@@ -143,4 +183,22 @@
   opacity: 0;
   transform: translateY(-10px);
   transition: opacity 300ms, transform 300ms;
+}
+
+/* Media queries for fluid typography */
+@media (max-width: 640px) {
+  h1 {
+    @apply text-2xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+}
+
+/* Ensure images don't overflow containers */
+img {
+  @apply max-w-full h-auto;
 }
