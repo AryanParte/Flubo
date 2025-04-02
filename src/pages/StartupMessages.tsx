@@ -25,16 +25,22 @@ const StartupMessages = () => {
         try {
           console.log("Initializing realtime for startup messages");
           
-          // Call the database function to enable realtime with proper typing
-          const { data: replicaResult, error: replicaError } = await (supabase
-            .rpc('set_messages_replica_identity', {}, { count: 'exact' }) as unknown as Promise<{data: any, error: any}>);
+          // Use 'as any' to bypass TypeScript's function name validation
+          const { data: replicaResult, error: replicaError } = await ((supabase.rpc as any)(
+            'set_messages_replica_identity', 
+            {}, 
+            { count: 'exact' }
+          ));
             
           if (replicaError) {
             console.log("Note: Error setting replica identity:", replicaError);
           }
           
-          const { data: enableResult, error: enableError } = await (supabase
-            .rpc('enable_realtime_for_messages', {}, { count: 'exact' }) as unknown as Promise<{data: any, error: any}>);
+          const { data: enableResult, error: enableError } = await ((supabase.rpc as any)(
+            'enable_realtime_for_messages', 
+            {}, 
+            { count: 'exact' }
+          ));
             
           if (enableError) {
             console.log("Note: Error enabling realtime:", enableError);
