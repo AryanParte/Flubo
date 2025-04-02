@@ -25,16 +25,16 @@ const StartupMessages = () => {
         try {
           console.log("Initializing realtime for startup messages");
           
-          // Call the database function to enable realtime using type assertion
-          const { data: replicaResult, error: replicaError } = await supabase
-            .rpc('set_messages_replica_identity', {}, { count: 'exact' }) as any;
+          // Call the database function to enable realtime with proper typing
+          const { data: replicaResult, error: replicaError } = await (supabase
+            .rpc('set_messages_replica_identity', {}, { count: 'exact' }) as Promise<{data: any, error: any}>);
             
           if (replicaError) {
             console.log("Note: Error setting replica identity:", replicaError);
           }
           
-          const { data: enableResult, error: enableError } = await supabase
-            .rpc('enable_realtime_for_messages', {}, { count: 'exact' }) as any;
+          const { data: enableResult, error: enableError } = await (supabase
+            .rpc('enable_realtime_for_messages', {}, { count: 'exact' }) as Promise<{data: any, error: any}>);
             
           if (enableError) {
             console.log("Note: Error enabling realtime:", enableError);
