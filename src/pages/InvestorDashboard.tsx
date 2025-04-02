@@ -8,7 +8,6 @@ import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
 import { PortfolioTab } from "@/components/investor/PortfolioTab";
 import { AnalyticsTab } from "@/components/investor/AnalyticsTab";
-import { SettingsTab } from "@/components/investor/SettingsTab";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AISearchResultsTab } from "@/components/investor/AISearchResultsTab";
@@ -62,22 +61,8 @@ const InvestorDashboard = () => {
       
       // Set the active tab if specified in URL
       const tabParam = searchParams.get("tab");
-      if (tabParam && ["feed", "discover", "matches", "portfolio", "analytics", "settings"].includes(tabParam)) {
+      if (tabParam && ["feed", "discover", "matches", "portfolio", "analytics"].includes(tabParam)) {
         setActiveTab(tabParam);
-
-        // If settings tab is requested, handle it through profile dropdown instead
-        if (tabParam === "settings") {
-          // First set to feed, then open settings after a brief delay
-          setActiveTab("feed");
-          if (tabParam === "settings") {
-            const settingsTab = document.getElementById("settings-tab");
-            if (settingsTab) {
-              setTimeout(() => {
-                settingsTab.click();
-              }, 100);
-            }
-          }
-        }
       }
     }
   }, [user, searchParams]);
@@ -249,7 +234,6 @@ const InvestorDashboard = () => {
             {activeTab === "matches" && <MatchesTab />}
             {activeTab === "portfolio" && <PortfolioTab />}
             {activeTab === "analytics" && <AnalyticsTab />}
-            {activeTab === "settings" && <SettingsTab />}
             {activeTab === "search-results" && <AISearchResultsTab results={searchResults} />}
           </div>
         </div>

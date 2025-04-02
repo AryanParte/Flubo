@@ -79,6 +79,11 @@ export function Navbar() {
   const getMessagesPath = () => {
     return userType === "investor" ? "/investor/messages" : "/business/messages";
   };
+  
+  const getSettingsPath = () => {
+    // Use the dedicated settings page with user type parameter
+    return userType ? `/settings/${userType}` : "/settings";
+  };
 
   // Handle logo click based on authentication state
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -214,7 +219,7 @@ export function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to={`${getDashboardPath()}?tab=settings`} className="flex items-center">
+                      <Link to={getSettingsPath()} className="flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                       </Link>

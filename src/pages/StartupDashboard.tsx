@@ -24,7 +24,6 @@ import { Label } from "@/components/ui/label";
 import { FeedTab } from "@/components/shared/FeedTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
-import { SettingsTab } from "@/components/startup/SettingsTab";
 import { VerificationOnboarding } from "@/components/startup/VerificationOnboarding";
 
 const StartupDashboard = () => {
@@ -53,13 +52,8 @@ const StartupDashboard = () => {
       
       // Set the active tab if specified in URL
       const tabParam = searchParams.get("tab");
-      if (tabParam && ["feed", "investors", "companies", "settings"].includes(tabParam)) {
-        // Handle settings tab differently
-        if (tabParam === "settings") {
-          setActiveTab("feed"); // Default to feed if settings is requested
-        } else {
-          setActiveTab(tabParam);
-        }
+      if (tabParam && ["feed", "investors", "companies"].includes(tabParam)) {
+        setActiveTab(tabParam);
       }
     }
   }, [user, searchParams]);
@@ -169,7 +163,7 @@ const StartupDashboard = () => {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
   };
-
+  
   const handleCompleteProfileClick = () => {
     navigate('/business/profile');
   };
@@ -395,8 +389,6 @@ const StartupDashboard = () => {
         return <FindInvestorsTab />;
       case "companies":
         return <FindCompaniesTab />;
-      case "settings":
-        return <SettingsTab />;
       default:
         return <FeedTab />;
     }
