@@ -1,98 +1,39 @@
 
-import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, ArrowLeft, AlertTriangle, CheckCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/components/ui/use-toast";
+import { Eye, EyeOff, ArrowLeft, AlertTriangle } from "lucide-react";
+import { useAuthForm } from "@/hooks/useAuthForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-
-type UserType = "startup" | "investor";
-type AuthMode = "signin" | "signup";
+import { UserTypeSelector } from "./UserTypeSelector";
+import { AuthModeSelector } from "./AuthModeSelector";
+import { EmailVerificationSuccess } from "./EmailVerificationSuccess";
 
 export function AuthForm() {
   const [searchParams] = useSearchParams();
-  const initialType = (searchParams.get("type") as UserType) || "startup";
-  const [userType, setUserType] = useState<UserType>(initialType);
-  const [authMode, setAuthMode] = useState<AuthMode>("signin");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Form fields
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  
+  const initialType = (searchParams.get("type") as "startup" | "investor") || "startup";
   const navigate = useNavigate();
-  const { signIn, signUp, loading, supabaseConfigured } = useAuth();
-
-  // Reset form state when component mounts
-  useEffect(() => {
-    setIsSubmitting(false);
-  }, []);
-
-  // Reset submitting state when auth mode changes
-  useEffect(() => {
-    setIsSubmitting(false);
-    setError(null);
-  }, [authMode]);
-
-  // Track loading state from auth context
-  useEffect(() => {
-    console.log("Auth loading state changed:", loading);
-    if (!loading && isSubmitting) {
-      setIsSubmitting(false);
-    }
-  }, [loading]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    
-    if (isSubmitting || !supabaseConfigured) {
-      console.log("Form submission prevented: isSubmitting=", isSubmitting, "supabaseConfigured=", supabaseConfigured);
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
-      console.log("Form submission started with authMode:", authMode);
-      
-      if (authMode === "signin") {
-        console.log("Attempting sign in for:", email);
-        const result = await signIn(email, password);
-        console.log("Sign in result:", result);
-        
-        if (!result.success) {
-          console.error("Sign in failed:", result.error);
-          setError(result.error || "An unknown error occurred during sign in");
-          setIsSubmitting(false);
-        }
-      } else {
-        if (!name.trim()) {
-          toast({
-            title: "Name is required",
-            description: "Please enter your name to create an account",
-            variant: "destructive",
-          });
-          setError("Name is required");
-          setIsSubmitting(false);
-          return;
-        }
-        console.log("Attempting sign up for:", email, "as", userType);
-        await signUp(email, password, userType, name);
-        setEmailSent(true); // Set email sent state to true after signup
-        setIsSubmitting(false);
-      }
-    } catch (error: any) {
-      console.error("Form submission error:", error);
-      setError(error.message || "An unknown error occurred");
-      setIsSubmitting(false);
-    }
-  };
+  
+  const {
+    userType,
+    setUserType,
+    authMode,
+    setAuthMode,
+    showPassword,
+    setShowPassword,
+    isSubmitting,
+    emailSent,
+    error,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    name,
+    setName,
+    handleSubmit,
+    resetForm,
+    loading,
+    supabaseConfigured
+  } = useAuthForm(initialType);
 
   return (
     <div className="w-full max-w-md animate-scale-in">
@@ -106,6 +47,7 @@ export function AuthForm() {
         </button>
       </div>
       
+      {/* Supabase Configuration Warning */}
       {!supabaseConfigured && (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
@@ -115,6 +57,7 @@ export function AuthForm() {
         </Alert>
       )}
       
+      {/* Error Message */}
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
@@ -122,15 +65,10 @@ export function AuthForm() {
         </Alert>
       )}
       
-      {emailSent && (
-        <Alert className="mb-6 border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900">
-          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <AlertDescription className="text-green-700 dark:text-green-400">
-            We've sent a confirmation email to {email}. Please check your inbox and click the link to verify your account.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Email Verification Success */}
+      {emailSent && <EmailVerificationSuccess email={email} onBackToSignIn={resetForm} />}
       
+      {/* Form Header */}
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">
           {emailSent 
@@ -149,39 +87,12 @@ export function AuthForm() {
       </div>
       
       {/* User Type Selector */}
-      {!emailSent && (
-        <div className="bg-background/50 p-1 rounded-lg border border-border mb-6">
-          <div className="grid grid-cols-2 gap-1">
-            <button
-              type="button"
-              onClick={() => setUserType("startup")}
-              className={cn(
-                "py-2.5 px-4 text-sm font-medium rounded-md transition-all",
-                userType === "startup"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Business
-            </button>
-            <button
-              type="button"
-              onClick={() => setUserType("investor")}
-              className={cn(
-                "py-2.5 px-4 text-sm font-medium rounded-md transition-all",
-                userType === "investor"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Investor
-            </button>
-          </div>
-        </div>
-      )}
+      {!emailSent && <UserTypeSelector userType={userType} setUserType={setUserType} />}
       
+      {/* Auth Form */}
       {!emailSent ? (
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name Input (Sign Up Only) */}
           {authMode === "signup" && (
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
@@ -199,6 +110,7 @@ export function AuthForm() {
             </div>
           )}
           
+          {/* Email Input */}
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email address
@@ -214,6 +126,7 @@ export function AuthForm() {
             />
           </div>
           
+          {/* Password Input */}
           <div className="space-y-2">
             <div className="flex justify-between items-baseline">
               <label htmlFor="password" className="text-sm font-medium">
@@ -245,6 +158,7 @@ export function AuthForm() {
             </div>
           </div>
           
+          {/* Submit Button */}
           <Button
             type="submit"
             variant="accent"
@@ -264,40 +178,14 @@ export function AuthForm() {
             )}
           </Button>
         </form>
-      ) : (
-        <div className="mt-8 space-y-4">
-          <Button
-            onClick={() => {
-              setEmailSent(false);
-              setEmail("");
-              setPassword("");
-              setName("");
-              setAuthMode("signin");
-            }}
-            variant="outline"
-            className="w-full"
-          >
-            Back to sign in
-          </Button>
-        </div>
-      )}
+      ) : null}
       
-      {!emailSent && (
-        <div className="mt-6 text-center text-sm">
-          <span className="text-muted-foreground">
-            {authMode === "signin" ? "Don't have an account? " : "Already have an account? "}
-          </span>
-          <button
-            onClick={() => {
-              setAuthMode(authMode === "signin" ? "signup" : "signin");
-              setError(null);
-            }}
-            className="text-accent hover:underline"
-          >
-            {authMode === "signin" ? "Sign up" : "Sign in"}
-          </button>
-        </div>
-      )}
+      {/* Auth Mode Selector */}
+      <AuthModeSelector 
+        authMode={authMode} 
+        setAuthMode={setAuthMode} 
+        emailSent={emailSent} 
+      />
     </div>
   );
 }
