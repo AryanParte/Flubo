@@ -47,7 +47,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     // Set up auth state change listener
-    const subscription = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Fix: Store the unsubscribe function correctly based on Supabase's API
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state change event:", event);
       handleSessionChange(session);
       
@@ -63,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       console.log("Unsubscribing from auth state changes");
-      subscription.unsubscribe();
+      // Fix: Call the correct unsubscribe method
+      subscription?.unsubscribe();
     };
   }, [supabaseConfigured, navigate]);
 
