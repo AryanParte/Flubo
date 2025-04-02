@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -55,11 +54,10 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     try {
-      const { error } = await signOut();
-      if (error) throw error;
+      await signOut();
       navigate("/");
     } catch (error) {
-      console.error("Error signing out:", error.message);
+      console.error("Error signing out:", error);
     }
   };
 
