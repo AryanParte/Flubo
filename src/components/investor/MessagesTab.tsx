@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,150 +45,15 @@ export const MessagesTab = () => {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const firstLoadRef = useRef(true);
   
   const scrollToBottom = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
+  const processMessages = useCallback((messages: any[]) => {
     if (!userId) return;
-
-    const fetchConversations = async () => {
-      try {
-        console.log("Fetching messages for investor user:", userId);
-        
-        const { data: messages, error } = await supabase
-          .from('messages')
-          .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
-          .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-          .order('sent_at', { ascending: true });
-
-        if (error) {
-          console.error("Error fetching messages:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load messages",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
-        console.log("Messages fetched:", messages?.length || 0);
-        processMessages(messages || []);
-      } catch (error) {
-        console.error("Error processing conversations:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchConversations();
     
-    const initializeRealtime = async () => {
-      try {
-        const { error } = await supabase.functions.invoke('enable-realtime');
-        if (error) {
-          console.error("Failed to enable realtime:", error);
-        } else {
-          console.log("Realtime enabled successfully for investor messages");
-        }
-      } catch (error) {
-        console.error("Error initializing realtime:", error);
-      }
-    };
-    
-    initializeRealtime();
-  }, [userId]);
-  
-  useEffect(() => {
-    const markMessagesAsRead = async () => {
-      if (!userId || !selectedChat) return;
-      
-      try {
-        const unreadMessages = await supabase
-          .from('messages')
-          .select('id')
-          .eq('sender_id', selectedChat)
-          .eq('recipient_id', userId)
-          .is('read_at', null);
-          
-        if (unreadMessages.error) {
-          console.error("Error finding unread messages:", unreadMessages.error);
-          return;
-        }
-        
-        if (unreadMessages.data && unreadMessages.data.length > 0) {
-          console.log(`Marking ${unreadMessages.data.length} messages as read`);
-          
-          const { error: updateError } = await supabase
-            .from('messages')
-            .update({ read_at: new Date().toISOString() })
-            .eq('sender_id', selectedChat)
-            .eq('recipient_id', userId)
-            .is('read_at', null);
-            
-          if (updateError) {
-            console.error("Error marking messages as read:", updateError);
-          } else {
-            setConversations(prev => prev.map(convo => {
-              if (convo.id === selectedChat) {
-                return { ...convo, unread: 0 };
-              }
-              return convo;
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("Error in markMessagesAsRead:", error);
-      }
-    };
-    
-    markMessagesAsRead();
-  }, [selectedChat, userId]);
-  
-  useRealtimeSubscription<Message>(
-    'messages',
-    ['INSERT', 'UPDATE', 'DELETE'],
-    (payload) => {
-      console.log("Realtime message update for investor:", payload);
-      
-      if (userId && 
-          (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
-           payload.old?.sender_id === userId || payload.old?.recipient_id === userId)) {
-        
-        const fetchUpdatedMessages = async () => {
-          try {
-            const { data: messages, error } = await supabase
-              .from('messages')
-              .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
-              .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-              .order('sent_at', { ascending: true });
-              
-            if (error) {
-              console.error("Error fetching updated messages:", error);
-              return;
-            }
-            
-            console.log("Refreshing investor messages after realtime update:", messages?.length || 0);
-            processMessages(messages || []);
-            
-            if (payload.eventType === 'INSERT' && payload.new?.recipient_id === userId) {
-              toast({
-                title: "New Message",
-                description: "You have received a new message",
-              });
-            }
-          } catch (error) {
-            console.error("Error processing realtime update:", error);
-          }
-        };
-        
-        fetchUpdatedMessages();
-      }
-    }
-  );
-
-  const processMessages = (messages: any[]) => {
     const conversationMap = new Map();
     
     messages.forEach((msg: any) => {
@@ -256,12 +122,121 @@ export const MessagesTab = () => {
     
     setConversations(conversationsArray);
     
-    if (conversationsArray.length > 0 && !selectedChat) {
+    if (conversationsArray.length > 0 && !selectedChat && firstLoadRef.current) {
       setSelectedChat(conversationsArray[0].id);
+      firstLoadRef.current = false;
     }
     
     setLoading(false);
-  };
+  }, [userId, selectedChat]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!userId) return;
+    
+    try {
+      setLoading(true);
+      console.log("Fetching messages for investor user:", userId);
+      
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*, sender:sender_id(name, user_type), recipient:recipient_id(name, user_type)')
+        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+        .order('sent_at', { ascending: true });
+
+      if (error) {
+        console.error("Error fetching messages:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load messages",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log("Messages fetched:", messages?.length || 0);
+      processMessages(messages || []);
+    } catch (error) {
+      console.error("Error processing conversations:", error);
+      setLoading(false);
+    }
+  }, [userId, processMessages]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchMessages();
+    }
+  }, [userId, fetchMessages]);
+  
+  useEffect(() => {
+    const markMessagesAsRead = async () => {
+      if (!userId || !selectedChat) return;
+      
+      try {
+        const unreadMessages = await supabase
+          .from('messages')
+          .select('id')
+          .eq('sender_id', selectedChat)
+          .eq('recipient_id', userId)
+          .is('read_at', null);
+          
+        if (unreadMessages.error) {
+          console.error("Error finding unread messages:", unreadMessages.error);
+          return;
+        }
+        
+        if (unreadMessages.data && unreadMessages.data.length > 0) {
+          console.log(`Marking ${unreadMessages.data.length} messages as read`);
+          
+          const { error: updateError } = await supabase
+            .from('messages')
+            .update({ read_at: new Date().toISOString() })
+            .eq('sender_id', selectedChat)
+            .eq('recipient_id', userId)
+            .is('read_at', null);
+            
+          if (updateError) {
+            console.error("Error marking messages as read:", updateError);
+          } else {
+            setConversations(prev => prev.map(convo => {
+              if (convo.id === selectedChat) {
+                return { ...convo, unread: 0 };
+              }
+              return convo;
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error in markMessagesAsRead:", error);
+      }
+    };
+    
+    markMessagesAsRead();
+  }, [selectedChat, userId]);
+  
+  const handleRealtimeUpdate = useCallback((payload: { new: Message; old: Message; eventType: string }) => {
+    console.log("Realtime message update for investor:", payload);
+    
+    if (userId && 
+        (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
+         payload.old?.sender_id === userId || payload.old?.recipient_id === userId)) {
+      
+      fetchMessages();
+      
+      if (payload.eventType === 'INSERT' && payload.new?.recipient_id === userId) {
+        toast({
+          title: "New Message",
+          description: "You have received a new message",
+        });
+      }
+    }
+  }, [userId, fetchMessages]);
+  
+  useRealtimeSubscription<Message>(
+    'messages',
+    ['INSERT', 'UPDATE', 'DELETE'],
+    handleRealtimeUpdate
+  );
 
   const formatMessageTime = (timestamp: string) => {
     if (!timestamp) return "Unknown";
@@ -316,28 +291,6 @@ export const MessagesTab = () => {
       }
       
       console.log("Message sent successfully:", data);
-      
-      const newMessage = {
-        sender: "you" as const,
-        text: message.trim(),
-        time: formatMessageTime(new Date().toISOString())
-      };
-      
-      setConversations(prevConversations => 
-        prevConversations.map(convo => {
-          if (convo.id === selectedChat) {
-            const updatedConvo = {
-              ...convo,
-              messages: [...convo.messages, newMessage],
-              lastMessage: message.trim(),
-              time: formatMessageTime(new Date().toISOString()),
-              last_message_time: new Date()
-            };
-            return updatedConvo;
-          }
-          return convo;
-        }).sort((a, b) => b.last_message_time.getTime() - a.last_message_time.getTime())
-      );
       
       setMessage("");
       
