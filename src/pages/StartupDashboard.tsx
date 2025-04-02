@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
@@ -401,9 +402,9 @@ const StartupDashboard = () => {
       <Navbar />
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
-          {/* LinkedIn-style 3-column layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left sidebar - User info */}
+          {/* Updated grid layout to make the middle column wider */}
+          <div className="grid grid-cols-1 lg:grid-cols-14 gap-6">
+            {/* Left sidebar - reduced width */}
             <div className="hidden lg:block lg:col-span-3">
               <DashboardSidebar 
                 userName={startupName}
@@ -417,8 +418,8 @@ const StartupDashboard = () => {
               />
             </div>
             
-            {/* Main content area */}
-            <div className="lg:col-span-6 space-y-4">
+            {/* Main content area - increased width */}
+            <div className="lg:col-span-8 space-y-4">
               {/* Mobile-only user banner */}
               <div className="lg:hidden flex justify-between items-center p-4 bg-card rounded-lg border border-border/60 mb-4">
                 <div>
@@ -511,7 +512,7 @@ const StartupDashboard = () => {
               )}
             </div>
             
-            {/* Right sidebar */}
+            {/* Right sidebar - reduced width */}
             <div className="hidden lg:block lg:col-span-3">
               <DashboardRightSidebar />
             </div>

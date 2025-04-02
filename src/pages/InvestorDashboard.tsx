@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
@@ -135,7 +136,9 @@ const InvestorDashboard = () => {
       <Navbar />
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Updated grid layout to make the middle column wider */}
+          <div className="grid grid-cols-1 lg:grid-cols-14 gap-6">
+            {/* Left sidebar - reduced width */}
             <div className="hidden lg:block lg:col-span-3">
               <DashboardSidebar 
                 userName={userName} 
@@ -145,7 +148,8 @@ const InvestorDashboard = () => {
               />
             </div>
             
-            <div className="lg:col-span-6 space-y-4">
+            {/* Main content area - increased width */}
+            <div className="lg:col-span-8 space-y-4">
               <div className="glass-card rounded-lg p-4 mb-4 animate-fade-in">
                 <form onSubmit={handleSearch} className="relative">
                   <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
@@ -225,6 +229,7 @@ const InvestorDashboard = () => {
               </div>
             </div>
             
+            {/* Right sidebar - reduced width */}
             <div className="hidden lg:block lg:col-span-3">
               <DashboardRightSidebar />
             </div>
