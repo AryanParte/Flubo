@@ -29,16 +29,16 @@ const InvestorMessages = () => {
           try {
             console.log("Initializing realtime for investor messages");
             
-            // Call the database function to enable realtime
+            // Call the database function to enable realtime using type assertion
             const { error: replicaError } = await supabase
-              .rpc('set_messages_replica_identity');
+              .rpc('set_messages_replica_identity', {}, { count: 'exact' }) as any;
               
             if (replicaError) {
               console.log("Note: Error setting replica identity:", replicaError);
             }
             
             const { error: enableError } = await supabase
-              .rpc('enable_realtime_for_messages');
+              .rpc('enable_realtime_for_messages', {}, { count: 'exact' }) as any;
               
             if (enableError) {
               console.log("Note: Error enabling realtime:", enableError);
