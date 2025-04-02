@@ -5,10 +5,11 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserCheck, Building, User } from "lucide-react";
+import { UserCheck, Building, User, ArrowLeft } from "lucide-react";
 import { VerificationForm } from "@/components/verification/VerificationForm";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 
 const Verification = () => {
   const [userType, setUserType] = useState<"startup" | "investor">("startup");
@@ -61,12 +62,27 @@ const Verification = () => {
     checkUserType();
   }, [user, navigate]);
   
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+  
   if (isVerified) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1 pt-24 pb-16">
           <div className="container mx-auto px-4 md:px-6">
+            <div className="flex items-center mb-6">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1" 
+                onClick={handleGoBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+            </div>
             <Card className="max-w-3xl mx-auto">
               <CardHeader className="text-center">
                 <div className="mx-auto bg-accent/10 p-3 rounded-full w-16 h-16 flex items-center justify-center mb-4">
@@ -96,46 +112,46 @@ const Verification = () => {
       <Navbar />
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
+          <div className="flex items-center mb-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-1" 
+              onClick={handleGoBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </div>
+          
           <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold mb-8 text-center">Verify Your Account</h1>
             
-            <Tabs 
-              value={userType} 
-              onValueChange={(value) => setUserType(value as "startup" | "investor")}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="startup" className="flex items-center gap-2">
-                  <Building className="h-4 w-4" />
-                  <span>Startup</span>
-                </TabsTrigger>
-                <TabsTrigger value="investor" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Investor</span>
-                </TabsTrigger>
-              </TabsList>
-              
+            {userType === "investor" ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Verification Details</CardTitle>
                   <CardDescription>
-                    {userType === "startup" 
-                      ? "Complete this form to verify your startup account for $10"
-                      : "Complete this form to verify your investor account for $20"
-                    }
+                    Complete this form to verify your investor account for $20
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <TabsContent value="startup">
-                    <VerificationForm userType="startup" />
-                  </TabsContent>
-                  
-                  <TabsContent value="investor">
-                    <VerificationForm userType="investor" />
-                  </TabsContent>
+                  <VerificationForm userType="investor" />
                 </CardContent>
               </Card>
-            </Tabs>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Verification Details</CardTitle>
+                  <CardDescription>
+                    Complete this form to verify your business account for $10
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <VerificationForm userType="startup" />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>

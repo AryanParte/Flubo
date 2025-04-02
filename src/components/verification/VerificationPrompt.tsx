@@ -28,7 +28,7 @@ export const VerificationPrompt: React.FC<VerificationPromptProps> = ({
     }
   };
   
-  const isPricingForStartup = userType === "startup";
+  const isPricingForBusiness = userType === "startup";
   
   return (
     <Card className={isModal ? "" : "max-w-3xl mx-auto mt-8"}>
@@ -69,7 +69,7 @@ export const VerificationPrompt: React.FC<VerificationPromptProps> = ({
         </div>
         
         <div className="text-center py-4">
-          <div className="text-3xl font-bold mb-2">${isPricingForStartup ? '10' : '20'}</div>
+          <div className="text-3xl font-bold mb-2">${isPricingForBusiness ? '10' : '20'}</div>
           <div className="text-sm text-muted-foreground">One-time verification fee</div>
         </div>
       </CardContent>

@@ -22,7 +22,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-interface StartupFormValues {
+interface BusinessFormValues {
   companyName: string;
   companyWebsite: string;
   linkedinUrl: string;
@@ -44,7 +44,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
-  const startupForm = useForm<StartupFormValues>({
+  const businessForm = useForm<BusinessFormValues>({
     defaultValues: {
       companyName: "",
       companyWebsite: "",
@@ -77,7 +77,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
         
         if (!error && data) {
           if (userType === "startup") {
-            startupForm.setValue("companyName", data.name || "");
+            businessForm.setValue("companyName", data.name || "");
           } else {
             investorForm.setValue("fullName", data.name || "");
           }
@@ -88,7 +88,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
     }
   }, [user, userType]);
   
-  const onSubmitStartup = async (data: StartupFormValues) => {
+  const onSubmitBusiness = async (data: BusinessFormValues) => {
     if (!user) {
       toast({
         title: "Error",
@@ -179,10 +179,10 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
   
   if (userType === "startup") {
     return (
-      <Form {...startupForm}>
-        <form onSubmit={startupForm.handleSubmit(onSubmitStartup)} className="space-y-6">
+      <Form {...businessForm}>
+        <form onSubmit={businessForm.handleSubmit(onSubmitBusiness)} className="space-y-6">
           <FormField
-            control={startupForm.control}
+            control={businessForm.control}
             name="companyName"
             render={({ field }) => (
               <FormItem>
@@ -196,7 +196,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           />
           
           <FormField
-            control={startupForm.control}
+            control={businessForm.control}
             name="companyWebsite"
             render={({ field }) => (
               <FormItem>
@@ -210,7 +210,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           />
           
           <FormField
-            control={startupForm.control}
+            control={businessForm.control}
             name="linkedinUrl"
             render={({ field }) => (
               <FormItem>
@@ -227,7 +227,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           />
           
           <FormField
-            control={startupForm.control}
+            control={businessForm.control}
             name="location"
             render={({ field }) => (
               <FormItem>
@@ -241,7 +241,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           />
           
           <FormField
-            control={startupForm.control}
+            control={businessForm.control}
             name="hasFunding"
             render={({ field }) => (
               <FormItem className="space-y-3">
@@ -272,7 +272,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           />
           
           <FormField
-            control={startupForm.control}
+            control={businessForm.control}
             name="reason"
             render={({ field }) => (
               <FormItem>

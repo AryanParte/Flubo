@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
