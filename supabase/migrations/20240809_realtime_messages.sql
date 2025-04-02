@@ -38,7 +38,7 @@ BEGIN
          ('startup-profiles'), ('post-comments'), ('post-likes')
   ON CONFLICT (name) DO NOTHING;
   
-  -- Insert subscription rules
+  -- Insert subscription rules with enhanced filters
   INSERT INTO supabase_realtime.subscription (entity, filters, claims)
   VALUES 
     ('public:messages', '{}', '{"role":"authenticated"}'),

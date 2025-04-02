@@ -25,7 +25,22 @@ const StartupMessages = () => {
         try {
           console.log("Initializing realtime for startup messages");
           
-          // Attempt to enable realtime via the Edge Function, but don't block UI if it fails
+          // Call the database function to enable realtime
+          const { data: replicaResult, error: replicaError } = await supabase
+            .rpc('set_messages_replica_identity');
+            
+          if (replicaError) {
+            console.log("Note: Error setting replica identity:", replicaError);
+          }
+          
+          const { data: enableResult, error: enableError } = await supabase
+            .rpc('enable_realtime_for_messages');
+            
+          if (enableError) {
+            console.log("Note: Error enabling realtime:", enableError);
+          }
+          
+          // Attempt to enable realtime via the Edge Function as a backup
           supabase.functions.invoke('enable-realtime')
             .then(({ data, error }) => {
               if (error) {

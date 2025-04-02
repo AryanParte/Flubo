@@ -24,11 +24,27 @@ const InvestorMessages = () => {
       if (user) {
         console.log("Investor user loaded:", user.id);
         
-        // Initialize realtime for messages (same as startup messages)
+        // Initialize realtime for messages
         const initializeRealtime = async () => {
           try {
             console.log("Initializing realtime for investor messages");
             
+            // Call the database function to enable realtime
+            const { error: replicaError } = await supabase
+              .rpc('set_messages_replica_identity');
+              
+            if (replicaError) {
+              console.log("Note: Error setting replica identity:", replicaError);
+            }
+            
+            const { error: enableError } = await supabase
+              .rpc('enable_realtime_for_messages');
+              
+            if (enableError) {
+              console.log("Note: Error enabling realtime:", enableError);
+            }
+            
+            // Attempt to enable realtime via the Edge Function as a backup
             supabase.functions.invoke('enable-realtime')
               .then(({ data, error }) => {
                 if (error) {
@@ -47,23 +63,6 @@ const InvestorMessages = () => {
         };
         
         initializeRealtime();
-        
-        // Check if this user exists in profiles table
-        const checkUserProfile = async () => {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          
-          if (error) {
-            console.error("Error checking user profile:", error);
-          } else {
-            console.log("User profile found:", data);
-          }
-        };
-        
-        checkUserProfile();
       }
     }
   }, [user, authLoading, navigate]);
