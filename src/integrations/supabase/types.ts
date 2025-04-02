@@ -511,6 +511,9 @@ export type Database = {
           phone: string | null
           position: string | null
           user_type: string
+          verified: boolean | null
+          verified_at: string | null
+          verified_type: string | null
         }
         Insert: {
           company?: string | null
@@ -521,6 +524,9 @@ export type Database = {
           phone?: string | null
           position?: string | null
           user_type: string
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_type?: string | null
         }
         Update: {
           company?: string | null
@@ -531,6 +537,9 @@ export type Database = {
           phone?: string | null
           position?: string | null
           user_type?: string
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_type?: string | null
         }
         Relationships: []
       }
@@ -725,6 +734,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      verification_payments: {
+        Row: {
+          amount: string
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          payment_id: string | null
+          payment_status: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_status?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_status?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

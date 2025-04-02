@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ const Verification = () => {
   const [isVerified, setIsVerified] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   useEffect(() => {
     if (!user) {
@@ -127,31 +128,19 @@ const Verification = () => {
           <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold mb-8 text-center">Verify Your Account</h1>
             
-            {userType === "investor" ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Verification Details</CardTitle>
-                  <CardDescription>
-                    Complete this form to verify your investor account for $20
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <VerificationForm userType="investor" />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Verification Details</CardTitle>
-                  <CardDescription>
-                    Complete this form to verify your business account for $10
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <VerificationForm userType="startup" />
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Verification Details</CardTitle>
+                <CardDescription>
+                  {userType === "investor" 
+                    ? "Complete this form to verify your investor account for $20"
+                    : "Complete this form to verify your business account for $10"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <VerificationForm userType={userType} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
