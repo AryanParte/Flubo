@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft, AlertTriangle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +27,16 @@ export function AuthForm() {
   const navigate = useNavigate();
   const { signIn, signUp, loading, supabaseConfigured } = useAuth();
 
+  useEffect(() => {
+    setIsSubmitting(false);
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setIsSubmitting(false);
+    }
+  }, [loading]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -48,6 +57,7 @@ export function AuthForm() {
         if (!result.success) {
           console.error("Sign in failed:", result.error);
           setError(result.error || "An unknown error occurred during sign in");
+          setIsSubmitting(false);
         }
       } else {
         if (!name.trim()) {
@@ -57,16 +67,17 @@ export function AuthForm() {
             variant: "destructive",
           });
           setError("Name is required");
+          setIsSubmitting(false);
           return;
         }
         console.log("Attempting sign up for:", email, "as", userType);
         await signUp(email, password, userType, name);
         setEmailSent(true); // Set email sent state to true after signup
+        setIsSubmitting(false);
       }
     } catch (error: any) {
       console.error("Form submission error:", error);
       setError(error.message || "An unknown error occurred");
-    } finally {
       setIsSubmitting(false);
     }
   };
