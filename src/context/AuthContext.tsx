@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -7,6 +8,7 @@ import { toast } from "@/components/ui/use-toast";
 interface AuthContextProps {
   session: Session | null;
   user: User | null;
+  userType: "startup" | "investor" | null; // Adding userType to the interface
   loading: boolean;
   supabaseConfigured: boolean;
   signUp: (email: string, password: string, userType: "startup" | "investor", name: string) => Promise<void>;
@@ -19,6 +21,7 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userType, setUserType] = useState<"startup" | "investor" | null>(null);
   const [loading, setLoading] = useState(true);
   const [supabaseConfigured] = useState(isSupabaseConfigured());
   const navigate = useNavigate();
@@ -30,16 +33,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, currentSession) => {
+      async (_event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        
+        // Fetch user type if user exists
+        if (currentSession?.user) {
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('user_type')
+              .eq('id', currentSession.user.id)
+              .single();
+            
+            if (error) throw error;
+            setUserType(data.user_type as "startup" | "investor");
+          } catch (error) {
+            console.error("Error fetching user type:", error);
+            setUserType(null);
+          }
+        } else {
+          setUserType(null);
+        }
+        
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    // Initial session check
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
+      
+      // Fetch user type if user exists
+      if (currentSession?.user) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('user_type')
+            .eq('id', currentSession.user.id)
+            .single();
+          
+          if (error) throw error;
+          setUserType(data.user_type as "startup" | "investor");
+        } catch (error) {
+          console.error("Error fetching user type:", error);
+          setUserType(null);
+        }
+      }
+      
       setLoading(false);
     });
 
@@ -168,6 +210,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (profileError) {
           console.error("Error fetching profile:", profileError);
+        } else {
+          setUserType(profileData.user_type as "startup" | "investor");
         }
 
         toast({
@@ -175,8 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: "You have successfully signed in",
         });
 
-        const userType = profileData?.user_type || "startup";
-        navigate(userType === "startup" ? "/business" : "/investor");
+        const fetchedUserType = profileData?.user_type || "startup";
+        navigate(fetchedUserType === "startup" ? "/business" : "/investor");
       }
     } catch (error: any) {
       toast({
@@ -201,6 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setSession(null);
       setUser(null);
+      setUserType(null);
       
       try {
         await supabase.auth.signOut();
@@ -227,6 +272,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         session,
         user,
+        userType,
         loading,
         supabaseConfigured,
         signUp,
