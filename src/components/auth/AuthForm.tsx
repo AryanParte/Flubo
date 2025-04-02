@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft, AlertTriangle, CheckCircle } from "lucide-react";
@@ -5,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 type UserType = "startup" | "investor";
 type AuthMode = "signin" | "signup";
@@ -27,12 +29,21 @@ export function AuthForm() {
   const navigate = useNavigate();
   const { signIn, signUp, loading, supabaseConfigured } = useAuth();
 
+  // Reset form state when component mounts
   useEffect(() => {
     setIsSubmitting(false);
   }, []);
 
+  // Reset submitting state when auth mode changes
   useEffect(() => {
-    if (!loading) {
+    setIsSubmitting(false);
+    setError(null);
+  }, [authMode]);
+
+  // Track loading state from auth context
+  useEffect(() => {
+    console.log("Auth loading state changed:", loading);
+    if (!loading && isSubmitting) {
       setIsSubmitting(false);
     }
   }, [loading]);
@@ -48,6 +59,7 @@ export function AuthForm() {
     
     try {
       setIsSubmitting(true);
+      console.log("Form submission started with authMode:", authMode);
       
       if (authMode === "signin") {
         console.log("Attempting sign in for:", email);
@@ -233,13 +245,11 @@ export function AuthForm() {
             </div>
           </div>
           
-          <button
+          <Button
             type="submit"
+            variant="accent"
             disabled={loading || isSubmitting || !supabaseConfigured}
-            className={cn(
-              "w-full h-10 rounded-md bg-accent text-accent-foreground text-sm font-medium transition-transform hover:scale-[1.02]",
-              (loading || isSubmitting || !supabaseConfigured) && "opacity-70 cursor-not-allowed"
-            )}
+            className="w-full h-10"
           >
             {loading || isSubmitting ? (
               <span className="flex items-center justify-center">
@@ -252,11 +262,11 @@ export function AuthForm() {
             ) : (
               <>{authMode === "signin" ? "Sign In" : "Create Account"}</>
             )}
-          </button>
+          </Button>
         </form>
       ) : (
         <div className="mt-8 space-y-4">
-          <button
+          <Button
             onClick={() => {
               setEmailSent(false);
               setEmail("");
@@ -264,10 +274,11 @@ export function AuthForm() {
               setName("");
               setAuthMode("signin");
             }}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium"
+            variant="outline"
+            className="w-full"
           >
             Back to sign in
-          </button>
+          </Button>
         </div>
       )}
       

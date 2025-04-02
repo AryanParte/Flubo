@@ -22,7 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<"startup" | "investor" | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [supabaseConfigured] = useState(isSupabaseConfigured());
   const navigate = useNavigate();
 
@@ -31,7 +31,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!supabaseConfigured) {
       console.log("Supabase not configured, skipping auth initialization");
-      setLoading(false);
       return;
     }
 
@@ -69,8 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setUserType(null);
         }
-        
-        setLoading(false);
       }
     );
 
@@ -106,15 +103,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserType(null);
         }
       }
-      
-      setLoading(false);
     });
 
     return () => {
       console.log("Unsubscribing from auth state changes");
       subscription.unsubscribe();
     };
-  }, [supabaseConfigured]);
+  }, [supabaseConfigured, navigate]);
 
   const signUp = async (
     email: string, 
