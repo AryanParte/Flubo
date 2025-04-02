@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2, Rss, UserCheck } from "lucide-react";
+import { Bell, Search, Globe, Briefcase, BarChart3, ThumbsUp, Loader2, Rss, UserCheck } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
@@ -64,6 +64,20 @@ const InvestorDashboard = () => {
       const tabParam = searchParams.get("tab");
       if (tabParam && ["feed", "discover", "matches", "portfolio", "analytics", "settings"].includes(tabParam)) {
         setActiveTab(tabParam);
+
+        // If settings tab is requested, handle it through profile dropdown instead
+        if (tabParam === "settings") {
+          // First set to feed, then open settings after a brief delay
+          setActiveTab("feed");
+          if (tabParam === "settings") {
+            const settingsTab = document.getElementById("settings-tab");
+            if (settingsTab) {
+              setTimeout(() => {
+                settingsTab.click();
+              }, 100);
+            }
+          }
+        }
       }
     }
   }, [user, searchParams]);
@@ -210,7 +224,6 @@ const InvestorDashboard = () => {
                 { id: "matches", label: "My Matches", icon: <ThumbsUp size={16} /> },
                 { id: "portfolio", label: "Portfolio", icon: <Briefcase size={16} /> },
                 { id: "analytics", label: "Analytics", icon: <BarChart3 size={16} /> },
-                { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button
                   id={`${tab.id}-tab-button`}

@@ -49,6 +49,9 @@ const App = () => (
               <Route path="/post/:id" element={<SinglePost />} />
               <Route path="/verification" element={<Verification />} />
               <Route path="/verification-success" element={<VerificationSuccess />} />
+              {/* Redirect for settings to be handled through profile dropdown */}
+              <Route path="/business/settings" element={<Navigate to="/business?tab=settings" replace />} />
+              <Route path="/investor/settings" element={<Navigate to="/investor?tab=settings" replace />} />
               {/* Redirect for legacy routes */}
               <Route path="/startup/*" element={<Navigate to="/business/*" replace />} />
               <Route path="*" element={<NotFound />} />

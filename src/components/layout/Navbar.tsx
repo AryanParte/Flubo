@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Home, MessageSquare, User, LogOut, Settings, UserCheck, Menu, X } from "lucide-react";
+import { Home, MessageSquare, LogOut, Settings, UserCheck, Menu, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,19 +131,6 @@ export function Navbar() {
                 >
                   <MessageSquare size={20} />
                 </NavLink>
-                <NavLink
-                  to={getProfilePath()}
-                  className={({ isActive }) =>
-                    `p-2 rounded-md flex items-center justify-center transition-colors ${
-                      isActive
-                        ? "text-accent bg-accent/10"
-                        : "text-foreground/70 hover:text-foreground hover:bg-accent/5"
-                    }`
-                  }
-                  title="Profile"
-                >
-                  <User size={20} />
-                </NavLink>
               </>
             ) : (
               <>
@@ -222,7 +209,7 @@ export function Navbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link to={getProfilePath()} className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
+                        <Settings className="mr-2 h-4 w-4" />
                         <span>Profile</span>
                       </Link>
                     </DropdownMenuItem>
@@ -269,7 +256,7 @@ export function Navbar() {
         <nav className="md:hidden border-t border-border/40">
           <div className="container mx-auto px-4 pb-3">
             {user ? (
-              <div className="grid grid-cols-3 gap-2 pt-3">
+              <div className="grid grid-cols-2 gap-2 pt-3">
                 <Link
                   to={getDashboardPath()}
                   className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5"
@@ -286,19 +273,11 @@ export function Navbar() {
                   <MessageSquare size={20} />
                   <span className="text-xs mt-1">Messages</span>
                 </Link>
-                <Link
-                  to={getProfilePath()}
-                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5"
-                  onClick={toggleMenu}
-                >
-                  <User size={20} />
-                  <span className="text-xs mt-1">Profile</span>
-                </Link>
                 
                 {!verified && (
                   <Link
                     to="/verification"
-                    className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5 col-span-3"
+                    className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5 col-span-2"
                     onClick={toggleMenu}
                   >
                     <UserCheck size={20} />
@@ -306,7 +285,7 @@ export function Navbar() {
                   </Link>
                 )}
                 <button
-                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5 col-span-3"
+                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5 col-span-2"
                   onClick={() => {
                     handleSignOut();
                     toggleMenu();

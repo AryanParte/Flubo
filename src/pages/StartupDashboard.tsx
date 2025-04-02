@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { BarChart3, Users, Settings, Building, Rss, Search, Loader2 } from "lucide-react";
+import { Building, Rss, Search, Loader2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -55,7 +54,12 @@ const StartupDashboard = () => {
       // Set the active tab if specified in URL
       const tabParam = searchParams.get("tab");
       if (tabParam && ["feed", "investors", "companies", "settings"].includes(tabParam)) {
-        setActiveTab(tabParam);
+        // Handle settings tab differently
+        if (tabParam === "settings") {
+          setActiveTab("feed"); // Default to feed if settings is requested
+        } else {
+          setActiveTab(tabParam);
+        }
       }
     }
   }, [user, searchParams]);
@@ -518,7 +522,6 @@ const StartupDashboard = () => {
                 { id: "feed", label: "Feed", icon: <Rss size={16} /> },
                 { id: "investors", label: "Find Investors", icon: <Users size={16} /> },
                 { id: "companies", label: "Find Companies", icon: <Building size={16} /> },
-                { id: "settings", label: "Settings", icon: <Settings size={16} /> },
               ].map((tab) => (
                 <button
                   key={tab.id}
