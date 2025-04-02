@@ -21,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useFollowUser } from "@/hooks/useFollowUser";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
 interface ProfilePreviewProps {
   userId: string;
@@ -151,7 +152,10 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
               <AvatarFallback>{profile.name ? profile.name.charAt(0) : 'U'}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold text-xl">{profile.name}</h3>
+              <h3 className="font-semibold text-xl flex items-center gap-1.5">
+                {profile.name}
+                <AccountVerificationBadge verified={profile.verified} />
+              </h3>
               <p className="text-muted-foreground">{profile.user_type === "startup" ? "Business" : "Investor"}</p>
               
               {profile.company && (

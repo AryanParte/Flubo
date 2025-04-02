@@ -6,10 +6,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { Loader2, UserCheck } from "lucide-react";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
+import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
+import { useNavigate } from "react-router-dom";
 
 export const SettingsTab = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -32,6 +41,10 @@ export const SettingsTab = () => {
     preferredStages: ["Pre-seed", "Seed", "Series A"],
     preferredSectors: ["AI & ML", "Fintech", "Healthcare", "CleanTech"]
   });
+  
+  const [isVerified, setIsVerified] = useState(false);
+  const [verifiedType, setVerifiedType] = useState<string | null>(null);
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -45,7 +58,7 @@ export const SettingsTab = () => {
       
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, verified, verified_at, verified_type')
         .eq('id', user.id)
         .single();
       
@@ -65,15 +78,19 @@ export const SettingsTab = () => {
           position: profileData.position || "",
           phone: profileData.phone || ""
         });
+        
+        setIsVerified(!!profileData.verified);
+        setVerifiedType(profileData.verified_type);
+        setVerifiedAt(profileData.verified_at);
       }
       
-      if (preferencesData) {
+      if (!preferencesError && preferencesData) {
         setPreferences({
-          emailNotifications: preferencesData.email_notifications ?? true,
-          pushNotifications: preferencesData.push_notifications ?? false,
-          newMatches: preferencesData.new_matches ?? true,
-          marketUpdates: preferencesData.market_updates ?? true,
-          weeklyDigest: preferencesData.weekly_digest ?? true
+          emailNotifications: preferencesData.email_notifications || true,
+          pushNotifications: preferencesData.push_notifications || false,
+          newMatches: preferencesData.new_matches || true,
+          marketUpdates: preferencesData.market_updates || true,
+          weeklyDigest: preferencesData.weekly_digest || true
         });
         
         setInvestmentPreferences({
@@ -88,386 +105,392 @@ export const SettingsTab = () => {
       toast({
         title: "Error",
         description: "Failed to load profile data",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
   
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          name: profileData.name,
-          email: profileData.email,
-          company: profileData.company,
-          position: profileData.position,
-          phone: profileData.phone,
-          user_type: 'investor'
-        });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
-      });
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleGetVerified = () => {
+    navigate("/verification");
   };
-  
-  const handleSavePreferences = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const { error } = await supabase
-        .from('investor_preferences')
-        .upsert({
-          user_id: user.id,
-          email_notifications: preferences.emailNotifications,
-          push_notifications: preferences.pushNotifications,
-          new_matches: preferences.newMatches,
-          market_updates: preferences.marketUpdates,
-          weekly_digest: preferences.weeklyDigest,
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Preferences updated",
-        description: "Your notification preferences have been updated",
-      });
-    } catch (error) {
-      console.error("Error updating preferences:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update preferences",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleSaveInvestmentPreferences = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const { error } = await supabase
-        .from('investor_preferences')
-        .upsert({
-          user_id: user.id,
-          min_investment: investmentPreferences.minInvestment,
-          max_investment: investmentPreferences.maxInvestment,
-          preferred_stages: investmentPreferences.preferredStages,
-          preferred_sectors: investmentPreferences.preferredSectors,
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Investment preferences updated",
-        description: "Your investment preferences have been updated",
-      });
-    } catch (error) {
-      console.error("Error updating investment preferences:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update investment preferences",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleSwitchChange = (name: keyof typeof preferences) => {
-    setPreferences(prev => ({ ...prev, [name]: !prev[name] }));
-  };
-  
+
+  const tabItems = [
+    { id: "profile", label: "Profile" },
+    { id: "verification", label: "Verification" },
+    { id: "notifications", label: "Notifications" },
+    { id: "investment", label: "Investment" },
+    { id: "security", label: "Security" }
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h2 className="text-lg font-medium mb-6">Account Settings</h2>
-      
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="investment">Investment Preferences</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-        </TabsList>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="w-full sm:w-64 space-y-2">
+          {tabItems.map(tab => (
+            <div 
+              key={tab.id}
+              className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${
+                activeTab === tab.id ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+              }`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
         
-        <TabsContent value="profile">
-          <div className="p-6 border border-border rounded-lg">
-            <h3 className="text-md font-medium mb-4">Personal Information</h3>
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="name">Full Name</label>
-                  <Input 
-                    id="name" 
-                    name="name" 
-                    value={profileData.name} 
-                    onChange={handleInputChange}
+        <div className="flex-1">
+          {activeTab === "profile" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Settings</CardTitle>
+                <CardDescription>
+                  Update your personal and company information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="name">Full Name</label>
+                      <Input 
+                        id="name" 
+                        name="name" 
+                        value={profileData.name} 
+                        onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="email">Email Address</label>
+                      <Input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        value={profileData.email} 
+                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="company">Company</label>
+                      <Input 
+                        id="company" 
+                        name="company" 
+                        value={profileData.company} 
+                        onChange={(e) => setProfileData(prev => ({ ...prev, company: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="position">Position</label>
+                      <Input 
+                        id="position" 
+                        name="position" 
+                        value={profileData.position} 
+                        onChange={(e) => setProfileData(prev => ({ ...prev, position: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="phone">Phone Number</label>
+                      <Input 
+                        id="phone" 
+                        name="phone" 
+                        value={profileData.phone} 
+                        onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-4">
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeTab === "verification" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Verification</CardTitle>
+                <CardDescription>
+                  Verify your account to build trust and get prioritized in search results.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isVerified ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 p-4 bg-accent/5 rounded-lg">
+                      <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                        <UserCheck className="h-6 w-6 text-accent" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium flex items-center gap-2">
+                          Verified Account
+                          <AccountVerificationBadge verified size="md" />
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Your account was verified on {new Date(verifiedAt!).toLocaleDateString()} as an {verifiedType}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Verification Benefits</h4>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
+                          </div>
+                          <span className="text-sm">Your profile displays a verification badge</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
+                          </div>
+                          <span className="text-sm">Your profile is prioritized in search results and matches</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
+                          </div>
+                          <span className="text-sm">Startups will trust your profile more</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <VerificationPrompt 
+                    onGetVerified={handleGetVerified}
+                    userType="investor"
                   />
+                )}
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeTab === "notifications" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Notification Settings</CardTitle>
+                <CardDescription>
+                  Control how and when you receive notifications.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Email Notifications</h3>
+                    <Switch
+                      checked={preferences.emailNotifications}
+                      onCheckedChange={(checked) => setPreferences({
+                        ...preferences,
+                        emailNotifications: checked
+                      })}
+                    />
+                  </div>
+                  <Separator />
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="new-matches">New matches</Label>
+                      <Switch
+                        id="new-matches"
+                        checked={preferences.newMatches}
+                        onCheckedChange={(checked) => setPreferences({
+                          ...preferences,
+                          newMatches: checked
+                        })}
+                        disabled={!preferences.emailNotifications}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="market-updates">Market updates</Label>
+                      <Switch
+                        id="market-updates"
+                        checked={preferences.marketUpdates}
+                        onCheckedChange={(checked) => setPreferences({
+                          ...preferences,
+                          marketUpdates: checked
+                        })}
+                        disabled={!preferences.emailNotifications}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="weekly-digest">Weekly digest</Label>
+                      <Switch
+                        id="weekly-digest"
+                        checked={preferences.weeklyDigest}
+                        onCheckedChange={(checked) => setPreferences({
+                          ...preferences,
+                          weeklyDigest: checked
+                        })}
+                        disabled={!preferences.emailNotifications}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="email">Email Address</label>
-                  <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    value={profileData.email} 
-                    onChange={handleInputChange}
-                  />
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Push Notifications</h3>
+                    <Switch
+                      checked={preferences.pushNotifications}
+                      onCheckedChange={(checked) => setPreferences({
+                        ...preferences,
+                        pushNotifications: checked
+                      })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="company">Company</label>
-                  <Input 
-                    id="company" 
-                    name="company" 
-                    value={profileData.company} 
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="position">Position</label>
-                  <Input 
-                    id="position" 
-                    name="position" 
-                    value={profileData.position} 
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="phone">Phone Number</label>
-                  <Input 
-                    id="phone" 
-                    name="phone" 
-                    value={profileData.phone} 
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end mt-4">
-                <Button type="submit" disabled={loading}>
+
+                <Button onClick={(e) => e.preventDefault()} disabled={loading}>
                   {loading ? "Saving..." : "Save Changes"}
                 </Button>
-              </div>
-            </form>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="notifications">
-          <div className="p-6 border border-border rounded-lg">
-            <h3 className="text-md font-medium mb-4">Notification Preferences</h3>
-            <form onSubmit={handleSavePreferences} className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeTab === "investment" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Investment Preferences</CardTitle>
+                <CardDescription>
+                  Control your investment preferences for better startup matching.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                   <div>
-                    <h4 className="text-sm font-medium">Email Notifications</h4>
-                    <p className="text-sm text-muted-foreground">Receive email notifications</p>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="minInvestment">
+                      Minimum Investment ($)
+                    </label>
+                    <Input 
+                      id="minInvestment" 
+                      name="minInvestment" 
+                      type="number" 
+                      value={investmentPreferences.minInvestment} 
+                      onChange={(e) => setInvestmentPreferences(prev => ({
+                        ...prev, 
+                        minInvestment: e.target.value
+                      }))}
+                    />
                   </div>
-                  <Switch 
-                    checked={preferences.emailNotifications} 
-                    onCheckedChange={() => handleSwitchChange('emailNotifications')} 
-                  />
-                </div>
-                <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-medium">Push Notifications</h4>
-                    <p className="text-sm text-muted-foreground">Receive push notifications</p>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="maxInvestment">
+                      Maximum Investment ($)
+                    </label>
+                    <Input 
+                      id="maxInvestment" 
+                      name="maxInvestment" 
+                      type="number" 
+                      value={investmentPreferences.maxInvestment} 
+                      onChange={(e) => setInvestmentPreferences(prev => ({
+                        ...prev, 
+                        maxInvestment: e.target.value
+                      }))}
+                    />
                   </div>
-                  <Switch 
-                    checked={preferences.pushNotifications} 
-                    onCheckedChange={() => handleSwitchChange('pushNotifications')} 
-                  />
-                </div>
-                <div className="flex items-center justify-between">
+                  
                   <div>
-                    <h4 className="text-sm font-medium">New Matches</h4>
-                    <p className="text-sm text-muted-foreground">Get notified about new startup matches</p>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
+                      Preferred Investment Stages
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Pre-seed", "Seed", "Series A", "Series B", "Series C", "Growth"].map((stage) => (
+                        <button
+                          key={stage}
+                          type="button"
+                          className={`px-3 py-1.5 text-xs rounded-md ${
+                            investmentPreferences.preferredStages.includes(stage)
+                              ? "bg-accent text-accent-foreground"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                          onClick={() => {
+                            if (investmentPreferences.preferredStages.includes(stage)) {
+                              setInvestmentPreferences(prev => ({
+                                ...prev,
+                                preferredStages: prev.preferredStages.filter(s => s !== stage)
+                              }));
+                            } else {
+                              setInvestmentPreferences(prev => ({
+                                ...prev,
+                                preferredStages: [...prev.preferredStages, stage]
+                              }));
+                            }
+                          }}
+                        >
+                          {stage}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <Switch 
-                    checked={preferences.newMatches} 
-                    onCheckedChange={() => handleSwitchChange('newMatches')} 
-                  />
-                </div>
-                <div className="flex items-center justify-between">
+                  
                   <div>
-                    <h4 className="text-sm font-medium">Market Updates</h4>
-                    <p className="text-sm text-muted-foreground">Receive market and industry updates</p>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
+                      Preferred Sectors
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {["AI & ML", "Fintech", "Healthcare", "CleanTech", "EdTech", "E-commerce", "SaaS", "AgriTech"].map((sector) => (
+                        <button
+                          key={sector}
+                          type="button"
+                          className={`px-3 py-1.5 text-xs rounded-md ${
+                            investmentPreferences.preferredSectors.includes(sector)
+                              ? "bg-accent text-accent-foreground"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                          onClick={() => {
+                            if (investmentPreferences.preferredSectors.includes(sector)) {
+                              setInvestmentPreferences(prev => ({
+                                ...prev,
+                                preferredSectors: prev.preferredSectors.filter(s => s !== sector)
+                              }));
+                            } else {
+                              setInvestmentPreferences(prev => ({
+                                ...prev,
+                                preferredSectors: [...prev.preferredSectors, sector]
+                              }));
+                            }
+                          }}
+                        >
+                          {sector}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <Switch 
-                    checked={preferences.marketUpdates} 
-                    onCheckedChange={() => handleSwitchChange('marketUpdates')} 
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Weekly Digest</h4>
-                    <p className="text-sm text-muted-foreground">Get a weekly summary of activities</p>
+                  
+                  <div className="flex justify-end mt-4">
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Saving..." : "Save Preferences"}
+                    </Button>
                   </div>
-                  <Switch 
-                    checked={preferences.weeklyDigest} 
-                    onCheckedChange={() => handleSwitchChange('weeklyDigest')} 
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end mt-4">
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Saving..." : "Save Preferences"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="investment">
-          <div className="p-6 border border-border rounded-lg">
-            <h3 className="text-md font-medium mb-4">Investment Criteria</h3>
-            <form onSubmit={handleSaveInvestmentPreferences} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="minInvestment">
-                    Minimum Investment ($)
-                  </label>
-                  <Input 
-                    id="minInvestment" 
-                    name="minInvestment" 
-                    type="number" 
-                    value={investmentPreferences.minInvestment} 
-                    onChange={(e) => setInvestmentPreferences(prev => ({
-                      ...prev, 
-                      minInvestment: e.target.value
-                    }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="maxInvestment">
-                    Maximum Investment ($)
-                  </label>
-                  <Input 
-                    id="maxInvestment" 
-                    name="maxInvestment" 
-                    type="number" 
-                    value={investmentPreferences.maxInvestment} 
-                    onChange={(e) => setInvestmentPreferences(prev => ({
-                      ...prev, 
-                      maxInvestment: e.target.value
-                    }))}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Preferred Investment Stages
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {["Pre-seed", "Seed", "Series A", "Series B", "Series C", "Growth"].map((stage) => (
-                    <button
-                      key={stage}
-                      type="button"
-                      className={`px-3 py-1.5 text-xs rounded-md ${
-                        investmentPreferences.preferredStages.includes(stage)
-                          ? "bg-accent text-accent-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                      onClick={() => {
-                        if (investmentPreferences.preferredStages.includes(stage)) {
-                          setInvestmentPreferences(prev => ({
-                            ...prev,
-                            preferredStages: prev.preferredStages.filter(s => s !== stage)
-                          }));
-                        } else {
-                          setInvestmentPreferences(prev => ({
-                            ...prev,
-                            preferredStages: [...prev.preferredStages, stage]
-                          }));
-                        }
-                      }}
-                    >
-                      {stage}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Preferred Sectors
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {["AI & ML", "Fintech", "Healthcare", "CleanTech", "EdTech", "E-commerce", "SaaS", "AgriTech"].map((sector) => (
-                    <button
-                      key={sector}
-                      type="button"
-                      className={`px-3 py-1.5 text-xs rounded-md ${
-                        investmentPreferences.preferredSectors.includes(sector)
-                          ? "bg-accent text-accent-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                      onClick={() => {
-                        if (investmentPreferences.preferredSectors.includes(sector)) {
-                          setInvestmentPreferences(prev => ({
-                            ...prev,
-                            preferredSectors: prev.preferredSectors.filter(s => s !== sector)
-                          }));
-                        } else {
-                          setInvestmentPreferences(prev => ({
-                            ...prev,
-                            preferredSectors: [...prev.preferredSectors, sector]
-                          }));
-                        }
-                      }}
-                    >
-                      {sector}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="flex justify-end mt-4">
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Saving..." : "Save Preferences"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="security">
-          <div className="p-6 border border-border rounded-lg">
-            <h3 className="text-md font-medium mb-4">Security Settings</h3>
-            
-            <div className="space-y-6">
-              <div>
-                <h4 className="text-sm font-medium mb-2">Change Password</h4>
-                <form className="space-y-4">
+                </form>
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeTab === "security" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Security Settings</CardTitle>
+                <CardDescription>
+                  Manage your account security and password.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="currentPassword">
                       Current Password
@@ -498,65 +521,11 @@ export const SettingsTab = () => {
                     Update Password
                   </Button>
                 </form>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium mb-2">Two-Factor Authentication</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Add an extra layer of security to your account by enabling two-factor authentication.
-                </p>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    toast({
-                      title: "Two-factor authentication",
-                      description: "Setup process initiated",
-                    });
-                  }}
-                >
-                  Enable 2FA
-                </Button>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium mb-2">Active Sessions</h4>
-                <div className="space-y-3">
-                  <div className="p-3 border border-border rounded-md">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="text-sm font-medium">This Device - Chrome on macOS</p>
-                        <p className="text-xs text-muted-foreground">Last active: Just now</p>
-                      </div>
-                      <div className="text-sm text-accent">Current</div>
-                    </div>
-                  </div>
-                  <div className="p-3 border border-border rounded-md">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="text-sm font-medium">iPhone 14 - Safari</p>
-                        <p className="text-xs text-muted-foreground">Last active: Yesterday</p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="text-xs h-8"
-                        onClick={() => {
-                          toast({
-                            title: "Session terminated",
-                            description: "The device has been logged out",
-                          });
-                        }}
-                      >
-                        Sign Out
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

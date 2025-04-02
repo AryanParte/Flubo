@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2, Rss } from "lucide-react";
+import { Bell, Search, Globe, Briefcase, BarChart3, Settings, ThumbsUp, Loader2, Rss, UserCheck } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { DiscoverTab } from "@/components/investor/DiscoverTab";
 import { MatchesTab } from "@/components/investor/MatchesTab";
@@ -13,6 +13,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { AISearchResultsTab } from "@/components/investor/AISearchResultsTab";
 import { FeedTab } from "@/components/shared/FeedTab";
+import { VerificationOnboarding } from "@/components/investor/VerificationOnboarding";
+import { Button } from "@/components/ui/button";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
 const InvestorDashboard = () => {
   const { user } = useAuth();
@@ -21,6 +25,10 @@ const InvestorDashboard = () => {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [userName, setUserName] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   // Fetch user profile data
   useEffect(() => {
@@ -28,7 +36,7 @@ const InvestorDashboard = () => {
       const fetchUserProfile = async () => {
         const { data, error } = await supabase
           .from('profiles')
-          .select('name')
+          .select('name, verified')
           .eq('id', user.id)
           .single();
           
@@ -37,14 +45,28 @@ const InvestorDashboard = () => {
           return;
         }
         
-        if (data && data.name) {
-          setUserName(data.name);
+        if (data) {
+          setUserName(data.name || "");
+          setIsVerified(!!data.verified);
+          
+          // Show verification dialog for unverified users after a delay
+          if (!data.verified) {
+            setTimeout(() => {
+              setShowVerificationDialog(true);
+            }, 1000);
+          }
         }
       };
       
       fetchUserProfile();
+      
+      // Set the active tab if specified in URL
+      const tabParam = searchParams.get("tab");
+      if (tabParam && ["feed", "discover", "matches", "portfolio", "analytics", "settings"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
     }
-  }, [user]);
+  }, [user, searchParams]);
   
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +157,18 @@ const InvestorDashboard = () => {
                 <Bell size={20} />
                 <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-accent"></span>
               </button>
+              
+              {!isVerified && (
+                <Button 
+                  variant="accent" 
+                  size="sm"
+                  className="flex items-center gap-1.5"
+                  onClick={() => setShowVerificationDialog(true)}
+                >
+                  <UserCheck className="h-4 w-4" />
+                  <span>Get Verified</span>
+                </Button>
+              )}
             </div>
           </div>
           
@@ -208,6 +242,12 @@ const InvestorDashboard = () => {
         </div>
       </main>
       <MinimalFooter />
+      
+      {/* Verification Dialog */}
+      <VerificationOnboarding
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+      />
     </div>
   );
 };

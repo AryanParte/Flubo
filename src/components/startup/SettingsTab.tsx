@@ -10,20 +10,28 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCheck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
+import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
+import { useNavigate } from "react-router-dom";
 
 export const SettingsTab = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("notifications");
+  const [isVerified, setIsVerified] = useState(false);
+  const [verifiedType, setVerifiedType] = useState<string | null>(null);
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Email notification settings
   const [emailSettings, setEmailSettings] = useState<{
@@ -63,6 +71,20 @@ export const SettingsTab = () => {
     const loadSettings = async () => {
       setLoading(true);
       try {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("verified, verified_at, verified_type")
+          .eq("id", user.id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        } else if (profileData) {
+          setIsVerified(!!profileData.verified);
+          setVerifiedType(profileData.verified_type);
+          setVerifiedAt(profileData.verified_at);
+        }
+          
         const { data, error } = await supabase
           .from("startup_notification_settings")
           .select("*")
@@ -202,6 +224,10 @@ export const SettingsTab = () => {
       setSaving(false);
     }
   };
+  
+  const handleGetVerified = () => {
+    navigate("/verification");
+  };
 
   if (loading) {
     return (
@@ -220,6 +246,12 @@ export const SettingsTab = () => {
             onClick={() => setActiveTab("notifications")}
           >
             Notifications
+          </div>
+          <div 
+            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
+            onClick={() => setActiveTab("verification")}
+          >
+            Verification
           </div>
           <div 
             className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "security" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
@@ -338,6 +370,66 @@ export const SettingsTab = () => {
                     "Save Changes"
                   )}
                 </Button>
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeTab === "verification" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Verification</CardTitle>
+                <CardDescription>
+                  Verify your account to build trust and get prioritized in search results.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isVerified ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 p-4 bg-accent/5 rounded-lg">
+                      <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                        <UserCheck className="h-6 w-6 text-accent" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium flex items-center gap-2">
+                          Verified Account
+                          <AccountVerificationBadge verified size="md" />
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Your account was verified on {new Date(verifiedAt!).toLocaleDateString()} as a {verifiedType}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Verification Benefits</h4>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
+                          </div>
+                          <span className="text-sm">Your profile displays a verification badge</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
+                          </div>
+                          <span className="text-sm">Your profile is prioritized in search results and matches</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
+                          </div>
+                          <span className="text-sm">Other users will trust your profile more</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <VerificationPrompt 
+                    onGetVerified={handleGetVerified}
+                    userType="startup"
+                  />
+                )}
               </CardContent>
             </Card>
           )}

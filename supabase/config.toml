@@ -1,1 +1,35 @@
+
+# Update with your project ID
 project_id = "vsxnjnvwtgehagxbhdzh"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = false
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[realtime]
+enabled = true
+
+[functions.verification-payment]
+verify_jwt = true
+
+[functions.verification-webhook]
+verify_jwt = false

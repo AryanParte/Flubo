@@ -19,6 +19,8 @@ import Investors from "./pages/Investors";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import SinglePost from "./pages/SinglePost";
+import Verification from "./pages/Verification";
+import VerificationSuccess from "./pages/VerificationSuccess";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,8 @@ const App = () => (
               <Route path="/investors" element={<Investors />} />
               <Route path="/about" element={<About />} />
               <Route path="/post/:id" element={<SinglePost />} />
+              <Route path="/verification" element={<Verification />} />
+              <Route path="/verification-success" element={<VerificationSuccess />} />
               {/* Redirect for legacy routes */}
               <Route path="/startup/*" element={<Navigate to="/business/*" replace />} />
               <Route path="*" element={<NotFound />} />

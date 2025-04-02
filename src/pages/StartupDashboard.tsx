@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { BarChart3, Users, Settings, Building, Rss, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { 
@@ -25,6 +26,7 @@ import { FeedTab } from "@/components/shared/FeedTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
 import { SettingsTab } from "@/components/startup/SettingsTab";
+import { VerificationOnboarding } from "@/components/startup/VerificationOnboarding";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("feed");
@@ -39,15 +41,24 @@ const StartupDashboard = () => {
   const [lookingForDesignPartner, setLookingForDesignPartner] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [isUserVerified, setIsUserVerified] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   
   useEffect(() => {
     if (user) {
       fetchStartupData();
       checkProfileCompletion();
+      
+      // Set the active tab if specified in URL
+      const tabParam = searchParams.get("tab");
+      if (tabParam && ["feed", "investors", "companies", "settings"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   const fetchStartupData = async () => {
     try {
@@ -81,7 +92,7 @@ const StartupDashboard = () => {
         // Fallback to the regular profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('name')
+          .select('name, verified')
           .eq('id', user.id)
           .maybeSingle();
         
@@ -95,6 +106,9 @@ const StartupDashboard = () => {
           setStartupName(profile.name);
           // Show dialog to set industry if we don't have a startup profile
           setShowProfileDialog(true);
+          
+          // Check if user is verified
+          setIsUserVerified(!!profile.verified);
         } else {
           console.log("No profile found at all. New user");
           // No profile name found - new user, show the dialog
@@ -124,6 +138,25 @@ const StartupDashboard = () => {
       // Consider profile complete if we have more than just the required fields
       // Check specifically for bio field
       setProfileComplete(!!startupProfile && requiredFieldsFilled && !!startupProfile.bio);
+      
+      // Check if user is verified
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('verified')
+        .eq('id', user.id)
+        .single();
+        
+      if (profile) {
+        setIsUserVerified(!!profile.verified);
+        
+        // Show verification dialog if they have a completed profile but aren't verified yet
+        if (requiredFieldsFilled && !profile.verified) {
+          // Only show after a slight delay so it doesn't appear immediately on login
+          setTimeout(() => {
+            setShowVerificationDialog(true);
+          }, 1000);
+        }
+      }
     } catch (error) {
       console.error("Error checking profile completion:", error);
     }
@@ -237,6 +270,11 @@ const StartupDashboard = () => {
       setStartupName(newCompanyName);
       setHasRequiredFields(true);
       setShowProfileDialog(false);
+      
+      // Show verification dialog after profile setup
+      setTimeout(() => {
+        setShowVerificationDialog(true);
+      }, 500);
 
       toast({
         title: "Profile updated",
@@ -404,6 +442,16 @@ const StartupDashboard = () => {
                   <span>Complete Your Profile</span>
                 </button>
               )}
+              
+              {!isUserVerified && hasRequiredFields && (
+                <Button 
+                  variant="accent" 
+                  size="sm"
+                  onClick={() => setShowVerificationDialog(true)}
+                >
+                  Get Verified
+                </Button>
+              )}
             </div>
           </div>
           
@@ -498,7 +546,7 @@ const StartupDashboard = () => {
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="text-xl">Welcome to Investor Match!</DialogTitle>
+            <DialogTitle className="text-xl">Welcome to Flubo!</DialogTitle>
             <DialogDescription>
               Let's get started with some basic information about your business.
             </DialogDescription>
@@ -585,6 +633,13 @@ const StartupDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Account Verification Dialog */}
+      <VerificationOnboarding
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        userType="startup"
+      />
     </div>
   );
 };
