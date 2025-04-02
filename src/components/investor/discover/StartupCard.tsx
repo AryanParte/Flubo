@@ -19,7 +19,7 @@ export const StartupCard = ({
 }: StartupCardProps) => {
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    if (url) {
+    if (url && url !== '#') {
       window.open(url, '_blank');
     }
   };
@@ -30,31 +30,40 @@ export const StartupCard = ({
 
   return (
     <div 
-      className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in"
+      className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in h-full"
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="h-48 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
         {startup.logo ? (
-          <img src={startup.logo} alt={`${startup.name} logo`} className="max-h-full max-w-full object-contain" />
+          <img src={startup.logo} alt={`${startup.name} logo`} className="max-h-full max-w-full object-contain p-4" />
         ) : (
           <span className="font-medium text-4xl">{startup.name.charAt(0)}</span>
         )}
       </div>
       
       <div className="p-6 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="font-semibold text-xl">{startup.name}</h3>
-          <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1 flex items-center">
+        <div className="flex justify-between items-start mb-3 gap-2">
+          <h3 className="font-semibold text-xl truncate">{startup.name}</h3>
+          <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1 flex items-center whitespace-nowrap">
             {startup.score}% Match
           </div>
         </div>
         
-        <div className="flex items-center text-xs text-muted-foreground mb-4">
-          <span className="pr-2 mr-2 border-r border-border">{startup.stage || 'Early Stage'}</span>
-          <span>{startup.location || 'Unknown Location'}</span>
+        <div className="flex items-center text-xs text-muted-foreground mb-4 flex-wrap gap-y-1">
+          {startup.stage && (
+            <span className="pr-2 mr-2 border-r border-border">{startup.stage}</span>
+          )}
+          {startup.location && (
+            <span className="truncate">{startup.location}</span>
+          )}
+          {!startup.stage && !startup.location && (
+            <span>Unknown details</span>
+          )}
         </div>
         
-        <p className="text-sm text-muted-foreground mb-4">{startup.bio || startup.tagline || 'No description available'}</p>
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+          {startup.bio || startup.tagline || 'No description available'}
+        </p>
         
         <div className="flex flex-wrap gap-2 mb-4">
           <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs">
@@ -84,7 +93,7 @@ export const StartupCard = ({
         </div>
 
         {/* External Links */}
-        <div className="flex space-x-2 mb-6">
+        <div className="flex space-x-2 mb-4">
           <Button 
             variant="outline" 
             size="sm" 

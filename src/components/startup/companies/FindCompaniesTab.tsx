@@ -27,7 +27,7 @@ export const FindCompaniesTab = () => {
   } = useDiscoverCompanies();
   
   return (
-    <div>
+    <div className="space-y-6">
       {/* Filters and Sort */}
       <FilterBar 
         appliedFilters={appliedFilters}
@@ -48,8 +48,8 @@ export const FindCompaniesTab = () => {
         </div>
       ) : (
         <>
-          {/* Company Cards - Updated grid layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+          {/* Company Cards with improved grid layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {companies.map((company, index) => (
               <CompanyCard 
                 key={company.id}
