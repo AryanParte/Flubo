@@ -1,21 +1,16 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { LogOut, Bell, Shield, CreditCard } from "lucide-react";
 
 export const SettingsTab = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState("notifications");
   const [emailSettings, setEmailSettings] = useState({
     'new-match': true,
     'messages': true,
@@ -78,8 +73,7 @@ export const SettingsTab = () => {
     }
   };
   
-  const handleSaveNotifications = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveNotifications = async () => {
     setLoading(true);
     
     try {
@@ -101,8 +95,8 @@ export const SettingsTab = () => {
       if (error) throw error;
       
       toast({
-        title: "Notification preferences updated",
-        description: "Your notification settings have been saved",
+        title: "Preferences saved",
+        description: "Your notification settings have been updated",
       });
     } catch (error) {
       console.error("Error saving notification settings:", error);
@@ -116,7 +110,7 @@ export const SettingsTab = () => {
     }
   };
   
-  const handleCheckboxChange = (settingType: 'email' | 'push', id: string) => {
+  const handleSwitchChange = (settingType: 'email' | 'push', id: string) => {
     if (settingType === 'email') {
       setEmailSettings(prev => ({
         ...prev,
@@ -130,22 +124,56 @@ export const SettingsTab = () => {
     }
   };
 
-  return (
-    <div>
-      <Tabs defaultValue="notifications" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="notifications">
-          <div className="glass-card p-6 rounded-lg">
-            <h2 className="text-lg font-medium mb-6">Notification Preferences</h2>
-            
-            <form onSubmit={handleSaveNotifications} className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-md font-medium">Email Notifications</h3>
-                
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out",
+      });
+      
+      // Redirect will be handled by AuthContext
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderNotificationsSection = () => {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Notification Settings</h2>
+          <p className="text-muted-foreground text-sm mb-4">Control which notifications you receive</p>
+          
+          <div className="space-y-8">
+            {/* Email Notifications */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-medium">Email Notifications</h3>
+                  <p className="text-sm text-muted-foreground">Receive email notifications</p>
+                </div>
+                <Switch
+                  checked={Object.values(emailSettings).some(Boolean)}
+                  onCheckedChange={(checked) => {
+                    const updatedSettings = {};
+                    Object.keys(emailSettings).forEach(key => {
+                      updatedSettings[key] = checked;
+                    });
+                    setEmailSettings(updatedSettings);
+                  }}
+                />
+              </div>
+              
+              <div className="pl-1 space-y-4 border-l-2 border-border/30">
                 {[
                   { id: "new-match", label: "New investor matches", checked: emailSettings['new-match'] },
                   { id: "messages", label: "New messages", checked: emailSettings['messages'] },
@@ -154,124 +182,341 @@ export const SettingsTab = () => {
                   { id: "newsletters", label: "Platform newsletters", checked: emailSettings['newsletters'] },
                 ].map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
-                    <label htmlFor={item.id} className="text-sm">{item.label}</label>
-                    <input 
-                      id={item.id}
-                      type="checkbox"
+                    <span className="text-sm">{item.label}</span>
+                    <Switch 
                       checked={item.checked}
-                      onChange={() => handleCheckboxChange('email', item.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                      onCheckedChange={() => handleSwitchChange('email', item.id)}
                     />
                   </div>
                 ))}
               </div>
+            </div>
+            
+            {/* Push Notifications */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-medium">Push Notifications</h3>
+                  <p className="text-sm text-muted-foreground">Receive push notifications on this device</p>
+                </div>
+                <Switch
+                  checked={Object.values(pushSettings).some(Boolean)}
+                  onCheckedChange={(checked) => {
+                    const updatedSettings = {};
+                    Object.keys(pushSettings).forEach(key => {
+                      updatedSettings[key] = checked;
+                    });
+                    setPushSettings(updatedSettings);
+                  }}
+                />
+              </div>
               
-              <div className="space-y-4">
-                <h3 className="text-md font-medium">Push Notifications</h3>
-                
+              <div className="pl-1 space-y-4 border-l-2 border-border/30">
                 {[
                   { id: "push-matches", label: "New investor matches", checked: pushSettings['push-matches'] },
                   { id: "push-messages", label: "New messages", checked: pushSettings['push-messages'] },
                   { id: "push-reminders", label: "Meeting reminders", checked: pushSettings['push-reminders'] },
                 ].map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
-                    <label htmlFor={item.id} className="text-sm">{item.label}</label>
-                    <input 
-                      id={item.id}
-                      type="checkbox"
+                    <span className="text-sm">{item.label}</span>
+                    <Switch 
                       checked={item.checked}
-                      onChange={() => handleCheckboxChange('push', item.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                      onCheckedChange={() => handleSwitchChange('push', item.id)}
                     />
                   </div>
                 ))}
               </div>
-              
-              <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : "Save Notification Preferences"}
-              </Button>
-            </form>
+            </div>
           </div>
-        </TabsContent>
+        </div>
         
-        <TabsContent value="account">
-          <div className="glass-card p-6 rounded-lg">
-            <h2 className="text-lg font-medium mb-6">Account Settings</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-md font-medium mb-4">Email Address</h3>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="email"
-                    defaultValue="" 
-                    placeholder="Not set"
-                    readOnly 
-                    className="flex h-10 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                  />
-                  <Button variant="outline" size="sm" onClick={() => {
-                    toast({
-                      title: "Change email",
-                      description: "Email change functionality coming soon",
-                    });
-                  }}>
-                    Change
-                  </Button>
+        <div className="flex justify-end pt-4">
+          <Button onClick={handleSaveNotifications} disabled={loading}>
+            {loading ? "Saving..." : "Save Preferences"}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSecuritySection = () => {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Security Settings</h2>
+          <p className="text-muted-foreground text-sm mb-4">Manage your account security and privacy</p>
+
+          {/* Two-Factor Authentication */}
+          <div className="space-y-8">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-medium">Two-Factor Authentication</h3>
+                  <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
                 </div>
+                <Switch 
+                  checked={false} 
+                  onCheckedChange={() => {
+                    toast({
+                      title: "Feature coming soon",
+                      description: "Two-factor authentication will be available soon"
+                    });
+                  }}
+                />
               </div>
-              
-              <div>
-                <h3 className="text-md font-medium mb-4">Password</h3>
-                <Button variant="outline" size="sm" onClick={() => {
+            </div>
+
+            {/* Account Login Alerts */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-medium">Account Login Alerts</h3>
+                  <p className="text-sm text-muted-foreground">Get notified when someone logs into your account</p>
+                </div>
+                <Switch 
+                  checked={true}
+                  onCheckedChange={() => {
+                    toast({
+                      title: "Setting updated",
+                      description: "Login alert preferences updated"
+                    });
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2 pt-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-medium">Password</h3>
+                  <p className="text-sm text-muted-foreground">Change your password</p>
+                </div>
+                <Button variant="outline" onClick={() => {
                   toast({
-                    title: "Change password",
-                    description: "Password change functionality coming soon",
+                    title: "Feature coming soon",
+                    description: "Password change functionality will be available soon"
                   });
                 }}>
                   Change Password
                 </Button>
               </div>
-              
+            </div>
+
+            {/* Delete Account */}
+            <div className="space-y-2 pt-6 border-t border-border/40">
               <div>
-                <h3 className="text-md font-medium mb-4">Subscription Plan</h3>
-                <div className="p-4 border border-border rounded-md bg-background/40 max-w-sm">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Free Plan</p>
-                      <p className="text-sm text-muted-foreground">Basic features</p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => {
-                      toast({
-                        title: "Upgrade subscription",
-                        description: "Subscription management coming soon",
-                      });
-                    }}>
-                      Upgrade
-                    </Button>
-                  </div>
-                </div>
+                <h3 className="text-base font-medium text-destructive">Delete Account</h3>
+                <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
               </div>
-              
-              <div>
-                <h3 className="text-md font-medium mb-4 text-destructive">Danger Zone</h3>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => {
-                    toast({
-                      title: "Deactivate account",
-                      description: "This action cannot be undone",
-                      variant: "destructive",
-                    });
-                  }}
-                >
-                  Deactivate Account
+              <div className="pt-2">
+                <Button variant="destructive" onClick={() => {
+                  toast({
+                    title: "Warning",
+                    description: "Account deletion requires verification. Please contact support.",
+                    variant: "destructive",
+                  });
+                }}>
+                  Delete Account
                 </Button>
               </div>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSubscriptionSection = () => {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Subscription Plan</h2>
+          <p className="text-muted-foreground text-sm mb-6">Manage your subscription and billing information</p>
+          
+          <div className="space-y-8">
+            {/* Current Plan */}
+            <div className="p-5 border border-border/50 rounded-lg bg-background/30">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-medium">Free Plan</h3>
+                  <p className="text-sm text-muted-foreground">Basic access to investor matching</p>
+                  <span className="inline-block mt-2 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full">Current Plan</span>
+                </div>
+                <Button variant="outline" onClick={() => {
+                  toast({
+                    title: "Upgrade",
+                    description: "Upgrade options coming soon"
+                  });
+                }}>
+                  Upgrade
+                </Button>
+              </div>
+            </div>
+            
+            <h3 className="text-base font-medium">Available Plans</h3>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Startup Growth Plan */}
+              <div className="p-5 border border-border/50 rounded-lg bg-background/30">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <h4 className="font-medium">Startup Growth</h4>
+                    <span className="font-medium">$49/mo</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Enhanced visibility to investors</p>
+                  <ul className="space-y-2">
+                    <li className="text-sm flex items-center">
+                      <span className="mr-2 bg-accent rounded-full w-1.5 h-1.5"></span>
+                      Unlimited investor connections
+                    </li>
+                    <li className="text-sm flex items-center">
+                      <span className="mr-2 bg-accent rounded-full w-1.5 h-1.5"></span>
+                      Priority listing in search
+                    </li>
+                    <li className="text-sm flex items-center">
+                      <span className="mr-2 bg-accent rounded-full w-1.5 h-1.5"></span>
+                      Access to funding events
+                    </li>
+                  </ul>
+                  <Button variant="outline" className="w-full" onClick={() => {
+                    toast({
+                      title: "Coming soon",
+                      description: "This plan will be available soon"
+                    });
+                  }}>
+                    Select Plan
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Startup Pro Plan */}
+              <div className="p-5 border border-border/50 rounded-lg bg-background/30 relative">
+                <div className="absolute -top-2 right-4 px-2 py-0.5 text-xs bg-accent text-accent-foreground rounded-full">
+                  Popular
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <h4 className="font-medium">Startup Pro</h4>
+                    <span className="font-medium">$99/mo</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Complete fundraising solution</p>
+                  <ul className="space-y-2">
+                    <li className="text-sm flex items-center">
+                      <span className="mr-2 bg-accent rounded-full w-1.5 h-1.5"></span>
+                      Everything in Growth
+                    </li>
+                    <li className="text-sm flex items-center">
+                      <span className="mr-2 bg-accent rounded-full w-1.5 h-1.5"></span>
+                      Investor introductions
+                    </li>
+                    <li className="text-sm flex items-center">
+                      <span className="mr-2 bg-accent rounded-full w-1.5 h-1.5"></span>
+                      Pitch deck review
+                    </li>
+                  </ul>
+                  <Button variant="outline" className="w-full" onClick={() => {
+                    toast({
+                      title: "Coming soon",
+                      description: "This plan will be available soon"
+                    });
+                  }}>
+                    Select Plan
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Payment Methods */}
+            <div className="pt-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-medium">Payment Methods</h3>
+                <Button variant="ghost" size="sm" className="text-sm" onClick={() => {
+                  toast({
+                    title: "Coming soon",
+                    description: "Payment method management will be available soon"
+                  });
+                }}>
+                  + Add New
+                </Button>
+              </div>
+              
+              <div className="p-5 border border-border/50 rounded-lg bg-background/30 text-center">
+                <p className="text-sm text-muted-foreground mb-3">No payment methods added yet</p>
+                <Button variant="outline" size="sm" onClick={() => {
+                  toast({
+                    title: "Coming soon",
+                    description: "Adding payment methods will be available soon"
+                  });
+                }}>
+                  Add a payment method
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'notifications':
+        return renderNotificationsSection();
+      case 'security':
+        return renderSecuritySection();
+      case 'subscription':
+        return renderSubscriptionSection();
+      default:
+        return renderNotificationsSection();
+    }
+  };
+  
+  return (
+    <div className="min-h-[70vh] bg-background text-foreground">
+      <div className="pb-6">
+        <h1 className="text-2xl font-bold mb-1">Settings</h1>
+        <p className="text-muted-foreground">Manage your account settings and preferences</p>
+      </div>
+      
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Sidebar Navigation */}
+        <div className="md:w-64 space-y-1">
+          {[
+            { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
+            { id: 'security', label: 'Security', icon: <Shield size={18} /> },
+            { id: 'subscription', label: 'Subscription', icon: <CreditCard size={18} /> },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`flex items-center w-full text-left px-4 py-2.5 rounded-md transition-colors ${
+                activeSection === item.id 
+                  ? 'bg-accent/20 text-foreground border-l-2 border-accent' 
+                  : 'text-muted-foreground hover:bg-accent/10'
+              }`}
+            >
+              <span className="mr-3">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+          
+          <div className="pt-2 mt-6 border-t border-border/40">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center w-full text-left px-4 py-2.5 rounded-md transition-colors text-red-500 hover:bg-red-500/10"
+            >
+              <LogOut size={18} className="mr-3" />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
+        
+        {/* Content Area */}
+        <div className="flex-1 p-6 bg-background/40 border border-border/40 rounded-lg">
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 };
