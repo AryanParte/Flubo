@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Menu, X, LogOut, Settings, User, UserCheck } from "lucide-react";
+import { Home, MessageSquare, User, LogOut, Settings, UserCheck, Menu, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -88,60 +90,48 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
                 <NavLink
                   to={getDashboardPath()}
                   className={({ isActive }) =>
-                    `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    `p-2 rounded-md flex items-center justify-center transition-colors ${
                       isActive
-                        ? "text-accent"
-                        : "text-foreground/70 hover:text-foreground"
+                        ? "text-accent bg-accent/10"
+                        : "text-foreground/70 hover:text-foreground hover:bg-accent/5"
                     }`
                   }
+                  title="Home"
                 >
-                  Dashboard
+                  <Home size={20} />
                 </NavLink>
                 <NavLink
                   to={getMessagesPath()}
                   className={({ isActive }) =>
-                    `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    `p-2 rounded-md flex items-center justify-center transition-colors ${
                       isActive
-                        ? "text-accent"
-                        : "text-foreground/70 hover:text-foreground"
+                        ? "text-accent bg-accent/10"
+                        : "text-foreground/70 hover:text-foreground hover:bg-accent/5"
                     }`
                   }
+                  title="Messages"
                 >
-                  Messages
+                  <MessageSquare size={20} />
                 </NavLink>
-                {userType === "investor" ? (
-                  <NavLink
-                    to="/startups"
-                    className={({ isActive }) =>
-                      `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive
-                          ? "text-accent"
-                          : "text-foreground/70 hover:text-foreground"
-                      }`
-                    }
-                  >
-                    Startups
-                  </NavLink>
-                ) : (
-                  <NavLink
-                    to="/investors"
-                    className={({ isActive }) =>
-                      `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive
-                          ? "text-accent"
-                          : "text-foreground/70 hover:text-foreground"
-                      }`
-                    }
-                  >
-                    Investors
-                  </NavLink>
-                )}
+                <NavLink
+                  to={getProfilePath()}
+                  className={({ isActive }) =>
+                    `p-2 rounded-md flex items-center justify-center transition-colors ${
+                      isActive
+                        ? "text-accent bg-accent/10"
+                        : "text-foreground/70 hover:text-foreground hover:bg-accent/5"
+                    }`
+                  }
+                  title="Profile"
+                >
+                  <User size={20} />
+                </NavLink>
               </>
             ) : (
               <>
@@ -186,7 +176,10 @@ export function Navbar() {
           </nav>
 
           {/* Right Side - Auth State */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Theme Toggle */}
+            <ThemeToggle className="mr-1" />
+            
             {user ? (
               <div className="flex items-center">
                 <DropdownMenu>
@@ -264,52 +257,51 @@ export function Navbar() {
         <nav className="md:hidden border-t border-border/40">
           <div className="container mx-auto px-4 pb-3">
             {user ? (
-              <div className="space-y-1 pt-3">
+              <div className="grid grid-cols-3 gap-2 pt-3">
                 <Link
                   to={getDashboardPath()}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:text-foreground"
+                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5"
                   onClick={toggleMenu}
                 >
-                  Dashboard
+                  <Home size={20} />
+                  <span className="text-xs mt-1">Home</span>
                 </Link>
                 <Link
                   to={getMessagesPath()}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:text-foreground"
+                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5"
                   onClick={toggleMenu}
                 >
-                  Messages
-                </Link>
-                <Link
-                  to={userType === "investor" ? "/startups" : "/investors"}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:text-foreground"
-                  onClick={toggleMenu}
-                >
-                  {userType === "investor" ? "Startups" : "Investors"}
+                  <MessageSquare size={20} />
+                  <span className="text-xs mt-1">Messages</span>
                 </Link>
                 <Link
                   to={getProfilePath()}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:text-foreground"
+                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5"
                   onClick={toggleMenu}
                 >
-                  Profile
+                  <User size={20} />
+                  <span className="text-xs mt-1">Profile</span>
                 </Link>
+                
                 {!verified && (
                   <Link
                     to="/verification"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:text-foreground"
+                    className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5 col-span-3"
                     onClick={toggleMenu}
                   >
-                    Get Verified
+                    <UserCheck size={20} />
+                    <span className="text-xs mt-1">Get Verified</span>
                   </Link>
                 )}
                 <button
-                  className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:text-foreground"
+                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5 col-span-3"
                   onClick={() => {
                     handleSignOut();
                     toggleMenu();
                   }}
                 >
-                  Sign Out
+                  <LogOut size={20} />
+                  <span className="text-xs mt-1">Sign Out</span>
                 </button>
               </div>
             ) : (
