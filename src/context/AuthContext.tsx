@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Handle sign in and sign out events
       if (event === 'SIGNED_IN') {
-        console.log("User signed in, navigating to home");
-        navigate('/home');
+        console.log("User signed in, redirecting to appropriate dashboard");
+        // Don't navigate here, let the handleSessionChange function determine where to redirect
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out, navigating to home page");
         navigate('/');
@@ -93,6 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (profile) {
           console.log("User profile found:", profile);
           setUserType(profile.user_type as UserType);
+          
+          // Navigate to appropriate dashboard based on user type
+          if (profile.user_type === "investor") {
+            navigate('/investor');
+          } else if (profile.user_type === "startup") {
+            navigate('/business');
+          }
         } else {
           console.log("No profile found for user");
           setUserType(null);
