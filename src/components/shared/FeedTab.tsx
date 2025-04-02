@@ -91,19 +91,37 @@ export function FeedTab() {
   };
 
   return (
-    <Tabs defaultValue="recent" onValueChange={handleTabChange}>
-      <TabsList className="grid w-full grid-cols-3 mb-8">
-        <TabsTrigger value="recent">Recent</TabsTrigger>
-        <TabsTrigger value="popular">Popular</TabsTrigger>
-        <TabsTrigger value="following" disabled={!user}>Following</TabsTrigger>
-      </TabsList>
+    <Tabs defaultValue="recent" onValueChange={handleTabChange} className="w-full">
+      <div className="border-b border-border/40 mb-4">
+        <TabsList className="bg-transparent w-full justify-start px-0 h-auto">
+          <TabsTrigger 
+            value="recent" 
+            className="rounded-none border-b-2 data-[state=active]:border-accent border-transparent px-4 py-2 data-[state=active]:bg-transparent"
+          >
+            Recent
+          </TabsTrigger>
+          <TabsTrigger 
+            value="popular" 
+            className="rounded-none border-b-2 data-[state=active]:border-accent border-transparent px-4 py-2 data-[state=active]:bg-transparent"
+          >
+            Popular
+          </TabsTrigger>
+          <TabsTrigger 
+            value="following" 
+            disabled={!user}
+            className="rounded-none border-b-2 data-[state=active]:border-accent border-transparent px-4 py-2 data-[state=active]:bg-transparent"
+          >
+            Following
+          </TabsTrigger>
+        </TabsList>
+      </div>
       
-      <TabsContent value="recent" className="space-y-6">
+      <TabsContent value="recent" className="space-y-4">
         {isLoading ? (
           Array(3)
             .fill(0)
             .map((_, index) => (
-              <div key={index} className="space-y-3">
+              <div key={index} className="space-y-3 p-4 bg-card border border-border/40 rounded-lg mb-4">
                 <div className="flex items-center space-x-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <div className="space-y-2">
@@ -116,38 +134,39 @@ export function FeedTab() {
             ))
         ) : posts.length > 0 ? (
           posts.map((post) => (
-            <Post
-              key={post.id}
-              id={post.id}
-              author={{
-                id: post.user_id,
-                name: post.profiles?.name || "Unknown User",
-                role: post.profiles?.user_type || "User",
-                avatar: "/placeholder.svg",
-              }}
-              content={post.content}
-              timestamp={new Date(post.created_at).toLocaleString()}
-              likes={post.likes}
-              comments={post.comments_count}
-              hashtags={post.hashtags}
-              image_url={post.image_url}
-              onHashtagClick={handleHashtagClick}
-            />
+            <div key={post.id} className="bg-card border border-border/40 rounded-lg p-4 mb-4">
+              <Post
+                id={post.id}
+                author={{
+                  id: post.user_id,
+                  name: post.profiles?.name || "Unknown User",
+                  role: post.profiles?.user_type || "User",
+                  avatar: "/placeholder.svg",
+                }}
+                content={post.content}
+                timestamp={new Date(post.created_at).toLocaleString()}
+                likes={post.likes}
+                comments={post.comments_count}
+                hashtags={post.hashtags}
+                image_url={post.image_url}
+                onHashtagClick={handleHashtagClick}
+              />
+            </div>
           ))
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-card border border-border/40 rounded-lg">
             <h3 className="text-xl font-medium mb-2">No posts yet</h3>
             <p className="text-muted-foreground mb-4">Be the first to share something!</p>
           </div>
         )}
       </TabsContent>
       
-      <TabsContent value="popular" className="space-y-6">
+      <TabsContent value="popular" className="space-y-4">
         {isLoading ? (
           Array(3)
             .fill(0)
             .map((_, index) => (
-              <div key={index} className="space-y-3">
+              <div key={index} className="space-y-3 p-4 bg-card border border-border/40 rounded-lg mb-4">
                 <div className="flex items-center space-x-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <div className="space-y-2">
@@ -160,35 +179,36 @@ export function FeedTab() {
             ))
         ) : posts.length > 0 ? (
           posts.map((post) => (
-            <Post
-              key={post.id}
-              id={post.id}
-              author={{
-                id: post.user_id,
-                name: post.profiles?.name || "Unknown User",
-                role: post.profiles?.user_type || "User",
-                avatar: "/placeholder.svg",
-              }}
-              content={post.content}
-              timestamp={new Date(post.created_at).toLocaleString()}
-              likes={post.likes}
-              comments={post.comments_count}
-              hashtags={post.hashtags}
-              image_url={post.image_url}
-              onHashtagClick={handleHashtagClick}
-            />
+            <div key={post.id} className="bg-card border border-border/40 rounded-lg p-4 mb-4">
+              <Post
+                id={post.id}
+                author={{
+                  id: post.user_id,
+                  name: post.profiles?.name || "Unknown User",
+                  role: post.profiles?.user_type || "User",
+                  avatar: "/placeholder.svg",
+                }}
+                content={post.content}
+                timestamp={new Date(post.created_at).toLocaleString()}
+                likes={post.likes}
+                comments={post.comments_count}
+                hashtags={post.hashtags}
+                image_url={post.image_url}
+                onHashtagClick={handleHashtagClick}
+              />
+            </div>
           ))
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-card border border-border/40 rounded-lg">
             <h3 className="text-xl font-medium mb-2">No popular posts</h3>
             <p className="text-muted-foreground mb-4">Check back later for popular content</p>
           </div>
         )}
       </TabsContent>
       
-      <TabsContent value="following" className="space-y-6">
+      <TabsContent value="following" className="space-y-4">
         {!user ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-card border border-border/40 rounded-lg">
             <h3 className="text-xl font-medium mb-2">Sign in to see posts from users you follow</h3>
             <p className="text-muted-foreground mb-4">Create an account or log in to follow users and see their posts</p>
           </div>
@@ -196,7 +216,7 @@ export function FeedTab() {
           Array(3)
             .fill(0)
             .map((_, index) => (
-              <div key={index} className="space-y-3">
+              <div key={index} className="space-y-3 p-4 bg-card border border-border/40 rounded-lg mb-4">
                 <div className="flex items-center space-x-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <div className="space-y-2">
@@ -209,26 +229,27 @@ export function FeedTab() {
             ))
         ) : posts.length > 0 ? (
           posts.map((post) => (
-            <Post
-              key={post.id}
-              id={post.id}
-              author={{
-                id: post.user_id,
-                name: post.profiles?.name || "Unknown User",
-                role: post.profiles?.user_type || "User",
-                avatar: "/placeholder.svg",
-              }}
-              content={post.content}
-              timestamp={new Date(post.created_at).toLocaleString()}
-              likes={post.likes}
-              comments={post.comments_count}
-              hashtags={post.hashtags}
-              image_url={post.image_url}
-              onHashtagClick={handleHashtagClick}
-            />
+            <div key={post.id} className="bg-card border border-border/40 rounded-lg p-4 mb-4">
+              <Post
+                id={post.id}
+                author={{
+                  id: post.user_id,
+                  name: post.profiles?.name || "Unknown User",
+                  role: post.profiles?.user_type || "User",
+                  avatar: "/placeholder.svg",
+                }}
+                content={post.content}
+                timestamp={new Date(post.created_at).toLocaleString()}
+                likes={post.likes}
+                comments={post.comments_count}
+                hashtags={post.hashtags}
+                image_url={post.image_url}
+                onHashtagClick={handleHashtagClick}
+              />
+            </div>
           ))
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-card border border-border/40 rounded-lg">
             <h3 className="text-xl font-medium mb-2">No posts from people you follow</h3>
             <p className="text-muted-foreground mb-4">Follow more users to see their posts here</p>
           </div>

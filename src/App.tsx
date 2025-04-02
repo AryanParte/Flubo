@@ -3,9 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import StartupDashboard from "./pages/StartupDashboard";
@@ -25,6 +27,32 @@ import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
+// Redirect component that checks user type and redirects to appropriate dashboard
+function HomeRedirect() {
+  const { user, userType } = useAuth();
+  const location = useLocation();
+  
+  useEffect(() => {
+    console.log("HomeRedirect: user:", user?.id, "userType:", userType);
+  }, [user, userType]);
+
+  if (!user) {
+    // If not logged in, redirect to index
+    return <Navigate to="/" replace />;
+  }
+  
+  if (userType === "investor") {
+    // Redirect investor to investor dashboard
+    return <Navigate to="/investor" replace state={{ from: location }} />;
+  } else if (userType === "startup") {
+    // Redirect startup to business dashboard
+    return <Navigate to="/business" replace state={{ from: location }} />;
+  }
+  
+  // If userType is not determined yet, show a loading state or redirect to index
+  return <Navigate to="/" replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
@@ -36,6 +64,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/home" element={<HomeRedirect />} />
               <Route path="/business" element={<StartupDashboard />} />
               <Route path="/investor" element={<InvestorDashboard />} />
               <Route path="/business/profile" element={<StartupProfile />} />
