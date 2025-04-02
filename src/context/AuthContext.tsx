@@ -8,11 +8,11 @@ import { toast } from "@/components/ui/use-toast";
 interface AuthContextProps {
   session: Session | null;
   user: User | null;
-  userType: "startup" | "investor" | null; // Adding userType to the interface
+  userType: "startup" | "investor" | null;
   loading: boolean;
   supabaseConfigured: boolean;
   signUp: (email: string, password: string, userType: "startup" | "investor", name: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean, error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -26,27 +26,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseConfigured] = useState(isSupabaseConfigured());
   const navigate = useNavigate();
 
+  console.log("AuthProvider initializing");
+
   useEffect(() => {
     if (!supabaseConfigured) {
+      console.log("Supabase not configured, skipping auth initialization");
       setLoading(false);
       return;
     }
 
+    console.log("Setting up auth state change listener");
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, currentSession) => {
+        console.log("Auth state changed:", _event, "User:", currentSession?.user?.id);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         // Fetch user type if user exists
         if (currentSession?.user) {
           try {
+            console.log("Fetching user type for:", currentSession.user.id);
             const { data, error } = await supabase
               .from('profiles')
               .select('user_type')
               .eq('id', currentSession.user.id)
               .single();
             
-            if (error) throw error;
+            if (error) {
+              console.error("Error fetching user type:", error);
+              throw error;
+            }
+            
+            console.log("User type fetched:", data.user_type);
             setUserType(data.user_type as "startup" | "investor");
           } catch (error) {
             console.error("Error fetching user type:", error);
@@ -61,23 +72,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Initial session check
+    console.log("Checking for existing session");
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      console.log("Initial session check:", currentSession ? "Session found" : "No session");
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       // Fetch user type if user exists
       if (currentSession?.user) {
         try {
+          console.log("Fetching initial user type for:", currentSession.user.id);
           const { data, error } = await supabase
             .from('profiles')
             .select('user_type')
             .eq('id', currentSession.user.id)
             .single();
           
-          if (error) throw error;
+          if (error) {
+            console.error("Error fetching initial user type:", error);
+            throw error;
+          }
+          
+          console.log("Initial user type fetched:", data.user_type);
           setUserType(data.user_type as "startup" | "investor");
         } catch (error) {
-          console.error("Error fetching user type:", error);
+          console.error("Error fetching initial user type:", error);
           setUserType(null);
         }
       }
@@ -86,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => {
+      console.log("Unsubscribing from auth state changes");
       subscription.unsubscribe();
     };
   }, [supabaseConfigured]);
@@ -107,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       setLoading(true);
+      console.log("Signing up user:", email, "as", userType);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -119,10 +140,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Sign up error:", error);
+        throw error;
+      }
 
       if (data.user) {
-        console.log("User created successfully, now creating profile");
+        console.log("User created successfully, now creating profile for:", data.user.id);
         
         const { error: profileError } = await supabase
           .from("profiles")
@@ -189,19 +213,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Supabase is not properly configured. Please check your environment variables.",
         variant: "destructive",
       });
-      return;
+      return { success: false, error: "Supabase not configured" };
     }
 
     try {
       setLoading(true);
+      console.log("Signing in user:", email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Sign in error:", error);
+        toast({
+          title: "Sign in failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { success: false, error: error.message };
+      }
 
       if (data.user) {
+        console.log("User signed in successfully:", data.user.id);
+        
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("user_type")
@@ -210,7 +246,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (profileError) {
           console.error("Error fetching profile:", profileError);
+          // Still continue as the authentication was successful
         } else {
+          console.log("Profile fetched:", profileData);
           setUserType(profileData.user_type as "startup" | "investor");
         }
 
@@ -220,15 +258,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         const fetchedUserType = profileData?.user_type || "startup";
+        console.log("Redirecting to:", fetchedUserType === "startup" ? "/business" : "/investor");
         navigate(fetchedUserType === "startup" ? "/business" : "/investor");
+        return { success: true };
+      } else {
+        console.error("Sign in returned no user");
+        return { success: false, error: "No user returned from sign in" };
       }
     } catch (error: any) {
+      console.error("Sign in error:", error);
       toast({
         title: "Sign in failed",
         description: error.message,
         variant: "destructive",
       });
-      console.error("Sign in error:", error);
+      return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
@@ -242,6 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       setLoading(true);
+      console.log("Signing out user");
       
       setSession(null);
       setUser(null);
@@ -249,6 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       try {
         await supabase.auth.signOut();
+        console.log("Server sign out successful");
       } catch (error: any) {
         console.log("Server signout error (proceeding anyway):", error);
       }

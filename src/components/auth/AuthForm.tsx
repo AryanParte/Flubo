@@ -18,6 +18,7 @@ export function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -29,14 +30,23 @@ export function AuthForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
-    if (isSubmitting || !supabaseConfigured) return;
+    if (isSubmitting || !supabaseConfigured) {
+      console.log("Form submission prevented: isSubmitting=", isSubmitting, "supabaseConfigured=", supabaseConfigured);
+      return;
+    }
     
     try {
       setIsSubmitting(true);
       
       if (authMode === "signin") {
-        await signIn(email, password);
+        console.log("Attempting sign in for:", email);
+        const result = await signIn(email, password);
+        if (!result.success) {
+          console.error("Sign in failed:", result.error);
+          setError(result.error || "An unknown error occurred during sign in");
+        }
       } else {
         if (!name.trim()) {
           toast({
@@ -44,13 +54,16 @@ export function AuthForm() {
             description: "Please enter your name to create an account",
             variant: "destructive",
           });
+          setError("Name is required");
           return;
         }
+        console.log("Attempting sign up for:", email, "as", userType);
         await signUp(email, password, userType, name);
         setEmailSent(true); // Set email sent state to true after signup
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Form submission error:", error);
+      setError(error.message || "An unknown error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -74,6 +87,13 @@ export function AuthForm() {
           <AlertDescription>
             Supabase is not properly configured. Authentication will not work until environment variables are set.
           </AlertDescription>
+        </Alert>
+      )}
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       
@@ -244,7 +264,10 @@ export function AuthForm() {
             {authMode === "signin" ? "Don't have an account? " : "Already have an account? "}
           </span>
           <button
-            onClick={() => setAuthMode(authMode === "signin" ? "signup" : "signin")}
+            onClick={() => {
+              setAuthMode(authMode === "signin" ? "signup" : "signin");
+              setError(null);
+            }}
             className="text-accent hover:underline"
           >
             {authMode === "signin" ? "Sign up" : "Sign in"}
