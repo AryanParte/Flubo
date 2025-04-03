@@ -30,8 +30,8 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
   }, [investor?.id]);
   
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+      <CardContent className="p-6 flex-grow">
         <div className="flex items-start space-x-3">
           <Avatar className="h-12 w-12 rounded-full">
             {investor.avatar_url ? (
@@ -42,42 +42,42 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
               </AvatarFallback>
             )}
           </Avatar>
-          <div className="flex-1">
-            <h3 className="font-medium text-base">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-base truncate">
               <InvestorProfilePopup investor={investor} />
             </h3>
             
             <div className="space-y-1 mt-2">
               <p className="text-xs text-muted-foreground flex items-center">
                 <Briefcase size={12} className="mr-1 flex-shrink-0" />
-                <span>{investor.role || "Investor"} at {investor.company || "Independent"}</span>
+                <span className="truncate">{investor.role || "Investor"} at {investor.company || "Independent"}</span>
               </p>
               
               {investor.industry && (
                 <p className="text-xs text-muted-foreground flex items-center">
                   <Building size={12} className="mr-1 flex-shrink-0" />
-                  <span>{investor.industry}</span>
+                  <span className="truncate">{investor.industry}</span>
                 </p>
               )}
               
               {investor.location && (
                 <p className="text-xs text-muted-foreground flex items-center">
                   <MapPin size={12} className="mr-1 flex-shrink-0" />
-                  <span>{investor.location}</span>
+                  <span className="truncate">{investor.location}</span>
                 </p>
               )}
               
               {investor.preferred_stages && investor.preferred_stages.length > 0 && (
                 <p className="text-xs text-muted-foreground flex items-start">
                   <Tags size={12} className="mr-1 mt-1 flex-shrink-0" />
-                  <span>{investor.preferred_stages.join(", ")}</span>
+                  <span className="truncate">{investor.preferred_stages.join(", ")}</span>
                 </p>
               )}
               
               {investor.investment_size && (
                 <p className="text-xs text-muted-foreground flex items-center">
                   <DollarSign size={12} className="mr-1 flex-shrink-0" />
-                  <span>{investor.investment_size}</span>
+                  <span className="truncate">{investor.investment_size}</span>
                 </p>
               )}
               
@@ -85,7 +85,7 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
                 <Users size={12} className="mr-1 flex-shrink-0" />
                 <button 
                   onClick={() => onShowFollowers?.(investor.id)}
-                  className="hover:underline cursor-pointer"
+                  className="hover:underline cursor-pointer truncate"
                   type="button"
                 >
                   <span>{followersCount} followers</span>
@@ -93,7 +93,7 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
                 <span className="mx-1">·</span>
                 <button 
                   onClick={() => onShowFollowing?.(investor.id)}
-                  className="hover:underline cursor-pointer"
+                  className="hover:underline cursor-pointer truncate"
                   type="button"
                 >
                   <span>{followingCount} following</span>

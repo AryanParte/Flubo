@@ -19,7 +19,7 @@ export const FindInvestorsTab = () => {
   };
   
   return (
-    <>
+    <div className="p-6">
       <InvestorList 
         showSearch={true} 
         showTabs={true} 
@@ -46,6 +46,6 @@ export const FindInvestorsTab = () => {
           />
         </>
       )}
-    </>
+    </div>
   );
 };

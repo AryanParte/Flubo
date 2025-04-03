@@ -2,5 +2,9 @@
 import { FindCompaniesTab as CompaniesTab } from "./companies/FindCompaniesTab";
 
 export const FindCompaniesTab = () => {
-  return <CompaniesTab />;
+  return (
+    <div className="p-6">
+      <CompaniesTab />
+    </div>
+  );
 };
