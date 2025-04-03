@@ -1,12 +1,13 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 interface DashboardSidebarProps {
   userName: string;
@@ -29,7 +30,21 @@ export function DashboardSidebar({
   lookingForDesignPartner,
   onDesignToggle
 }: DashboardSidebarProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  // Determine the correct profile path based on user type
   const profilePath = userType === "investor" ? "/investor/profile" : "/business/profile";
+  
+  const handleProfileClick = () => {
+    // Navigate to profile page with the current user's ID if available
+    if (user) {
+      navigate(profilePath);
+    } else {
+      // Fallback to basic profile path
+      navigate(profilePath);
+    }
+  };
 
   return (
     <div className="sticky top-24">
@@ -48,9 +63,13 @@ export function DashboardSidebar({
             {userType === "investor" ? "Investor" : "Business"}
           </span>
           
-          <Link to={profilePath} className="text-sm text-accent hover:underline">
+          <Button 
+            variant="link" 
+            onClick={handleProfileClick} 
+            className="text-sm text-accent hover:underline p-0 h-auto"
+          >
             View profile
-          </Link>
+          </Button>
         </div>
 
         {/* Verification status */}
