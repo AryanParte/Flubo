@@ -30,41 +30,41 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
   }, [investor?.id, loadFollowData]);
   
   return (
-    <Card className="flex flex-col h-full min-h-[450px] border border-border bg-card overflow-hidden">
-      <CardContent className="p-6 flex-grow space-y-4">
+    <Card className="w-full border border-border bg-card overflow-hidden">
+      <CardContent className="p-6 flex flex-col space-y-5">
         <div className="flex items-start gap-4">
-          <Avatar className="h-12 w-12 rounded-full flex-shrink-0">
+          <Avatar className="h-14 w-14 rounded-full flex-shrink-0">
             {investor.avatar_url ? (
               <AvatarImage src={investor.avatar_url} alt={investor.name} />
             ) : (
-              <AvatarFallback className="bg-accent/10 text-accent">
+              <AvatarFallback className="bg-accent/10 text-accent text-lg">
                 {investor.name?.charAt(0) || 'I'}
               </AvatarFallback>
             )}
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-base mb-1.5">
+            <h3 className="font-semibold text-lg mb-3">
               <InvestorProfilePopup investor={investor} />
             </h3>
             
-            <div className="space-y-2">
+            <div className="space-y-3">
               {investor.role && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Briefcase size={12} className="flex-shrink-0" />
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Briefcase size={14} className="flex-shrink-0" />
                   <span className="truncate">{investor.role || "Investor"} at {investor.company || "Independent"}</span>
                 </p>
               )}
               
               {investor.industry && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Building size={12} className="flex-shrink-0" />
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Building size={14} className="flex-shrink-0" />
                   <span className="truncate">{investor.industry}</span>
                 </p>
               )}
               
               {investor.location && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <MapPin size={12} className="flex-shrink-0" />
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <MapPin size={14} className="flex-shrink-0" />
                   <span className="truncate">{investor.location}</span>
                 </p>
               )}
@@ -73,11 +73,11 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
         </div>
         
         {investor.bio && (
-          <p className="text-sm line-clamp-2 min-h-[2.5rem]">{investor.bio}</p>
+          <p className="text-sm line-clamp-2">{investor.bio}</p>
         )}
         
         {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2 pt-2">
             {investor.preferred_sectors.slice(0, 3).map((sector, index) => (
               <Badge key={index} variant="outline" className="text-xs px-2 py-0.5">
                 {sector}
@@ -91,10 +91,10 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
           </div>
         )}
         
-        <div className="flex items-center text-xs text-muted-foreground pt-2 border-t border-border mt-auto">
+        <div className="flex items-center text-xs text-muted-foreground pt-4 border-t border-border mt-auto">
           <button 
             onClick={() => onShowFollowers?.(investor.id)}
-            className="hover:underline cursor-pointer flex items-center gap-1 mr-3"
+            className="hover:underline cursor-pointer flex items-center gap-1 mr-4"
             type="button"
           >
             <Users size={12} />
@@ -110,7 +110,7 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
         </div>
       </CardContent>
       
-      <CardFooter className="px-6 py-4 border-t border-border">
+      <CardFooter className="px-6 py-5 border-t border-border">
         <div className="w-full">
           <div id={`ai-chat-${investor.id}`}>
             <InvestorAIChat investor={investor} />

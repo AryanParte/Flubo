@@ -51,7 +51,7 @@ export const DiscoverTab = () => {
           ) : (
             <>
               {/* Startup Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
                 {startups.map((startup, index) => (
                   <StartupCard 
                     key={startup.id}
@@ -65,10 +65,12 @@ export const DiscoverTab = () => {
               
               {/* Load More */}
               {startups.length > 0 && (
-                <div className="mt-8 text-center">
+                <div className="mt-10 text-center">
                   <Button 
                     variant="outline"
                     onClick={handleLoadMore}
+                    size="lg"
+                    className="px-8"
                   >
                     Load More Startups
                   </Button>

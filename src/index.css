@@ -95,6 +95,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
   }
 
   .glass-card {
@@ -164,4 +165,23 @@
   .responsive-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Ensure card content doesn't overflow */
+.card {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.card-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Make sure text doesn't overflow containers */
+.truncate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
