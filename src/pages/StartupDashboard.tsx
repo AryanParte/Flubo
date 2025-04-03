@@ -486,12 +486,9 @@ const StartupDashboard = () => {
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
                         <AvatarFallback className="text-xl">{startupName?.charAt(0) || "C"}</AvatarFallback>
                       </Avatar>
-                      <CardTitle 
-                        className="mt-4 text-xl text-center cursor-pointer hover:text-accent transition-colors"
-                        onClick={handleProfileClick}
-                      >
-                        {startupName || ""}
-                      </CardTitle>
+                      <h3 className="mt-4 text-xl text-center">
+                        {startupName || "Capo"}
+                      </h3>
                       <p className="text-sm text-muted-foreground text-center mt-1">
                         {userIndustry || "Industry not specified"}
                       </p>

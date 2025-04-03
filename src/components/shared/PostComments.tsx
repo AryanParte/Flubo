@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -34,7 +33,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Fetch initial comments
   const fetchComments = async () => {
     setIsLoading(true);
     try {
@@ -59,7 +57,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       if (data) {
         console.log('Fetched comments:', data);
         
-        // Now we need to fetch user profiles separately
         const commentsWithProfiles = await Promise.all(
           data.map(async (comment) => {
             const { data: profileData, error: profileError } = await supabase
@@ -88,7 +85,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
           onCommentCountChange(commentsWithProfiles.length);
         }
         
-        // Update post comment count in database if needed
         updatePostCommentCount(commentsWithProfiles.length);
       }
     } catch (error) {
@@ -103,12 +99,10 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     }
   };
   
-  // Initial fetch
   useEffect(() => {
     fetchComments();
   }, [postId]);
   
-  // Update posts table comment count
   const updatePostCommentCount = async (count: number) => {
     try {
       console.log(`Updating post ${postId} comment count to ${count}`);
@@ -125,7 +119,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     }
   };
   
-  // Setup realtime subscription for comments
   useRealtimeSubscription<Comment>(
     'comments',
     ['INSERT', 'UPDATE', 'DELETE'],
@@ -134,7 +127,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       
       if (payload.eventType === 'INSERT' && payload.new.post_id === postId) {
         const fetchNewComment = async () => {
-          // Fetch the new comment
           const { data: commentData, error: commentError } = await supabase
             .from('comments')
             .select(`
@@ -152,7 +144,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
             return;
           }
           
-          // Fetch the associated profile
           if (commentData) {
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
@@ -199,7 +190,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
     `post_id=eq.${postId}`
   );
 
-  // Also listen to updates on the posts table for comment count changes
   useRealtimeSubscription(
     'posts',
     ['UPDATE'],
@@ -255,7 +245,6 @@ export function PostComments({ postId, onCommentCountChange }: PostCommentsProps
       
       setNewComment('');
       
-      // Instead of directly adding the comment to the state, we'll fetch it with the profile
       if (data && data[0]) {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
