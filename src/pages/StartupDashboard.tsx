@@ -4,7 +4,7 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { Building, Rss, Search, Loader2, Users, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { 
@@ -262,6 +262,10 @@ const StartupDashboard = () => {
     navigate('/business/profile');
   };
   
+  const handleProfileClick = () => {
+    navigate('/business/profile');
+  };
+  
   const saveBasicProfile = async () => {
     if (!newCompanyName || !newIndustry) {
       toast({
@@ -515,7 +519,10 @@ const StartupDashboard = () => {
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
                         <AvatarFallback className="text-xl">{startupName?.charAt(0) || "C"}</AvatarFallback>
                       </Avatar>
-                      <CardTitle className="mt-4 text-xl text-center">
+                      <CardTitle 
+                        className="mt-4 text-xl text-center cursor-pointer hover:text-accent transition-colors"
+                        onClick={handleProfileClick}
+                      >
                         {startupName || "Your Company"}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground text-center mt-1">
