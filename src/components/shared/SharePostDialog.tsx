@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState, useEffect } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -9,10 +10,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, X } from "lucide-react";
+import { Image, X, Search, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface Contact {
+  id: string;
+  name: string;
+  avatar: string;
+  user_type: string;
+}
 
 export interface SharePostDialogProps {
   isOpen: boolean;
@@ -36,9 +48,9 @@ export function SharePostDialog({
 }: SharePostDialogProps) {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
-  const [contacts, setContacts] = useState([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedContact, setSelectedContact] = useState(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [postDetails, setPostDetails] = useState<any>(null);
@@ -319,12 +331,14 @@ export function SharePostDialog({
   );
 }
 
+// Compatibility layer for components that might be using the old API
 interface LegacySharePostDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function SharePostDialog2(props: LegacySharePostDialogProps) {
+// Legacy adapter component
+export function SharePostDialogLegacy(props: LegacySharePostDialogProps) {
   const { open, onOpenChange } = props;
   
   return (
@@ -334,5 +348,3 @@ export function SharePostDialog2(props: LegacySharePostDialogProps) {
     />
   );
 }
-
-export { SharePostDialog2 as SharePostDialog };
