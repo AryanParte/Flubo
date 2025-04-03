@@ -37,11 +37,11 @@ export function DashboardSidebar({
   const profilePath = userType === "investor" ? "/investor/profile" : "/business/profile";
   
   const handleProfileClick = () => {
-    // Navigate to profile page with the current user's ID if available
+    // Navigate to profile page with the current user's ID
     if (user) {
       navigate(profilePath);
     } else {
-      // Fallback to basic profile path
+      // Fallback to basic profile path if no user (shouldn't happen normally)
       navigate(profilePath);
     }
   };

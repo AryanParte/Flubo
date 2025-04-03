@@ -8,6 +8,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardSidebar } from "@/components/shared/DashboardSidebar";
 import { DashboardRightSidebar } from "@/components/shared/DashboardRightSidebar";
+import { supabase } from "@/lib/supabase";
 
 const StartupProfile = () => {
   const { id: profileId } = useParams();
@@ -15,6 +16,10 @@ const StartupProfile = () => {
   const navigate = useNavigate();
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
+  const [lookingForFunding, setLookingForFunding] = useState(true);
+  const [lookingForDesignPartner, setLookingForDesignPartner] = useState(false);
 
   // If no profileId is provided, use the current user's ID
   const currentProfileId = profileId || user?.id;
@@ -23,8 +28,66 @@ const StartupProfile = () => {
   useEffect(() => {
     if (!user && !profileId) {
       navigate('/auth');
+    } else if (user) {
+      // If we're on the profile page, fetch user data
+      const fetchUserProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('name, verified, looking_for_funding, looking_for_design')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setUserName(data.name || "Startup User");
+            setIsVerified(!!data.verified);
+            setLookingForFunding(data.looking_for_funding ?? true);
+            setLookingForDesignPartner(data.looking_for_design ?? false);
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        }
+      };
+      
+      fetchUserProfile();
     }
   }, [user, profileId, navigate]);
+
+  const handleFundingToggle = async (checked: boolean) => {
+    setLookingForFunding(checked);
+    
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ looking_for_funding: checked })
+          .eq('id', user.id);
+          
+        if (error) throw error;
+      } catch (error) {
+        console.error("Error updating funding status:", error);
+      }
+    }
+  };
+  
+  const handleDesignToggle = async (checked: boolean) => {
+    setLookingForDesignPartner(checked);
+    
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ looking_for_design: checked })
+          .eq('id', user.id);
+          
+        if (error) throw error;
+      } catch (error) {
+        console.error("Error updating design partner status:", error);
+      }
+    }
+  };
 
   const handleShowFollowers = () => {
     console.log("Opening followers modal");
@@ -45,13 +108,13 @@ const StartupProfile = () => {
             {/* Left sidebar */}
             <div className="col-span-14 md:col-span-3">
               <DashboardSidebar
-                userName="Startup User"
+                userName={userName}
                 userType="startup"
-                isVerified={false}
-                lookingForFunding={true}
-                onFundingToggle={() => {}}
-                lookingForDesignPartner={false}
-                onDesignToggle={() => {}}
+                isVerified={isVerified}
+                lookingForFunding={lookingForFunding}
+                onFundingToggle={handleFundingToggle}
+                lookingForDesignPartner={lookingForDesignPartner}
+                onDesignToggle={handleDesignToggle}
               />
             </div>
 

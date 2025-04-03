@@ -15,6 +15,8 @@ const InvestorProfile = () => {
   const navigate = useNavigate();
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
 
   // If no profileId is provided, use the current user's ID
   const currentProfileId = profileId || user?.id;
@@ -23,6 +25,28 @@ const InvestorProfile = () => {
   useEffect(() => {
     if (!user && !profileId) {
       navigate('/auth');
+    } else if (user) {
+      // If we're on the profile page, fetch user data
+      const fetchUserProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('name, verified')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setUserName(data.name || "Investor User");
+            setIsVerified(!!data.verified);
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        }
+      };
+      
+      fetchUserProfile();
     }
   }, [user, profileId, navigate]);
 
@@ -45,9 +69,9 @@ const InvestorProfile = () => {
             {/* Left sidebar */}
             <div className="col-span-14 md:col-span-3">
               <DashboardSidebar
-                userName="Investor User"
+                userName={userName}
                 userType="investor"
-                isVerified={false}
+                isVerified={isVerified}
               />
             </div>
 
