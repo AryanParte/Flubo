@@ -28,53 +28,49 @@ const InvestorProfile = () => {
   console.log("InvestorProfile - location:", location.pathname);
   console.log("InvestorProfile - profileId:", profileId, "user?.id:", user?.id, "currentProfileId:", currentProfileId);
 
-  // Redirect unauthenticated users to login
+  // Fetch user profile data without redirects
   useEffect(() => {
     console.log("InvestorProfile useEffect - user:", !!user, "profileId:", profileId);
     
+    // Only redirect if no user and no profile ID
     if (!user && !profileId) {
       console.log("No user and no profileId, redirecting to auth");
       navigate('/auth');
       return;
     }
     
-    // If we're viewing a profile, no need for additional redirects
-    if (location.pathname.includes('/profile')) {
-      console.log("Already on profile page, no redirection needed");
-      
-      // If we're on the profile page, fetch user data
-      const fetchUserProfile = async () => {
-        try {
-          const targetId = profileId || user?.id;
-          console.log("Fetching user profile for:", targetId);
+    // Fetch user data without any redirections
+    const fetchUserProfile = async () => {
+      try {
+        const targetId = profileId || user?.id;
+        console.log("Fetching user profile for:", targetId);
+        
+        if (!targetId) return;
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name, verified')
+          .eq('id', targetId)
+          .single();
           
-          if (!targetId) return;
-          
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('name, verified')
-            .eq('id', targetId)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching user profile:", error);
-            throw error;
-          }
-          
-          console.log("Profile data:", data);
-          
-          if (data) {
-            setUserName(data.name || "Investor User");
-            setIsVerified(!!data.verified);
-          }
-        } catch (error) {
+        if (error) {
           console.error("Error fetching user profile:", error);
+          throw error;
         }
-      };
-      
-      fetchUserProfile();
-    }
-  }, [user, profileId, navigate, location]);
+        
+        console.log("Profile data:", data);
+        
+        if (data) {
+          setUserName(data.name || "Investor User");
+          setIsVerified(!!data.verified);
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user, profileId, navigate]);
 
   const handleShowFollowers = () => {
     console.log("Opening followers modal");

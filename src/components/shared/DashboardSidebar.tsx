@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useState, useEffect } from "react";
 
 interface DashboardSidebarProps {
   userName: string;
@@ -32,18 +33,36 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [hasShownVerificationModal, setHasShownVerificationModal] = useState(false);
+  
+  // Load the verification modal state from localStorage
+  useEffect(() => {
+    const hasShown = localStorage.getItem('hasShownVerificationModal') === 'true';
+    setHasShownVerificationModal(hasShown);
+  }, []);
   
   // Determine the correct profile path based on user type
-  const profilePath = userType === "investor" ? `/investor/profile/${user?.id}` : `/business/profile/${user?.id}`;
+  const profilePath = userType === "investor" 
+    ? `/investor/profile/${user?.id}` 
+    : `/business/profile/${user?.id}`;
   
   const handleProfileClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent default link behavior
-    // Navigate to profile page with the current user's ID
-    if (user) {
+    
+    if (user?.id) {
       console.log("Navigating to profile path:", profilePath);
       navigate(profilePath);
     } else {
       console.log("No user found, cannot navigate to profile");
+    }
+  };
+
+  const handleVerificationClick = () => {
+    if (onVerificationClick) {
+      // Set the flag in localStorage to prevent showing the modal again
+      localStorage.setItem('hasShownVerificationModal', 'true');
+      setHasShownVerificationModal(true);
+      onVerificationClick();
     }
   };
 
@@ -80,7 +99,7 @@ export function DashboardSidebar({
               variant="outline" 
               size="sm"
               className="w-full flex items-center gap-1.5 text-xs"
-              onClick={onVerificationClick}
+              onClick={handleVerificationClick}
             >
               <UserCheck className="h-3.5 w-3.5" />
               <span>Get Verified</span>

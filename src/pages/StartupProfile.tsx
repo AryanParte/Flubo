@@ -30,55 +30,51 @@ const StartupProfile = () => {
   console.log("StartupProfile - location:", location.pathname);
   console.log("StartupProfile - profileId:", profileId, "user?.id:", user?.id, "currentProfileId:", currentProfileId);
 
-  // Redirect unauthenticated users to login
+  // Fetch user profile data without redirects
   useEffect(() => {
     console.log("StartupProfile useEffect - user:", !!user, "profileId:", profileId);
     
+    // Only redirect if no user and no profile ID
     if (!user && !profileId) {
       console.log("No user and no profileId, redirecting to auth");
       navigate('/auth');
       return;
     }
     
-    // If we're viewing a profile, no need for additional redirects
-    if (location.pathname.includes('/profile')) {
-      console.log("Already on profile page, no redirection needed");
-      
-      // If we're on the profile page, fetch user data
-      const fetchUserProfile = async () => {
-        try {
-          const targetId = profileId || user?.id;
-          console.log("Fetching user profile for:", targetId);
+    // Fetch user data without any redirections
+    const fetchUserProfile = async () => {
+      try {
+        const targetId = profileId || user?.id;
+        console.log("Fetching user profile for:", targetId);
+        
+        if (!targetId) return;
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name, verified, looking_for_funding, looking_for_design')
+          .eq('id', targetId)
+          .single();
           
-          if (!targetId) return;
-          
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('name, verified, looking_for_funding, looking_for_design')
-            .eq('id', targetId)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching user profile:", error);
-            throw error;
-          }
-          
-          console.log("Profile data:", data);
-          
-          if (data) {
-            setUserName(data.name || "Startup User");
-            setIsVerified(!!data.verified);
-            setLookingForFunding(data.looking_for_funding ?? true);
-            setLookingForDesignPartner(data.looking_for_design ?? false);
-          }
-        } catch (error) {
+        if (error) {
           console.error("Error fetching user profile:", error);
+          throw error;
         }
-      };
-      
-      fetchUserProfile();
-    }
-  }, [user, profileId, navigate, location]);
+        
+        console.log("Profile data:", data);
+        
+        if (data) {
+          setUserName(data.name || "Startup User");
+          setIsVerified(!!data.verified);
+          setLookingForFunding(data.looking_for_funding ?? true);
+          setLookingForDesignPartner(data.looking_for_design ?? false);
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user, profileId, navigate]);
 
   const handleFundingToggle = async (checked: boolean) => {
     setLookingForFunding(checked);
