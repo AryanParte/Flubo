@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
@@ -46,14 +47,19 @@ const StartupDashboard = () => {
   const [userLocation, setUserLocation] = useState("");
   const [userIndustry, setUserIndustry] = useState("");
   const [profileViewCount, setProfileViewCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [connections, setConnections] = useState(0);
+  const [messages, setMessages] = useState(0);
+  const [engagement, setEngagement] = useState("0%");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   
   useEffect(() => {
     if (user) {
+      setLoading(true);
       fetchStartupData();
-      checkProfileCompletion();
+      fetchAnalytics();
       
       // Set the active tab if specified in URL
       const tabParam = searchParams.get("tab");
@@ -62,6 +68,58 @@ const StartupDashboard = () => {
       }
     }
   }, [user, searchParams]);
+
+  const fetchAnalytics = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch connection count (followers + following)
+      const [followersResponse, followingResponse] = await Promise.all([
+        supabase.rpc('get_followers_count', { user_id: user.id }),
+        supabase.rpc('get_following_count', { user_id: user.id })
+      ]);
+      
+      const followersCount = followersResponse.data || 0;
+      const followingCount = followingResponse.data || 0;
+      setConnections(followersCount + followingCount);
+      
+      // Fetch message count
+      const { count: messageCount } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
+      
+      setMessages(messageCount || 0);
+      
+      // Calculate engagement (could be based on post interactions)
+      const { count: totalPosts } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+        
+      if (totalPosts && totalPosts > 0) {
+        const { data: interactions } = await supabase
+          .from('post_likes')
+          .select('post_id')
+          .in('post_id', 
+            supabase.from('posts')
+              .select('id')
+              .eq('user_id', user.id)
+          );
+        
+        const interactionCount = interactions?.length || 0;
+        const engagementRate = totalPosts > 0 ? 
+          Math.round((interactionCount / totalPosts) * 100) : 0;
+        
+        setEngagement(`${engagementRate}%`);
+      } else {
+        setEngagement("0%");
+      }
+      
+    } catch (error) {
+      console.error("Error fetching analytics data:", error);
+    }
+  };
 
   const fetchStartupData = async () => {
     try {
@@ -79,9 +137,9 @@ const StartupDashboard = () => {
         throw startupError;
       }
       
-      if (startupProfile?.name) {
+      if (startupProfile) {
         console.log("Found startup profile:", startupProfile);
-        setStartupName(startupProfile.name);
+        setStartupName(startupProfile.name || "");
         setHasRequiredFields(!!startupProfile.industry);
         setLookingForFunding(startupProfile.looking_for_funding || false);
         setLookingForDesignPartner(startupProfile.looking_for_design_partner || false);
@@ -121,8 +179,14 @@ const StartupDashboard = () => {
           setShowProfileDialog(true);
         }
       }
+      
+      // Check profile completion
+      await checkProfileCompletion();
+      
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching startup data:", error);
+      setLoading(false);
     }
   };
 
@@ -156,7 +220,7 @@ const StartupDashboard = () => {
         setIsUserVerified(!!profile.verified);
         
         // Show verification dialog if they have a completed profile but aren't verified yet
-        if (requiredFieldsFilled && !profile.verified) {
+        if (requiredFieldsFilled && !profile.verified && !showProfileDialog) {
           // Only show after a slight delay so it doesn't appear immediately on login
           setTimeout(() => {
             setShowVerificationDialog(true);
@@ -414,79 +478,88 @@ const StartupDashboard = () => {
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-3">
-              <Card className="mb-6">
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col items-center">
-                    <Avatar className="w-24 h-24 border-4 border-background">
-                      <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                      <AvatarFallback className="text-xl">{startupName?.charAt(0) || "B"}</AvatarFallback>
-                    </Avatar>
-                    <CardTitle className="mt-4 text-xl text-center">
-                      {startupName || "Your Business"}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground text-center mt-1">
-                      {userIndustry || "Tech Company"}
-                    </p>
-                    <p className="text-xs text-muted-foreground text-center">
-                      {userLocation || "Location not specified"}
-                    </p>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pb-2">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="looking-for-funding"
-                        checked={lookingForFunding}
-                        onCheckedChange={(checked) => handlePartnershipToggle('funding', checked)}
-                      />
-                      <Label htmlFor="looking-for-funding" className="text-sm">
-                        Seeking funding
-                      </Label>
+              {loading ? (
+                <Card className="mb-6">
+                  <CardContent className="flex flex-col items-center justify-center min-h-[320px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-accent mb-4" />
+                    <p className="text-sm text-muted-foreground">Loading profile data...</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="mb-6">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col items-center">
+                      <Avatar className="w-24 h-24 border-4 border-background">
+                        <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
+                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "B"}</AvatarFallback>
+                      </Avatar>
+                      <CardTitle className="mt-4 text-xl text-center">
+                        {startupName || "Your Business"}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground text-center mt-1">
+                        {userIndustry || "Tech Company"}
+                      </p>
+                      <p className="text-xs text-muted-foreground text-center">
+                        {userLocation || "Location not specified"}
+                      </p>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pb-2">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          id="looking-for-funding"
+                          checked={lookingForFunding}
+                          onCheckedChange={(checked) => handlePartnershipToggle('funding', checked)}
+                        />
+                        <Label htmlFor="looking-for-funding" className="text-sm">
+                          Seeking funding
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          id="looking-for-design-partner"
+                          checked={lookingForDesignPartner}
+                          onCheckedChange={(checked) => handlePartnershipToggle('design', checked)}
+                        />
+                        <Label htmlFor="looking-for-design-partner" className="text-sm">
+                          Design partner
+                        </Label>
+                      </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="looking-for-design-partner"
-                        checked={lookingForDesignPartner}
-                        onCheckedChange={(checked) => handlePartnershipToggle('design', checked)}
-                      />
-                      <Label htmlFor="looking-for-design-partner" className="text-sm">
-                        Design partner
-                      </Label>
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Profile views</span>
+                        <span className="text-lg font-bold text-accent">{profileViewCount}</span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Profile views</span>
-                      <span className="text-lg font-bold text-accent">{profileViewCount}</span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-3 pt-0">
-                  {!profileComplete && hasRequiredFields && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start"
-                      onClick={handleCompleteProfileClick}
-                    >
-                      Complete Your Profile
-                    </Button>
-                  )}
-                  
-                  {!isUserVerified && hasRequiredFields && (
-                    <Button 
-                      variant="accent" 
-                      className="w-full justify-center"
-                      onClick={handleVerificationClick}
-                    >
-                      <UserCheck className="mr-2 h-4 w-4" />
-                      Get Verified
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-3 pt-0">
+                    {!profileComplete && hasRequiredFields && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={handleCompleteProfileClick}
+                      >
+                        Complete Your Profile
+                      </Button>
+                    )}
+                    
+                    {!isUserVerified && hasRequiredFields && (
+                      <Button 
+                        variant="accent" 
+                        className="w-full justify-center"
+                        onClick={handleVerificationClick}
+                      >
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Get Verified
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              )}
               
               <Card>
                 <CardHeader className="pb-2">
@@ -495,15 +568,15 @@ const StartupDashboard = () => {
                 <CardContent className="text-sm space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Connections</span>
-                    <span className="font-medium">12</span>
+                    <span className="font-medium">{connections}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Messages</span>
-                    <span className="font-medium">5</span>
+                    <span className="font-medium">{messages}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Engagement</span>
-                    <span className="font-medium">86%</span>
+                    <span className="font-medium">{engagement}</span>
                   </div>
                 </CardContent>
                 <CardFooter>
