@@ -1,6 +1,5 @@
-
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -25,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userType, setUserType] = useState<UserType>(null);
   const [loading, setLoading] = useState(false);
   const [supabaseConfigured] = useState(isSupabaseConfigured());
-  const navigate = useNavigate();
+  const location = useLocation();
 
   // Initialize auth and listen for auth state changes
   useEffect(() => {
@@ -33,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Supabase not configured, skipping auth initialization");
       return;
     }
+
+    console.log("Current path:", location.pathname);
 
     // Get initial session
     const initializeAuth = async () => {
@@ -47,29 +48,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     // Set up auth state change listener
-    // Fix: Store the unsubscribe function correctly based on Supabase's API
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state change event:", event);
       handleSessionChange(session);
       
-      // Handle sign in and sign out events
-      if (event === 'SIGNED_IN') {
-        console.log("User signed in, redirecting to appropriate dashboard");
-        // Don't navigate here, let the handleSessionChange function determine where to redirect
-      } else if (event === 'SIGNED_OUT') {
-        console.log("User signed out, navigating to home page");
-        navigate('/');
-      }
+      // Don't navigate here, as it can cause loops and unwanted redirects
     });
 
     return () => {
       console.log("Unsubscribing from auth state changes");
-      // Fix: Call the correct unsubscribe method
       subscription?.unsubscribe();
     };
-  }, [supabaseConfigured, navigate]);
+  }, [supabaseConfigured, location.pathname]);
 
   // Handle session changes and fetch user profile data
   const handleSessionChange = async (newSession: Session | null) => {
@@ -94,12 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log("User profile found:", profile);
           setUserType(profile.user_type as UserType);
           
-          // Navigate to appropriate dashboard based on user type
-          if (profile.user_type === "investor") {
-            navigate('/investor');
-          } else if (profile.user_type === "startup") {
-            navigate('/business');
-          }
+          // Don't navigate here - let the app handle navigation based on routes
         } else {
           console.log("No profile found for user");
           setUserType(null);

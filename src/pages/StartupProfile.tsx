@@ -4,7 +4,7 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { ProfileTab } from "@/components/startup/ProfileTab";
 import { useState, useEffect } from "react";
 import { UserListModal } from "@/components/shared/UserListModal";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardSidebar } from "@/components/shared/DashboardSidebar";
 import { DashboardRightSidebar } from "@/components/shared/DashboardRightSidebar";
@@ -15,7 +15,6 @@ const StartupProfile = () => {
   
   const { id: profileId } = useParams();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
@@ -33,13 +32,6 @@ const StartupProfile = () => {
   // Fetch user profile data without redirects
   useEffect(() => {
     console.log("StartupProfile useEffect - user:", !!user, "profileId:", profileId);
-    
-    // Only redirect if no user and no profile ID
-    if (!user && !profileId) {
-      console.log("No user and no profileId, redirecting to auth");
-      navigate('/auth');
-      return;
-    }
     
     // Fetch user data without any redirections
     const fetchUserProfile = async () => {
@@ -74,7 +66,7 @@ const StartupProfile = () => {
     };
     
     fetchUserProfile();
-  }, [user, profileId, navigate]);
+  }, [user, profileId]);
 
   const handleFundingToggle = async (checked: boolean) => {
     setLookingForFunding(checked);

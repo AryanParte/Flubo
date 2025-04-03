@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,6 @@ export function DashboardSidebar({
   onDesignToggle
 }: DashboardSidebarProps) {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [hasShownVerificationModal, setHasShownVerificationModal] = useState(false);
   
   // Load the verification modal state from localStorage
@@ -46,17 +45,6 @@ export function DashboardSidebar({
     ? `/investor/profile/${user?.id}` 
     : `/business/profile/${user?.id}`;
   
-  const handleProfileClick = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent default link behavior
-    
-    if (user?.id) {
-      console.log("Navigating to profile path:", profilePath);
-      navigate(profilePath);
-    } else {
-      console.log("No user found, cannot navigate to profile");
-    }
-  };
-
   const handleVerificationClick = () => {
     if (onVerificationClick) {
       // Set the flag in localStorage to prevent showing the modal again
@@ -83,17 +71,18 @@ export function DashboardSidebar({
             {userType === "investor" ? "Investor" : "Business"}
           </span>
           
-          <Button 
-            variant="link" 
-            onClick={handleProfileClick} 
-            className="text-sm text-accent hover:underline p-0 h-auto"
-          >
-            View profile
-          </Button>
+          {user?.id && (
+            <Link 
+              to={profilePath}
+              className="text-sm text-accent hover:underline p-0 h-auto"
+            >
+              View profile
+            </Link>
+          )}
         </div>
 
         {/* Verification status */}
-        {!isVerified && onVerificationClick && (
+        {!isVerified && onVerificationClick && !hasShownVerificationModal && (
           <div className="mb-4">
             <Button 
               variant="outline" 
