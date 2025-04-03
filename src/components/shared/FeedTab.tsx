@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Post } from "./Post";
 import { useAuth } from "@/context/AuthContext";
 import { SharePostDialog } from "./SharePostDialog";
@@ -8,6 +8,9 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 
 // Define types for our post structure
 type PostAuthor = {
@@ -31,11 +34,14 @@ type PostData = {
 
 export const FeedTab = () => {
   const { user } = useAuth();
-  const [showPostDialog, setShowPostDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [posts, setPosts] = useState<PostData[]>([]);
   const [feedTab, setFeedTab] = useState<"following" | "trending" | "for-you">("for-you");
+  const [createPostOpen, setCreatePostOpen] = useState(false);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   
   React.useEffect(() => {
     const fetchFeedData = async () => {
@@ -147,17 +153,126 @@ export const FeedTab = () => {
     });
     // In the future, this could filter posts by hashtag
   };
+
+  const handleCreatePost = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "You need to sign in to create a post",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newPostContent.trim()) {
+      toast({
+        title: "Empty post",
+        description: "Please add some content to your post",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Extract hashtags from content
+      const hashtagRegex = /#(\w+)/g;
+      const matches = newPostContent.match(hashtagRegex);
+      const hashtags = matches ? matches.map(tag => tag.replace('#', '')) : [];
+
+      // Create new post in database
+      const { data, error } = await supabase
+        .from('posts')
+        .insert([
+          {
+            user_id: user.id,
+            content: newPostContent,
+            hashtags
+          }
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      // Success! Close dialog and refresh feed
+      setNewPostContent("");
+      setCreatePostOpen(false);
+      
+      toast({
+        title: "Post created",
+        description: "Your post has been published successfully"
+      });
+      
+      // Refresh the feed to show the new post
+      const { data: postData, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          id, 
+          content, 
+          created_at, 
+          likes, 
+          comments_count, 
+          image_url,
+          hashtags,
+          profiles:user_id (
+            id, 
+            name,
+            verified
+          )
+        `)
+        .eq('id', data[0].id)
+        .single();
+
+      if (!postsError && postData) {
+        // Add the new post to the beginning of the posts array
+        setPosts([
+          {
+            id: postData.id,
+            content: postData.content,
+            created_at: postData.created_at,
+            likes: postData.likes,
+            comments: postData.comments_count,
+            image_url: postData.image_url,
+            hashtags: postData.hashtags,
+            author: {
+              id: postData.profiles?.id || "",
+              name: postData.profiles?.name || "Unknown User",
+              avatar_url: null,
+              verified: postData.profiles?.verified || false
+            },
+            user_has_liked: false
+          },
+          ...posts
+        ]);
+      }
+    } catch (err: any) {
+      console.error("Error creating post:", err);
+      toast({
+        title: "Error creating post",
+        description: "Could not create your post at this time",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
   
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Latest Updates</h2>
-        <button 
-          onClick={() => setShowPostDialog(true)}
-          className="text-sm font-medium text-accent hover:text-accent/80"
+        <Button
+          onClick={() => setCreatePostOpen(true)}
+          size="icon"
+          variant="accent"
+          className="rounded-full"
+          aria-label="Create post"
         >
-          Create Post
-        </button>
+          <Plus className="h-5 w-5" />
+        </Button>
       </div>
       
       <Tabs value={feedTab} onValueChange={(value) => setFeedTab(value as typeof feedTab)} className="w-full">
@@ -211,7 +326,44 @@ export const FeedTab = () => {
         </TabsContent>
       </Tabs>
       
-      <SharePostDialog isOpen={showPostDialog} onClose={() => setShowPostDialog(false)} />
+      <Sheet open={createPostOpen} onOpenChange={setCreatePostOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Create a post</SheetTitle>
+          </SheetHeader>
+          
+          <div className="mt-6 space-y-4">
+            <Textarea
+              placeholder="What's on your mind?"
+              className="min-h-[150px] resize-none"
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+            />
+            
+            <div className="text-xs text-muted-foreground">
+              <p>Use #hashtags to categorize your post</p>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button 
+                onClick={handleCreatePost}
+                disabled={submitting || !newPostContent.trim()}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>Publish</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+      
+      <SharePostDialog isOpen={showShareDialog} onClose={() => setShowShareDialog(false)} />
     </div>
   );
 };
