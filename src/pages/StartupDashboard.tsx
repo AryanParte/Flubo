@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
@@ -74,6 +73,8 @@ const StartupDashboard = () => {
     if (!user) return;
     
     try {
+      console.log("Fetching analytics data for user:", user.id);
+      
       // Fetch connection count (followers + following)
       const [followersResponse, followingResponse] = await Promise.all([
         supabase.rpc('get_followers_count', { user_id: user.id }),
@@ -83,6 +84,7 @@ const StartupDashboard = () => {
       const followersCount = followersResponse.data || 0;
       const followingCount = followingResponse.data || 0;
       setConnections(followersCount + followingCount);
+      console.log("Connections count:", followersCount + followingCount);
       
       // Fetch message count
       const { count: messageCount } = await supabase
@@ -91,6 +93,7 @@ const StartupDashboard = () => {
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
       
       setMessages(messageCount || 0);
+      console.log("Messages count:", messageCount);
       
       // Calculate engagement (could be based on post interactions)
       const { count: totalPosts } = await supabase
@@ -119,6 +122,7 @@ const StartupDashboard = () => {
             Math.round((interactionCount / totalPosts) * 100) : 0;
           
           setEngagement(`${engagementRate}%`);
+          console.log("Engagement rate:", engagementRate + "%");
         } else {
           setEngagement("0%");
         }
@@ -149,13 +153,14 @@ const StartupDashboard = () => {
       
       if (startupProfile) {
         console.log("Found startup profile:", startupProfile);
+        // Make sure we use the actual data, not fallback values
         setStartupName(startupProfile.name || "");
-        setHasRequiredFields(!!startupProfile.industry);
+        setUserIndustry(startupProfile.industry || "");
         setLookingForFunding(startupProfile.looking_for_funding || false);
         setLookingForDesignPartner(startupProfile.looking_for_design_partner || false);
-        setUserIndustry(startupProfile.industry || "");
         setUserLocation(startupProfile.location || "");
         setProfileViewCount(startupProfile.profile_views || 0);
+        setHasRequiredFields(!!startupProfile.industry);
         
         // Don't show dialog if we already have a profile with industry
         if (!!startupProfile.industry) {
@@ -501,13 +506,13 @@ const StartupDashboard = () => {
                     <div className="flex flex-col items-center">
                       <Avatar className="w-24 h-24 border-4 border-background">
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "B"}</AvatarFallback>
+                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || user?.email?.charAt(0) || "B"}</AvatarFallback>
                       </Avatar>
                       <CardTitle className="mt-4 text-xl text-center">
-                        {startupName || "Your Business"}
+                        {startupName || user?.email || "Your Business"}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground text-center mt-1">
-                        {userIndustry || "Tech Company"}
+                        {userIndustry || "Industry not specified"}
                       </p>
                       <p className="text-xs text-muted-foreground text-center">
                         {userLocation || "Location not specified"}
