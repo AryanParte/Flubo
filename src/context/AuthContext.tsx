@@ -1,137 +1,70 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
-import { useLocation } from "react-router-dom";
-import { Session, User } from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { Session, User } from "@supabase/supabase-js";
+import { toast } from "@/components/ui/use-toast";
 
-type UserType = "startup" | "investor" | null;
-
-interface AuthContextType {
+interface AuthContextProps {
   session: Session | null;
   user: User | null;
-  userType: UserType;
   loading: boolean;
   supabaseConfigured: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
-  signUp: (email: string, password: string, userType: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, userType: "startup" | "investor", name: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [userType, setUserType] = useState<UserType>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [supabaseConfigured] = useState(isSupabaseConfigured());
-  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Initialize auth and listen for auth state changes
   useEffect(() => {
     if (!supabaseConfigured) {
-      console.log("Supabase not configured, skipping auth initialization");
+      setLoading(false);
       return;
     }
 
-    console.log("Current path:", location.pathname);
-
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        handleSessionChange(data.session);
-      } catch (error) {
-        console.error("Error getting initial session:", error);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setLoading(false);
       }
-    };
+    );
 
-    initializeAuth();
-
-    // Set up auth state change listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change event:", event);
-      handleSessionChange(session);
-      
-      // Don't navigate here, as it can cause loops and unwanted redirects
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      setLoading(false);
     });
 
     return () => {
-      console.log("Unsubscribing from auth state changes");
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
-  }, [supabaseConfigured, location.pathname]);
+  }, [supabaseConfigured]);
 
-  // Handle session changes and fetch user profile data
-  const handleSessionChange = async (newSession: Session | null) => {
-    console.log("Handling session change:", newSession ? "Session exists" : "No session");
-    setSession(newSession);
-    
-    if (newSession?.user) {
-      setUser(newSession.user);
-      
-      try {
-        // Get user profile to determine user type
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("user_type")
-          .eq("id", newSession.user.id)
-          .maybeSingle();
-          
-        if (error) {
-          console.error("Error getting user profile:", error);
-          setUserType(null);
-        } else if (profile) {
-          console.log("User profile found:", profile);
-          setUserType(profile.user_type as UserType);
-          
-          // Don't navigate here - let the app handle navigation based on routes
-        } else {
-          console.log("No profile found for user");
-          setUserType(null);
-        }
-      } catch (error) {
-        console.error("Error processing user profile:", error);
-        setUserType(null);
-      }
-    } else {
-      setUser(null);
-      setUserType(null);
-    }
-  };
-
-  // Sign in function
-  const signIn = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      console.log("Attempting sign in for:", email);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+  const signUp = async (
+    email: string, 
+    password: string, 
+    userType: "startup" | "investor", 
+    name: string
+  ) => {
+    if (!supabaseConfigured) {
+      toast({
+        title: "Configuration Error",
+        description: "Supabase is not properly configured. Please check your environment variables.",
+        variant: "destructive",
       });
-      
-      if (error) {
-        console.error("Sign in error:", error.message);
-        return { success: false, error: error.message };
-      }
-      
-      console.log("Sign in successful:", data);
-      return { success: true, error: null };
-    } catch (error: any) {
-      console.error("Unexpected sign in error:", error);
-      return { success: false, error: error.message || "An unexpected error occurred" };
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
 
-  // Sign up function
-  const signUp = async (email: string, password: string, userType: string, name: string) => {
     try {
       setLoading(true);
-      console.log("Signing up new user:", email, "as", userType);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -143,78 +76,173 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         },
       });
-      
-      if (error) {
-        console.error("Sign up error:", error);
-        throw error;
-      }
-      
-      console.log("Sign up successful, user created:", data);
-      
-      // Create profile record
-      if (data?.user) {
-        try {
-          // Try inserting the profile
-          const { error: profileError } = await supabase.from("profiles").insert({
-            id: data.user.id,
-            user_type: userType,
-            name: name,
-            email: email,
+
+      if (error) throw error;
+
+      if (data.user) {
+        console.log("User created successfully, now creating profile");
+        
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert([
+            {
+              id: data.user.id,
+              user_type: userType,
+              name: name,
+              email: email,
+            },
+          ]);
+
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          toast({
+            title: "Profile creation failed",
+            description: profileError.message,
+            variant: "destructive",
           });
-          
-          if (profileError) {
-            console.error("Error creating profile:", profileError);
-            // Profile creation failed, but user was created
-            // We'll handle this when they sign in
-          } else {
-            console.log("Profile created successfully");
-          }
-        } catch (profileError) {
-          console.error("Error in profile creation:", profileError);
+          return;
         }
+
+        console.log("Profile created successfully");
+        
+        if (userType === "startup") {
+          const { error: startupProfileError } = await supabase
+            .from("startup_profiles")
+            .insert([
+              {
+                id: data.user.id,
+                name: name,
+                industry: "Technology",
+              },
+            ]);
+
+          if (startupProfileError) {
+            console.error("Error creating startup profile:", startupProfileError);
+          } else {
+            console.log("Basic startup profile created");
+          }
+        }
+
+        toast({
+          title: "Account created",
+          description: "Please check your email for a confirmation link to verify your account",
+        });
       }
     } catch (error: any) {
-      console.error("Sign up process error:", error);
-      throw error;
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      console.error("Sign up error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Sign out function
-  const signOut = async () => {
+  const signIn = async (email: string, password: string) => {
+    if (!supabaseConfigured) {
+      toast({
+        title: "Configuration Error",
+        description: "Supabase is not properly configured. Please check your environment variables.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      await supabase.auth.signOut();
-      console.log("User signed out");
-    } catch (error) {
-      console.error("Sign out error:", error);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("user_type")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        }
+
+        toast({
+          title: "Welcome back",
+          description: "You have successfully signed in",
+        });
+
+        const userType = profileData?.user_type || "startup";
+        navigate(userType === "startup" ? "/business" : "/investor");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Sign in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      console.error("Sign in error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const value: AuthContextType = {
-    session,
-    user,
-    userType,
-    loading,
-    supabaseConfigured,
-    signIn,
-    signUp,
-    signOut,
+  const signOut = async () => {
+    if (!supabaseConfigured) {
+      navigate("/");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      setSession(null);
+      setUser(null);
+      
+      try {
+        await supabase.auth.signOut();
+      } catch (error: any) {
+        console.log("Server signout error (proceeding anyway):", error);
+      }
+      
+      navigate("/");
+      
+    } catch (error: any) {
+      console.error("Sign out error:", error);
+      toast({
+        title: "Sign out failed",
+        description: "Please try again or refresh the page",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        loading,
+        supabaseConfigured,
+        signUp,
+        signIn,
+        signOut,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-// Custom hook to use the auth context
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
-  
   return context;
-}
+};

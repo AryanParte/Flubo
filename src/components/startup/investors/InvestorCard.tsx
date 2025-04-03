@@ -27,13 +27,13 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
     if (investor?.id) {
       loadFollowData(investor.id);
     }
-  }, [investor?.id, loadFollowData]);
+  }, [investor?.id]);
   
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex items-start space-x-3">
-          <Avatar className="h-12 w-12 rounded-full flex-shrink-0">
+          <Avatar className="h-12 w-12 rounded-full">
             {investor.avatar_url ? (
               <AvatarImage src={investor.avatar_url} alt={investor.name} />
             ) : (
@@ -42,75 +42,73 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
               </AvatarFallback>
             )}
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-base truncate">
+          <div className="flex-1">
+            <h3 className="font-medium text-base">
               <InvestorProfilePopup investor={investor} />
             </h3>
             
-            <div className="space-y-2 mt-2">
-              {investor.role && (
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <Briefcase size={12} className="mr-1 flex-shrink-0" />
-                  <span className="truncate">{investor.role || "Investor"} at {investor.company || "Independent"}</span>
-                </p>
-              )}
+            <div className="space-y-1 mt-2">
+              <p className="text-xs text-muted-foreground flex items-center">
+                <Briefcase size={12} className="mr-1 flex-shrink-0" />
+                <span>{investor.role || "Investor"} at {investor.company || "Independent"}</span>
+              </p>
               
               {investor.industry && (
                 <p className="text-xs text-muted-foreground flex items-center">
                   <Building size={12} className="mr-1 flex-shrink-0" />
-                  <span className="truncate">{investor.industry}</span>
+                  <span>{investor.industry}</span>
                 </p>
               )}
               
               {investor.location && (
                 <p className="text-xs text-muted-foreground flex items-center">
                   <MapPin size={12} className="mr-1 flex-shrink-0" />
-                  <span className="truncate">{investor.location}</span>
+                  <span>{investor.location}</span>
                 </p>
               )}
               
               {investor.preferred_stages && investor.preferred_stages.length > 0 && (
                 <p className="text-xs text-muted-foreground flex items-start">
                   <Tags size={12} className="mr-1 mt-1 flex-shrink-0" />
-                  <span className="line-clamp-1">{investor.preferred_stages.join(", ")}</span>
+                  <span>{investor.preferred_stages.join(", ")}</span>
                 </p>
               )}
               
               {investor.investment_size && (
                 <p className="text-xs text-muted-foreground flex items-center">
                   <DollarSign size={12} className="mr-1 flex-shrink-0" />
-                  <span className="truncate">{investor.investment_size}</span>
+                  <span>{investor.investment_size}</span>
                 </p>
               )}
-            </div>
-            
-            <div className="flex items-center text-xs text-muted-foreground mt-3">
-              <Users size={12} className="mr-1 flex-shrink-0" />
-              <button 
-                onClick={() => onShowFollowers?.(investor.id)}
-                className="hover:underline cursor-pointer"
-                type="button"
-              >
-                <span>{followersCount} followers</span>
-              </button>
-              <span className="mx-1">·</span>
-              <button 
-                onClick={() => onShowFollowing?.(investor.id)}
-                className="hover:underline cursor-pointer"
-                type="button"
-              >
-                <span>{followingCount} following</span>
-              </button>
+              
+              <div className="flex items-center text-xs text-muted-foreground mt-2">
+                <Users size={12} className="mr-1 flex-shrink-0" />
+                <button 
+                  onClick={() => onShowFollowers?.(investor.id)}
+                  className="hover:underline cursor-pointer"
+                  type="button"
+                >
+                  <span>{followersCount} followers</span>
+                </button>
+                <span className="mx-1">·</span>
+                <button 
+                  onClick={() => onShowFollowing?.(investor.id)}
+                  className="hover:underline cursor-pointer"
+                  type="button"
+                >
+                  <span>{followingCount} following</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
         
         {investor.bio && (
-          <p className="text-sm mt-4 line-clamp-2">{investor.bio}</p>
+          <p className="text-sm mt-3 line-clamp-2">{investor.bio}</p>
         )}
         
         {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1">
+          <div className="mt-3 flex flex-wrap gap-1">
             {investor.preferred_sectors.map((sector, index) => (
               <Badge key={index} variant="outline" className="text-xs">
                 {sector}
@@ -120,9 +118,9 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
         )}
       </CardContent>
       
-      <CardFooter className="px-6 pb-6 pt-0 mt-auto">
+      <CardFooter className="px-6 pb-6 pt-0">
         <div className="w-full">
-          <div id={`ai-chat-${investor.id}`}>
+          <div id={`ai-chat-${investor.id}`} className="mt-1">
             <InvestorAIChat investor={investor} />
           </div>
         </div>

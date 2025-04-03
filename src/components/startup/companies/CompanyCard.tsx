@@ -22,7 +22,7 @@ export const CompanyCard = ({
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    if (url && url !== '#') {
+    if (url) {
       window.open(url, '_blank');
     }
   };
@@ -38,41 +38,32 @@ export const CompanyCard = ({
   return (
     <>
       <div 
-        className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in cursor-pointer h-full"
+        className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in cursor-pointer"
         style={{ animationDelay: `${index * 100}ms` }}
         onClick={handleCardClick}
       >
         <div className="h-48 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
           {company.logo ? (
-            <img src={company.logo} alt={`${company.name} logo`} className="max-h-full max-w-full object-contain p-4" />
+            <img src={company.logo} alt={`${company.name} logo`} className="max-h-full max-w-full object-contain" />
           ) : (
             <span className="font-medium text-4xl">{company.name.charAt(0)}</span>
           )}
         </div>
         
         <div className="p-6 flex-1 flex flex-col">
-          <div className="flex justify-between items-start mb-3 gap-2">
-            <h3 className="font-semibold text-xl truncate">{company.name}</h3>
-            <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1 flex items-center whitespace-nowrap">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="font-semibold text-xl">{company.name}</h3>
+            <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1 flex items-center">
               {company.score}% Match
             </div>
           </div>
           
-          <div className="flex items-center text-xs text-muted-foreground mb-4 flex-wrap gap-y-1">
-            {company.stage && (
-              <span className="pr-2 mr-2 border-r border-border">{company.stage}</span>
-            )}
-            {company.location && (
-              <span className="truncate">{company.location}</span>
-            )}
-            {!company.stage && !company.location && (
-              <span>Unknown details</span>
-            )}
+          <div className="flex items-center text-xs text-muted-foreground mb-4">
+            <span className="pr-2 mr-2 border-r border-border">{company.stage || 'Early Stage'}</span>
+            <span>{company.location || 'Unknown Location'}</span>
           </div>
           
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {company.bio || company.tagline || 'No description available'}
-          </p>
+          <p className="text-sm text-muted-foreground mb-4">{company.bio || company.tagline || 'No description available'}</p>
           
           <div className="flex flex-wrap gap-2 mb-4">
             <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs">

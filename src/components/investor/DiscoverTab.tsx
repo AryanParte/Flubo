@@ -27,7 +27,7 @@ export const DiscoverTab = () => {
   } = useDiscoverStartups();
   
   return (
-    <div className="space-y-6">
+    <div>
       {/* Filters and Sort */}
       <FilterBar 
         appliedFilters={appliedFilters}
@@ -48,8 +48,8 @@ export const DiscoverTab = () => {
         </div>
       ) : (
         <>
-          {/* Startup Cards with improved grid layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Startup Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {startups.map((startup, index) => (
               <StartupCard 
                 key={startup.id}
