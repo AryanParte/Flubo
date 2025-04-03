@@ -4,7 +4,7 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { ProfileTab } from "@/components/investor/ProfileTab";
 import { useState, useEffect } from "react";
 import { UserListModal } from "@/components/shared/UserListModal";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardSidebar } from "@/components/shared/DashboardSidebar";
 import { DashboardRightSidebar } from "@/components/shared/DashboardRightSidebar";
@@ -16,6 +16,7 @@ const InvestorProfile = () => {
   const { id: profileId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [userName, setUserName] = useState("");
@@ -24,6 +25,7 @@ const InvestorProfile = () => {
   // If no profileId is provided, use the current user's ID
   const currentProfileId = profileId || user?.id;
 
+  console.log("InvestorProfile - location:", location.pathname);
   console.log("InvestorProfile - profileId:", profileId, "user?.id:", user?.id, "currentProfileId:", currentProfileId);
 
   // Redirect unauthenticated users to login
@@ -33,15 +35,25 @@ const InvestorProfile = () => {
     if (!user && !profileId) {
       console.log("No user and no profileId, redirecting to auth");
       navigate('/auth');
-    } else if (user) {
+      return;
+    }
+    
+    // If we're viewing a profile, no need for additional redirects
+    if (location.pathname.includes('/profile')) {
+      console.log("Already on profile page, no redirection needed");
+      
       // If we're on the profile page, fetch user data
-      console.log("Fetching user profile for:", user.id);
       const fetchUserProfile = async () => {
         try {
+          const targetId = profileId || user?.id;
+          console.log("Fetching user profile for:", targetId);
+          
+          if (!targetId) return;
+          
           const { data, error } = await supabase
             .from('profiles')
             .select('name, verified')
-            .eq('id', user.id)
+            .eq('id', targetId)
             .single();
             
           if (error) {
@@ -62,7 +74,7 @@ const InvestorProfile = () => {
       
       fetchUserProfile();
     }
-  }, [user, profileId, navigate]);
+  }, [user, profileId, navigate, location]);
 
   const handleShowFollowers = () => {
     console.log("Opening followers modal");

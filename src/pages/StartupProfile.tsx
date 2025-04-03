@@ -4,7 +4,7 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { ProfileTab } from "@/components/startup/ProfileTab";
 import { useState, useEffect } from "react";
 import { UserListModal } from "@/components/shared/UserListModal";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardSidebar } from "@/components/shared/DashboardSidebar";
 import { DashboardRightSidebar } from "@/components/shared/DashboardRightSidebar";
@@ -16,6 +16,7 @@ const StartupProfile = () => {
   const { id: profileId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [userName, setUserName] = useState("");
@@ -26,6 +27,7 @@ const StartupProfile = () => {
   // If no profileId is provided, use the current user's ID
   const currentProfileId = profileId || user?.id;
   
+  console.log("StartupProfile - location:", location.pathname);
   console.log("StartupProfile - profileId:", profileId, "user?.id:", user?.id, "currentProfileId:", currentProfileId);
 
   // Redirect unauthenticated users to login
@@ -35,15 +37,25 @@ const StartupProfile = () => {
     if (!user && !profileId) {
       console.log("No user and no profileId, redirecting to auth");
       navigate('/auth');
-    } else if (user) {
+      return;
+    }
+    
+    // If we're viewing a profile, no need for additional redirects
+    if (location.pathname.includes('/profile')) {
+      console.log("Already on profile page, no redirection needed");
+      
       // If we're on the profile page, fetch user data
-      console.log("Fetching user profile for:", user.id);
       const fetchUserProfile = async () => {
         try {
+          const targetId = profileId || user?.id;
+          console.log("Fetching user profile for:", targetId);
+          
+          if (!targetId) return;
+          
           const { data, error } = await supabase
             .from('profiles')
             .select('name, verified, looking_for_funding, looking_for_design')
-            .eq('id', user.id)
+            .eq('id', targetId)
             .single();
             
           if (error) {
@@ -66,7 +78,7 @@ const StartupProfile = () => {
       
       fetchUserProfile();
     }
-  }, [user, profileId, navigate]);
+  }, [user, profileId, navigate, location]);
 
   const handleFundingToggle = async (checked: boolean) => {
     setLookingForFunding(checked);

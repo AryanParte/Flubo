@@ -34,16 +34,16 @@ export function DashboardSidebar({
   const navigate = useNavigate();
   
   // Determine the correct profile path based on user type
-  const profilePath = userType === "investor" ? "/investor/profile" : "/business/profile";
+  const profilePath = userType === "investor" ? `/investor/profile/${user?.id}` : `/business/profile/${user?.id}`;
   
-  const handleProfileClick = () => {
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent default link behavior
     // Navigate to profile page with the current user's ID
     if (user) {
-      console.log("Navigating to profile:", profilePath);
+      console.log("Navigating to profile path:", profilePath);
       navigate(profilePath);
     } else {
-      console.log("No user found, fallback navigation to:", profilePath);
-      navigate(profilePath);
+      console.log("No user found, cannot navigate to profile");
     }
   };
 
