@@ -6,6 +6,24 @@ import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { useAuth } from "@/context/AuthContext";
 import { SharePostDialog } from "./SharePostDialog";
 
+// Define types for our post structure
+type PostAuthor = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  verified: boolean;
+};
+
+type PostData = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: PostAuthor;
+  likes: number;
+  comments: number;
+  user_has_liked: boolean;
+};
+
 export const FeedTab = () => {
   const { user } = useAuth();
   const [showPostDialog, setShowPostDialog] = React.useState(false);
@@ -14,10 +32,11 @@ export const FeedTab = () => {
     data: posts,
     isLoading,
     error,
-  } = useSupabaseQuery({
+  } = useSupabaseQuery<PostData[]>({
     queryKey: ["feed-posts"],
-    queryFn: async ({ queryKey }) => {
-      const { data, error } = await fetch("/api/feed").then(res => res.json());
+    queryFn: async () => {
+      const response = await fetch("/api/feed");
+      const { data, error } = await response.json();
       
       if (error) throw new Error(error.message);
       
@@ -93,8 +112,21 @@ export const FeedTab = () => {
         </div>
       ) : posts && posts.length > 0 ? (
         <div className="space-y-6">
-          {posts.map((post) => (
-            <Post key={post.id} post={post} />
+          {posts.map((postData) => (
+            <Post 
+              key={postData.id}
+              id={postData.id}
+              author={{
+                id: postData.author.id,
+                name: postData.author.name,
+                role: postData.author.verified ? "Verified Business" : "Business",
+                avatar: postData.author.avatar_url || ""
+              }}
+              content={postData.content}
+              timestamp={new Date(postData.created_at).toLocaleString()}
+              likes={postData.likes}
+              comments={postData.comments}
+            />
           ))}
         </div>
       ) : (
@@ -103,7 +135,7 @@ export const FeedTab = () => {
         </div>
       )}
       
-      <SharePostDialog open={showPostDialog} onOpenChange={setShowPostDialog} />
+      <SharePostDialog isOpen={showPostDialog} onClose={() => setShowPostDialog(false)} />
     </div>
   );
 };

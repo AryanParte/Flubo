@@ -7,41 +7,50 @@ export type SupabaseQueryResult<T> = {
   error: PostgrestError | null;
 };
 
+type QueryConfig<T> = {
+  queryKey: string[];
+  queryFn: () => Promise<T>;
+  enabled?: boolean;
+};
+
 /**
- * A hook to handle Supabase queries with proper error handling and loading states
+ * A hook to handle Supabase queries with proper error handling and loading states,
+ * with an API similar to React Query for easier transition in the future
  */
-export function useSupabaseQuery<T>(
-  queryFn: () => Promise<SupabaseQueryResult<T>>,
-  dependencies: any[] = []
-) {
+export function useSupabaseQuery<T>(config: QueryConfig<T>) {
+  const { queryKey, queryFn, enabled = true } = config;
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<PostgrestError | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      if (!enabled) {
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
       try {
         const result = await queryFn();
-        
-        if (result.error) {
-          setError(result.error);
-          setData(null);
-        } else {
-          setData(result.data);
-          setError(null);
-        }
+        setData(result);
+        setError(null);
       } catch (err) {
         console.error('Error in useSupabaseQuery:', err);
         setError(err as PostgrestError);
         setData(null);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchData();
-  }, dependencies);
+  }, [enabled, ...queryKey]);
 
-  return { data, error, loading, isError: error !== null };
+  return { 
+    data, 
+    error, 
+    isLoading,
+    isError: error !== null 
+  };
 }

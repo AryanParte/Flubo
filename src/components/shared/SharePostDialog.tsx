@@ -1,29 +1,24 @@
-
-import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React from "react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Image, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Search } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
 
-interface Contact {
-  id: string;
-  name: string;
-  avatar: string;
-  user_type: string;
-}
-
-interface SharePostDialogProps {
+export interface SharePostDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  postId: string;
-  postContent: string;
+  postId?: string;
+  postContent?: string;
   postImage?: string | null;
   postAuthor?: {
     name: string;
@@ -31,24 +26,23 @@ interface SharePostDialogProps {
   };
 }
 
-export const SharePostDialog = ({
-  isOpen,
+export function SharePostDialog({ 
+  isOpen, 
   onClose,
   postId,
   postContent,
   postImage,
   postAuthor
-}: SharePostDialogProps) => {
+}: SharePostDialogProps) {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContact, setSelectedContact] = useState(null);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [postDetails, setPostDetails] = useState<any>(null);
 
-  // Fetch post details if author info wasn't provided
   useEffect(() => {
     const fetchPostDetails = async () => {
       if (!postAuthor && postId) {
@@ -76,14 +70,12 @@ export const SharePostDialog = ({
     fetchPostDetails();
   }, [postId, postAuthor]);
 
-  // Fetch the user's contacts (people they've messaged before)
   useEffect(() => {
     const fetchContacts = async () => {
       if (!user?.id || !isOpen) return;
       
       setLoading(true);
       try {
-        // Get unique contacts from messages (either sender or recipient)
         const { data: messages, error } = await supabase
           .from('messages')
           .select('sender_id, recipient_id, sender:sender_id(id, name, user_type), recipient:recipient_id(id, name, user_type)')
@@ -99,11 +91,9 @@ export const SharePostDialog = ({
           return;
         }
         
-        // Process messages to get unique contacts
         const contactMap = new Map<string, Contact>();
         
         messages?.forEach((msg: any) => {
-          // If user is the sender, add recipient as contact
           if (msg.sender_id === user.id && msg.recipient) {
             const contact = {
               id: msg.recipient.id,
@@ -114,7 +104,6 @@ export const SharePostDialog = ({
             contactMap.set(contact.id, contact);
           }
           
-          // If user is the recipient, add sender as contact
           if (msg.recipient_id === user.id && msg.sender) {
             const contact = {
               id: msg.sender.id,
@@ -126,7 +115,6 @@ export const SharePostDialog = ({
           }
         });
         
-        // Convert map to array and set state
         setContacts(Array.from(contactMap.values()));
       } catch (error) {
         console.error("Error in fetchContacts:", error);
@@ -151,7 +139,6 @@ export const SharePostDialog = ({
     try {
       setSending(true);
       
-      // Create a JSON representation of the post preview
       const postPreview = {
         id: postId,
         content: postContent,
@@ -162,14 +149,12 @@ export const SharePostDialog = ({
         } : null)
       };
       
-      // Create message content with the post preview
       const shareMessage = JSON.stringify({
         type: "shared_post",
         message: message || "Shared a post with you",
         post: postPreview
       });
       
-      // Insert message to database
       const { error } = await supabase
         .from('messages')
         .insert({
@@ -194,7 +179,6 @@ export const SharePostDialog = ({
         description: `Your post has been shared with ${selectedContact.name}`,
       });
       
-      // Clear input and close dialog
       setMessage("");
       setSelectedContact(null);
       onClose();
@@ -333,4 +317,22 @@ export const SharePostDialog = ({
       </DialogContent>
     </Dialog>
   );
-};
+}
+
+interface LegacySharePostDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function SharePostDialog2(props: LegacySharePostDialogProps) {
+  const { open, onOpenChange } = props;
+  
+  return (
+    <SharePostDialog 
+      isOpen={open || false}
+      onClose={() => onOpenChange && onOpenChange(false)}
+    />
+  );
+}
+
+export { SharePostDialog2 as SharePostDialog };
