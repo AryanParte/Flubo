@@ -27,53 +27,55 @@ export const DiscoverTab = () => {
   } = useDiscoverStartups();
   
   return (
-    <div>
+    <div className="p-4 md:p-6">
       {/* Filters and Sort */}
-      <FilterBar 
-        appliedFilters={appliedFilters}
-        setAppliedFilters={setAppliedFilters}
-        sortOption={sortOption}
-        onSortChange={handleSortChange}
-      />
+      <div className="bg-card border border-border rounded-lg p-6 mb-6">
+        <FilterBar 
+          appliedFilters={appliedFilters}
+          setAppliedFilters={setAppliedFilters}
+          sortOption={sortOption}
+          onSortChange={handleSortChange}
+        />
       
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-accent mr-2" />
-          <p>Loading startups...</p>
-        </div>
-      ) : startups.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground mb-4">No startups available at the moment.</p>
-          <p className="text-sm text-muted-foreground">Check back later for new startup listings.</p>
-        </div>
-      ) : (
-        <>
-          {/* Startup Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {startups.map((startup, index) => (
-              <StartupCard 
-                key={startup.id}
-                startup={startup}
-                index={index}
-                onInterested={handleInterestedClick}
-                onSkip={handleSkipClick}
-              />
-            ))}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-accent mr-2" />
+            <p>Loading startups...</p>
           </div>
-          
-          {/* Load More */}
-          {startups.length > 0 && (
-            <div className="mt-8 text-center">
-              <Button 
-                variant="outline"
-                onClick={handleLoadMore}
-              >
-                Load More Startups
-              </Button>
+        ) : startups.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-4">No startups available at the moment.</p>
+            <p className="text-sm text-muted-foreground">Check back later for new startup listings.</p>
+          </div>
+        ) : (
+          <>
+            {/* Startup Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+              {startups.map((startup, index) => (
+                <StartupCard 
+                  key={startup.id}
+                  startup={startup}
+                  index={index}
+                  onInterested={handleInterestedClick}
+                  onSkip={handleSkipClick}
+                />
+              ))}
             </div>
-          )}
-        </>
-      )}
+            
+            {/* Load More */}
+            {startups.length > 0 && (
+              <div className="mt-8 text-center">
+                <Button 
+                  variant="outline"
+                  onClick={handleLoadMore}
+                >
+                  Load More Startups
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Message Dialog */}
       {selectedStartup && user && (

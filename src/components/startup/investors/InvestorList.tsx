@@ -74,17 +74,17 @@ export const InvestorList = ({
   
   return (
     <div className="space-y-6">
-      <div className="glass-card p-6 rounded-lg">
+      <div className="bg-card p-6 rounded-lg border border-border">
         {showSearch && (
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-            <h2 className="text-lg font-medium">Find Investors</h2>
+            <h2 className="text-lg font-semibold mb-4 md:mb-0">Find Investors</h2>
             
-            <div className="mt-4 md:mt-0 w-full md:w-auto flex flex-col md:flex-row gap-3">
-              <div className="relative w-full md:w-72">
+            <div className="mt-2 md:mt-0 w-full md:w-auto flex flex-col md:flex-row gap-3">
+              <div className="relative w-full md:w-80">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                 <input
                   placeholder="Search investors by name, industry, or location"
-                  className="pl-9 w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="pl-10 w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -96,7 +96,7 @@ export const InvestorList = ({
                 onClick={handleRefresh} 
                 disabled={refreshing}
                 title="Refresh investor data"
-                className="h-10 w-10 rounded-md"
+                className="h-10 w-10 rounded-md flex-shrink-0"
               >
                 <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
               </Button>
@@ -106,7 +106,7 @@ export const InvestorList = ({
         
         {showTabs && (
           <Tabs defaultValue="all" className="mb-6" value={activeTab} onValueChange={handleTabChange}>
-            <TabsList>
+            <TabsList className="grid w-full md:w-auto grid-cols-3 md:inline-flex">
               <TabsTrigger value="all">All Investors</TabsTrigger>
               <TabsTrigger value="angel">Angel Investors</TabsTrigger>
               <TabsTrigger value="vc">Venture Capital</TabsTrigger>
