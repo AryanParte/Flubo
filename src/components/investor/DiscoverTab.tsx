@@ -27,10 +27,10 @@ export const DiscoverTab = () => {
   } = useDiscoverStartups();
   
   return (
-    <div className="p-2 md:p-4">
+    <div className="p-4 md:p-6">
       {/* Filters and Sort */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="p-4 md:p-6">
+      <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+        <div className="p-6">
           <FilterBar 
             appliedFilters={appliedFilters}
             setAppliedFilters={setAppliedFilters}
@@ -51,7 +51,7 @@ export const DiscoverTab = () => {
           ) : (
             <>
               {/* Startup Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
                 {startups.map((startup, index) => (
                   <StartupCard 
                     key={startup.id}

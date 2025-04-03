@@ -73,10 +73,10 @@ export const InvestorList = ({
   }
   
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <div className="space-y-6">
+      <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
         {showSearch && (
-          <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border">
+          <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border">
             <h2 className="text-lg font-semibold mb-4 md:mb-0">Find Investors</h2>
             
             <div className="mt-2 md:mt-0 w-full md:w-auto flex flex-col md:flex-row gap-3">
@@ -105,7 +105,7 @@ export const InvestorList = ({
         )}
         
         {showTabs && (
-          <div className="px-4 pt-4">
+          <div className="px-6 pt-6">
             <Tabs defaultValue="all" value={activeTab} onValueChange={handleTabChange}>
               <TabsList className="grid w-full md:w-auto grid-cols-3 md:inline-flex">
                 <TabsTrigger value="all">All Investors</TabsTrigger>
@@ -116,9 +116,9 @@ export const InvestorList = ({
           </div>
         )}
         
-        <div className="p-4">
+        <div className="p-6">
           {displayedInvestors.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {displayedInvestors.map((investor) => (
                 <InvestorCard 
                   key={investor.id} 

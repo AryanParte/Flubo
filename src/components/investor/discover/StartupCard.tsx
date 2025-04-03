@@ -31,61 +31,63 @@ export const StartupCard = ({
 
   return (
     <Card 
-      className="flex flex-col h-full animate-fade-in border border-border overflow-hidden"
+      className="flex flex-col h-full min-h-[450px] animate-fade-in border border-border overflow-hidden"
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      <div className="h-40 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
+      <div className="h-40 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center p-4">
         {startup.logo ? (
-          <img src={startup.logo} alt={`${startup.name} logo`} className="max-h-full max-w-full object-contain p-6" />
+          <img src={startup.logo} alt={`${startup.name} logo`} className="max-h-full max-w-full object-contain" />
         ) : (
           <span className="font-medium text-5xl">{startup.name.charAt(0)}</span>
         )}
       </div>
       
-      <CardContent className="p-4 flex-grow">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-lg truncate mr-2">{startup.name}</h3>
-          <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2 py-1 flex-shrink-0">
+      <CardContent className="p-6 flex-grow flex flex-col gap-4">
+        <div className="flex justify-between items-start">
+          <h3 className="font-semibold text-lg truncate max-w-[70%]">{startup.name}</h3>
+          <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1 flex-shrink-0">
             {startup.score}% Match
           </div>
         </div>
         
-        <div className="flex items-center text-xs text-muted-foreground mb-2 flex-wrap">
-          <span className="pr-2 mr-2 border-r border-border">{startup.stage || 'Early Stage'}</span>
-          <span className="truncate">{startup.location || 'Unknown Location'}</span>
+        <div className="flex items-center text-xs text-muted-foreground flex-wrap gap-1">
+          <span className="inline-block pr-2 mr-2 border-r border-border">{startup.stage || 'Early Stage'}</span>
+          <span className="inline-block truncate max-w-[150px]">{startup.location || 'Unknown Location'}</span>
         </div>
         
-        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{startup.bio || startup.tagline || 'No description available'}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+          {startup.bio || startup.tagline || 'No description available'}
+        </p>
         
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          <div className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-xs">
+        <div className="flex flex-wrap gap-2">
+          <div className="inline-block px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs">
             {startup.industry || 'Technology'}
           </div>
           {startup.raised_amount && (
-            <div className="px-2 py-0.5 rounded-md bg-secondary/50 text-secondary-foreground text-xs">
+            <div className="inline-block px-2.5 py-1 rounded-md bg-secondary/50 text-secondary-foreground text-xs">
               Raised: {startup.raised_amount}
             </div>
           )}
         </div>
 
         {/* Partnership Status Indicators */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="flex flex-wrap gap-2">
           {startup.lookingForFunding && (
-            <div className="px-2 py-0.5 rounded-md bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs flex items-center">
-              <Briefcase className="h-3 w-3 mr-1" />
+            <div className="inline-block px-2.5 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs flex items-center">
+              <Briefcase className="h-3 w-3 mr-1 flex-shrink-0" />
               <span className="truncate">Seeking Investment</span>
             </div>
           )}
           {startup.lookingForDesignPartner && (
-            <div className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-xs flex items-center">
-              <Handshake className="h-3 w-3 mr-1" />
+            <div className="inline-block px-2.5 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-xs flex items-center">
+              <Handshake className="h-3 w-3 mr-1 flex-shrink-0" />
               <span className="truncate">Seeking Partner</span>
             </div>
           )}
         </div>
 
         {/* External Links */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-auto">
           <Button 
             variant="outline" 
             size="sm" 
@@ -109,14 +111,14 @@ export const StartupCard = ({
         </div>
       </CardContent>
       
-      <CardFooter className="px-4 py-3 border-t border-border mt-auto">
-        <div className="flex gap-2 w-full">
+      <CardFooter className="px-6 py-4 border-t border-border mt-auto">
+        <div className="flex gap-3 w-full">
           <Button 
             variant="secondary"
             className="flex-1 flex justify-center items-center h-9"
             onClick={() => onSkip(startup.id)}
           >
-            <ThumbsDown size={14} className="mr-1" />
+            <ThumbsDown size={14} className="mr-1.5" />
             <span>Skip</span>
           </Button>
           <Button 
@@ -124,7 +126,7 @@ export const StartupCard = ({
             className="flex-1 flex justify-center items-center h-9"
             onClick={() => onInterested(startup.id)}
           >
-            <ThumbsUp size={14} className="mr-1" />
+            <ThumbsUp size={14} className="mr-1.5" />
             <span>Interested</span>
           </Button>
         </div>

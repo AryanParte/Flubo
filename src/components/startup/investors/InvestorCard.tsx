@@ -27,12 +27,12 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
     if (investor?.id) {
       loadFollowData(investor.id);
     }
-  }, [investor?.id]);
+  }, [investor?.id, loadFollowData]);
   
   return (
-    <Card className="flex flex-col h-full border border-border bg-card overflow-hidden">
-      <CardContent className="p-4 flex-grow space-y-3">
-        <div className="flex items-start gap-3">
+    <Card className="flex flex-col h-full min-h-[450px] border border-border bg-card overflow-hidden">
+      <CardContent className="p-6 flex-grow space-y-4">
+        <div className="flex items-start gap-4">
           <Avatar className="h-12 w-12 rounded-full flex-shrink-0">
             {investor.avatar_url ? (
               <AvatarImage src={investor.avatar_url} alt={investor.name} />
@@ -43,11 +43,11 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
             )}
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-base mb-1 truncate">
+            <h3 className="font-semibold text-base mb-1.5">
               <InvestorProfilePopup investor={investor} />
             </h3>
             
-            <div className="space-y-1.5 mt-1.5">
+            <div className="space-y-2">
               {investor.role && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <Briefcase size={12} className="flex-shrink-0" />
@@ -73,34 +73,33 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
         </div>
         
         {investor.bio && (
-          <p className="text-sm line-clamp-2">{investor.bio}</p>
+          <p className="text-sm line-clamp-2 min-h-[2.5rem]">{investor.bio}</p>
         )}
         
         {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {investor.preferred_sectors.slice(0, 3).map((sector, index) => (
-              <Badge key={index} variant="outline" className="text-xs px-1.5 py-0.5">
+              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5">
                 {sector}
               </Badge>
             ))}
             {investor.preferred_sectors.length > 3 && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+              <Badge variant="outline" className="text-xs px-2 py-0.5">
                 +{investor.preferred_sectors.length - 3}
               </Badge>
             )}
           </div>
         )}
         
-        <div className="flex items-center text-xs text-muted-foreground pt-2 border-t border-border">
+        <div className="flex items-center text-xs text-muted-foreground pt-2 border-t border-border mt-auto">
           <button 
             onClick={() => onShowFollowers?.(investor.id)}
-            className="hover:underline cursor-pointer flex items-center gap-1"
+            className="hover:underline cursor-pointer flex items-center gap-1 mr-3"
             type="button"
           >
             <Users size={12} />
             <span>{followersCount} followers</span>
           </button>
-          <span className="mx-1.5">·</span>
           <button 
             onClick={() => onShowFollowing?.(investor.id)}
             className="hover:underline cursor-pointer"
@@ -111,7 +110,7 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
         </div>
       </CardContent>
       
-      <CardFooter className="px-4 py-3 border-t border-border">
+      <CardFooter className="px-6 py-4 border-t border-border">
         <div className="w-full">
           <div id={`ai-chat-${investor.id}`}>
             <InvestorAIChat investor={investor} />
