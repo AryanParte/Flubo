@@ -27,10 +27,12 @@ const InvestorProfile = () => {
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
           <h1 className="text-2xl font-bold mb-8">Investor Profile</h1>
-          <ProfileTab 
-            onShowFollowers={handleShowFollowers}
-            onShowFollowing={handleShowFollowing}
-          />
+          <div className="bg-card rounded-md shadow-sm p-5">
+            <ProfileTab 
+              onShowFollowers={handleShowFollowers}
+              onShowFollowing={handleShowFollowing}
+            />
+          </div>
         </div>
       </main>
       <MinimalFooter />

@@ -1,239 +1,109 @@
 
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Post } from "@/components/shared/Post";
-import { supabase } from "@/lib/supabase";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Post as PostType } from "@/lib/supabase";
+import React from "react";
+import { Loader2 } from "lucide-react";
+import { Post } from "./Post";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { useAuth } from "@/context/AuthContext";
+import { SharePostDialog } from "./SharePostDialog";
 
-export function FeedTab() {
+export const FeedTab = () => {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<PostType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("recent");
-
-  const fetchPosts = async (filter: string) => {
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from('posts')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            name,
-            user_type
-          )
-        `);
-
-      // Apply filters
-      if (filter === "following" && user) {
-        // This gets posts from users that the current user follows
-        const { data: followingIds, error: followingError } = await supabase
-          .from('followers')
-          .select('following_id')
-          .eq('follower_id', user.id);
-
-        if (followingError) {
-          console.error("Error fetching following:", followingError);
-          setIsLoading(false);
-          return;
+  const [showPostDialog, setShowPostDialog] = React.useState(false);
+  
+  const {
+    data: posts,
+    isLoading,
+    error,
+  } = useSupabaseQuery({
+    queryKey: ["feed-posts"],
+    queryFn: async ({ queryKey }) => {
+      const { data, error } = await fetch("/api/feed").then(res => res.json());
+      
+      if (error) throw new Error(error.message);
+      
+      // For demo, we'll return some mock data
+      return [
+        {
+          id: "1",
+          content: "Excited to announce our seed round of $2M led by Acme Ventures! We're building the future of fintech and can't wait to share more.",
+          created_at: new Date(Date.now() - 3600000).toISOString(),
+          author: {
+            id: "author-1",
+            name: "TechFin Solutions",
+            avatar_url: null,
+            verified: true
+          },
+          likes: 24,
+          comments: 5,
+          user_has_liked: false,
+        },
+        {
+          id: "2",
+          content: "Looking for experienced React developers to join our team. We're working on cutting-edge AI applications that are changing how businesses operate. DM if interested!",
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          author: {
+            id: "author-2",
+            name: "AI Innovations Co",
+            avatar_url: null,
+            verified: false
+          },
+          likes: 12,
+          comments: 8,
+          user_has_liked: true,
+        },
+        {
+          id: "3",
+          content: "Just released our latest research paper on sustainable energy solutions. Read it here: flubo.com/research/sustainable-energy",
+          created_at: new Date(Date.now() - 172800000).toISOString(),
+          author: {
+            id: "author-3",
+            name: "GreenTech Innovations",
+            avatar_url: null,
+            verified: true
+          },
+          likes: 42,
+          comments: 15,
+          user_has_liked: false,
         }
-
-        if (followingIds && followingIds.length > 0) {
-          const ids = followingIds.map(f => f.following_id);
-          query = query.in('user_id', ids);
-        } else {
-          // No followings, return empty array
-          setPosts([]);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Add ordering based on filter
-      if (filter === "recent") {
-        query = query.order('created_at', { ascending: false });
-      } else if (filter === "popular") {
-        query = query.order('likes', { ascending: false });
-      }
-
-      // Limit to 50 posts
-      query = query.limit(50);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching posts:", error);
-        return;
-      }
-
-      setPosts(data || []);
-    } catch (error) {
-      console.error("Error in fetchPosts:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPosts(activeTab);
-  }, [activeTab, user]);
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-
-  const handleHashtagClick = (tag: string) => {
-    // Implementation for hashtag filtering would go here
-    console.log(`Clicked on hashtag: ${tag}`);
-  };
-
+      ];
+    },
+    enabled: !!user,
+  });
+  
   return (
-    <Tabs defaultValue="recent" onValueChange={handleTabChange}>
-      <TabsList className="grid w-full grid-cols-3 mb-8">
-        <TabsTrigger value="recent">Recent</TabsTrigger>
-        <TabsTrigger value="popular">Popular</TabsTrigger>
-        <TabsTrigger value="following" disabled={!user}>Following</TabsTrigger>
-      </TabsList>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Latest Updates</h2>
+        <button 
+          onClick={() => setShowPostDialog(true)}
+          className="text-sm font-medium text-accent hover:text-accent/80"
+        >
+          Create Post
+        </button>
+      </div>
       
-      <TabsContent value="recent" className="space-y-6">
-        {isLoading ? (
-          Array(3)
-            .fill(0)
-            .map((_, index) => (
-              <div key={index} className="space-y-3">
-                <div className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
-                </div>
-                <Skeleton className="h-[125px] w-full rounded-md" />
-              </div>
-            ))
-        ) : posts.length > 0 ? (
-          posts.map((post) => (
-            <Post
-              key={post.id}
-              id={post.id}
-              author={{
-                id: post.user_id,
-                name: post.profiles?.name || "Unknown User",
-                role: post.profiles?.user_type || "User",
-                avatar: "/placeholder.svg",
-              }}
-              content={post.content}
-              timestamp={new Date(post.created_at).toLocaleString()}
-              likes={post.likes}
-              comments={post.comments_count}
-              hashtags={post.hashtags}
-              image_url={post.image_url}
-              onHashtagClick={handleHashtagClick}
-            />
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-medium mb-2">No posts yet</h3>
-            <p className="text-muted-foreground mb-4">Be the first to share something!</p>
-          </div>
-        )}
-      </TabsContent>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-accent mr-2" />
+          <p>Loading feed...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-8 text-destructive">
+          <p>Error loading feed. Please try again later.</p>
+        </div>
+      ) : posts && posts.length > 0 ? (
+        <div className="space-y-6">
+          {posts.map((post) => (
+            <Post key={post.id} post={post} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Your feed is empty. Follow users or create a post!</p>
+        </div>
+      )}
       
-      <TabsContent value="popular" className="space-y-6">
-        {isLoading ? (
-          Array(3)
-            .fill(0)
-            .map((_, index) => (
-              <div key={index} className="space-y-3">
-                <div className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
-                </div>
-                <Skeleton className="h-[125px] w-full rounded-md" />
-              </div>
-            ))
-        ) : posts.length > 0 ? (
-          posts.map((post) => (
-            <Post
-              key={post.id}
-              id={post.id}
-              author={{
-                id: post.user_id,
-                name: post.profiles?.name || "Unknown User",
-                role: post.profiles?.user_type || "User",
-                avatar: "/placeholder.svg",
-              }}
-              content={post.content}
-              timestamp={new Date(post.created_at).toLocaleString()}
-              likes={post.likes}
-              comments={post.comments_count}
-              hashtags={post.hashtags}
-              image_url={post.image_url}
-              onHashtagClick={handleHashtagClick}
-            />
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-medium mb-2">No popular posts</h3>
-            <p className="text-muted-foreground mb-4">Check back later for popular content</p>
-          </div>
-        )}
-      </TabsContent>
-      
-      <TabsContent value="following" className="space-y-6">
-        {!user ? (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-medium mb-2">Sign in to see posts from users you follow</h3>
-            <p className="text-muted-foreground mb-4">Create an account or log in to follow users and see their posts</p>
-          </div>
-        ) : isLoading ? (
-          Array(3)
-            .fill(0)
-            .map((_, index) => (
-              <div key={index} className="space-y-3">
-                <div className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
-                </div>
-                <Skeleton className="h-[125px] w-full rounded-md" />
-              </div>
-            ))
-        ) : posts.length > 0 ? (
-          posts.map((post) => (
-            <Post
-              key={post.id}
-              id={post.id}
-              author={{
-                id: post.user_id,
-                name: post.profiles?.name || "Unknown User",
-                role: post.profiles?.user_type || "User",
-                avatar: "/placeholder.svg",
-              }}
-              content={post.content}
-              timestamp={new Date(post.created_at).toLocaleString()}
-              likes={post.likes}
-              comments={post.comments_count}
-              hashtags={post.hashtags}
-              image_url={post.image_url}
-              onHashtagClick={handleHashtagClick}
-            />
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-medium mb-2">No posts from people you follow</h3>
-            <p className="text-muted-foreground mb-4">Follow more users to see their posts here</p>
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
+      <SharePostDialog open={showPostDialog} onOpenChange={setShowPostDialog} />
+    </div>
   );
-}
+};
