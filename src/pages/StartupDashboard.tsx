@@ -22,7 +22,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardFooter, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-// Import tab components
 import { FeedTab } from "@/components/shared/FeedTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
@@ -61,7 +60,6 @@ const StartupDashboard = () => {
       fetchStartupData();
       fetchAnalytics();
       
-      // Set the active tab if specified in URL
       const tabParam = searchParams.get("tab");
       if (tabParam && ["feed", "investors", "companies"].includes(tabParam)) {
         setActiveTab(tabParam);
@@ -75,7 +73,6 @@ const StartupDashboard = () => {
     try {
       console.log("Fetching analytics data for user:", user.id);
       
-      // Fetch connection count (followers + following)
       const [followersResponse, followingResponse] = await Promise.all([
         supabase.rpc('get_followers_count', { user_id: user.id }),
         supabase.rpc('get_following_count', { user_id: user.id })
@@ -86,7 +83,6 @@ const StartupDashboard = () => {
       setConnections(followersCount + followingCount);
       console.log("Connections count:", followersCount + followingCount);
       
-      // Fetch message count
       const { count: messageCount } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
@@ -95,20 +91,17 @@ const StartupDashboard = () => {
       setMessages(messageCount || 0);
       console.log("Messages count:", messageCount);
       
-      // Calculate engagement (could be based on post interactions)
       const { count: totalPosts } = await supabase
         .from('posts')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
         
       if (totalPosts && totalPosts > 0) {
-        // Fix: First get the post IDs in a separate query
         const { data: userPosts } = await supabase
           .from('posts')
           .select('id')
           .eq('user_id', user.id);
         
-        // Then use those IDs to query for interactions
         if (userPosts && userPosts.length > 0) {
           const postIds = userPosts.map(post => post.id);
           
@@ -145,7 +138,6 @@ const StartupDashboard = () => {
       
       console.log("Fetching startup data for user:", user.id);
       
-      // First check if we have a startup_profile
       const { data: startupProfile, error: startupError } = await supabase
         .from('startup_profiles')
         .select('name, industry, looking_for_funding, looking_for_design_partner, location, profile_views')
@@ -161,7 +153,6 @@ const StartupDashboard = () => {
       
       if (startupProfile) {
         console.log("Found startup profile with name:", startupProfile.name);
-        // Make sure we use the actual data, not fallback values
         setStartupName(startupProfile.name || "");
         setUserIndustry(startupProfile.industry || "");
         setLookingForFunding(startupProfile.looking_for_funding || false);
@@ -170,13 +161,11 @@ const StartupDashboard = () => {
         setProfileViewCount(startupProfile.profile_views || 0);
         setHasRequiredFields(!!startupProfile.industry);
         
-        // Don't show dialog if we already have a profile with industry
         if (!!startupProfile.industry) {
           setShowProfileDialog(false);
         }
       } else {
         console.log("No startup profile found, checking user profile");
-        // Fallback to the regular profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('name, company, verified')
@@ -192,22 +181,15 @@ const StartupDashboard = () => {
         
         if (profile) {
           console.log("Found user profile with company name:", profile.company);
-          // Always prioritize company name if it exists
           setStartupName(profile.company || profile.name || "");
-          
-          // Show dialog to set industry if we don't have a startup profile
           setShowProfileDialog(true);
-          
-          // Check if user is verified
           setIsUserVerified(!!profile.verified);
         } else {
           console.log("No profile found at all. New user");
-          // No profile name found - new user, show the dialog
           setShowProfileDialog(true);
         }
       }
       
-      // Check profile completion
       await checkProfileCompletion();
       
       setLoading(false);
@@ -219,7 +201,6 @@ const StartupDashboard = () => {
 
   const checkProfileCompletion = async () => {
     try {
-      // Check if we have at least a startup profile with required fields
       const { data: startupProfile, error } = await supabase
         .from('startup_profiles')
         .select('name, industry, bio')
@@ -228,15 +209,11 @@ const StartupDashboard = () => {
       
       if (error) throw error;
       
-      // Required fields must be filled
       const requiredFieldsFilled = !!(startupProfile?.name && startupProfile?.industry);
       setHasRequiredFields(requiredFieldsFilled);
       
-      // Consider profile complete if we have more than just the required fields
-      // Check specifically for bio field
       setProfileComplete(!!startupProfile && requiredFieldsFilled && !!startupProfile.bio);
       
-      // Check if user is verified
       const { data: profile } = await supabase
         .from('profiles')
         .select('verified')
@@ -246,9 +223,7 @@ const StartupDashboard = () => {
       if (profile) {
         setIsUserVerified(!!profile.verified);
         
-        // Show verification dialog if they have a completed profile but aren't verified yet
         if (requiredFieldsFilled && !profile.verified && !showProfileDialog) {
-          // Only show after a slight delay so it doesn't appear immediately on login
           setTimeout(() => {
             setShowVerificationDialog(true);
           }, 1000);
@@ -285,7 +260,6 @@ const StartupDashboard = () => {
       setSavingBasicProfile(true);
       console.log("Saving basic profile with name:", newCompanyName, "and industry:", newIndustry);
 
-      // Update the profile record - also update company field
       const { error: profileUpdateError } = await supabase
         .from('profiles')
         .update({ name: newCompanyName, company: newCompanyName })
@@ -296,7 +270,6 @@ const StartupDashboard = () => {
         throw profileUpdateError;
       }
 
-      // Check if startup profile exists
       const { data: existingProfile } = await supabase
         .from('startup_profiles')
         .select('id')
@@ -305,7 +278,6 @@ const StartupDashboard = () => {
 
       if (existingProfile) {
         console.log("Updating existing startup profile");
-        // Update existing startup profile
         const { error: updateError } = await supabase
           .from('startup_profiles')
           .update({ 
@@ -323,7 +295,6 @@ const StartupDashboard = () => {
         }
       } else {
         console.log("Creating new startup profile");
-        // Insert new startup profile
         const { error: insertError } = await supabase
           .from('startup_profiles')
           .insert({
@@ -340,7 +311,6 @@ const StartupDashboard = () => {
         }
       }
 
-      // Update task completion status
       const { data: companyTask } = await supabase
         .from('profile_completion_tasks')
         .select('id')
@@ -357,7 +327,6 @@ const StartupDashboard = () => {
           })
           .eq('id', companyTask.id);
       } else {
-        // Create the task as completed
         await supabase
           .from('profile_completion_tasks')
           .insert({
@@ -373,7 +342,6 @@ const StartupDashboard = () => {
       setHasRequiredFields(true);
       setShowProfileDialog(false);
       
-      // Show verification dialog after profile setup
       setTimeout(() => {
         setShowVerificationDialog(true);
       }, 500);
@@ -383,7 +351,6 @@ const StartupDashboard = () => {
         description: "Your basic profile has been saved"
       });
 
-      // Refresh data
       fetchStartupData();
       checkProfileCompletion();
     } catch (error) {
@@ -404,14 +371,12 @@ const StartupDashboard = () => {
         ? { looking_for_funding: value }
         : { looking_for_design_partner: value };
       
-      // Update local state
       if (type === 'funding') {
         setLookingForFunding(value);
       } else {
         setLookingForDesignPartner(value);
       }
       
-      // Update in database
       const { error } = await supabase
         .from('startup_profiles')
         .update(updateData)
@@ -424,7 +389,6 @@ const StartupDashboard = () => {
           description: `Failed to update ${type} status`,
           variant: "destructive"
         });
-        // Revert local state if update failed
         if (type === 'funding') {
           setLookingForFunding(!value);
         } else {
@@ -466,8 +430,6 @@ const StartupDashboard = () => {
       setSearching(true);
       
       console.log("Searching for companies with query:", searchQuery);
-      
-      // In the future, implement company search functionality here
       
       toast({
         title: "Search feature",
@@ -528,7 +490,7 @@ const StartupDashboard = () => {
                         className="mt-4 text-xl text-center cursor-pointer hover:text-accent transition-colors"
                         onClick={handleProfileClick}
                       >
-                        {startupName || "Your Company"}
+                        {startupName || ""}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground text-center mt-1">
                         {userIndustry || "Industry not specified"}
