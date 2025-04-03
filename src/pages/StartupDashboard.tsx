@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { Building, Rss, Search, Loader2, Users, UserCheck } from "lucide-react";
+import { Building, Rss, Search, Loader2, Users, UserCheck, Camera, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
@@ -50,6 +50,9 @@ const StartupDashboard = () => {
   const [connections, setConnections] = useState(0);
   const [messages, setMessages] = useState(0);
   const [engagement, setEngagement] = useState("0%");
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -59,6 +62,7 @@ const StartupDashboard = () => {
       setLoading(true);
       fetchStartupData();
       fetchAnalytics();
+      fetchAvatarUrl();
       
       const tabParam = searchParams.get("tab");
       if (tabParam && ["feed", "investors", "companies"].includes(tabParam)) {
@@ -66,6 +70,99 @@ const StartupDashboard = () => {
       }
     }
   }, [user, searchParams]);
+
+  const fetchAvatarUrl = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+        
+      if (profile?.avatar_url) {
+        setAvatarUrl(profile.avatar_url);
+      }
+    } catch (error) {
+      console.error("Error fetching avatar URL:", error);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    try {
+      setUploading(true);
+      
+      // First, check if the storage bucket exists and create it if not
+      const { data: buckets } = await supabase
+        .storage
+        .listBuckets();
+      
+      const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+      
+      if (!avatarBucketExists) {
+        await supabase
+          .storage
+          .createBucket('avatars', { public: true });
+      }
+      
+      // Generate a unique file path
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      // Upload the file to the avatars bucket
+      const { error: uploadError } = await supabase
+        .storage
+        .from('avatars')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL of the uploaded file
+      const { data } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      
+      const avatarUrl = data.publicUrl;
+      
+      // Update the profile with the new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id);
+      
+      if (updateError) throw updateError;
+      
+      setAvatarUrl(avatarUrl);
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated successfully"
+      });
+      
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload the profile picture",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const fetchAnalytics = async () => {
     if (!user) return;
@@ -482,15 +579,37 @@ const StartupDashboard = () => {
                 <Card className="mb-6">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col items-center">
-                      <Avatar className="w-24 h-24 border-4 border-background">
-                        <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "C"}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative group">
+                        <Avatar className="w-24 h-24 border-4 border-background">
+                          {avatarUrl ? (
+                            <AvatarImage src={avatarUrl} alt={startupName} />
+                          ) : null}
+                          <AvatarFallback className="text-xl">
+                            {startupName?.charAt(0) || "C"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute bottom-0 right-0 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={handleUploadClick}
+                          disabled={uploading}
+                        >
+                          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                        </Button>
+                        <input 
+                          ref={fileInputRef} 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*" 
+                          onChange={handleFileChange} 
+                        />
+                      </div>
                       <CardTitle 
                         className="mt-4 text-xl text-center cursor-pointer hover:text-accent transition-colors"
                         onClick={handleProfileClick}
                       >
-                        {startupName || ""}
+                        {startupName}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground text-center mt-1">
                         {userIndustry || "Industry not specified"}
