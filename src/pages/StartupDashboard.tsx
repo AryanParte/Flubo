@@ -157,8 +157,10 @@ const StartupDashboard = () => {
         throw startupError;
       }
       
+      console.log("DEBUG - Startup profile data:", startupProfile);
+      
       if (startupProfile) {
-        console.log("Found startup profile:", startupProfile);
+        console.log("Found startup profile with name:", startupProfile.name);
         // Make sure we use the actual data, not fallback values
         setStartupName(startupProfile.name || "");
         setUserIndustry(startupProfile.industry || "");
@@ -186,10 +188,13 @@ const StartupDashboard = () => {
           throw profileError;
         }
         
+        console.log("DEBUG - Profile data:", profile);
+        
         if (profile) {
-          console.log("Found user profile:", profile);
-          // Prioritize company name first, then name, then fallback
-          setStartupName(profile.company || profile.name || "Your Company");
+          console.log("Found user profile with company name:", profile.company);
+          // Always prioritize company name if it exists
+          setStartupName(profile.company || profile.name || "");
+          
           // Show dialog to set industry if we don't have a startup profile
           setShowProfileDialog(true);
           
