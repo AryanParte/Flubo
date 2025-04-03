@@ -81,7 +81,6 @@ export function Navbar() {
   };
   
   const getSettingsPath = () => {
-    // Use the dedicated settings page with user type parameter
     return userType ? `/settings/${userType}` : "/settings";
   };
 
@@ -90,6 +89,17 @@ export function Navbar() {
     if (user) {
       e.preventDefault();
       navigate(getDashboardPath());
+    }
+  };
+  
+  // Handle profile navigation
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log("Navbar: Navigating to profile:", getProfilePath());
+    navigate(getProfilePath());
+    // Close menu if open
+    if (isMenuOpen) {
+      setIsMenuOpen(false);
     }
   };
 
@@ -212,11 +222,11 @@ export function Navbar() {
                       {verified && <AccountVerificationBadge verified={true} size="sm" />}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to={getProfilePath()} className="flex items-center">
+                    <DropdownMenuItem onClick={handleProfileClick}>
+                      <span className="flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Profile</span>
-                      </Link>
+                      </span>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to={getSettingsPath()} className="flex items-center">

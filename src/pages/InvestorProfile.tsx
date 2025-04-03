@@ -11,6 +11,8 @@ import { DashboardRightSidebar } from "@/components/shared/DashboardRightSidebar
 import { supabase } from "@/lib/supabase";
 
 const InvestorProfile = () => {
+  console.log("Rendering InvestorProfile");
+  
   const { id: profileId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -22,12 +24,18 @@ const InvestorProfile = () => {
   // If no profileId is provided, use the current user's ID
   const currentProfileId = profileId || user?.id;
 
+  console.log("InvestorProfile - profileId:", profileId, "user?.id:", user?.id, "currentProfileId:", currentProfileId);
+
   // Redirect unauthenticated users to login
   useEffect(() => {
+    console.log("InvestorProfile useEffect - user:", !!user, "profileId:", profileId);
+    
     if (!user && !profileId) {
+      console.log("No user and no profileId, redirecting to auth");
       navigate('/auth');
     } else if (user) {
       // If we're on the profile page, fetch user data
+      console.log("Fetching user profile for:", user.id);
       const fetchUserProfile = async () => {
         try {
           const { data, error } = await supabase
@@ -36,7 +44,12 @@ const InvestorProfile = () => {
             .eq('id', user.id)
             .single();
             
-          if (error) throw error;
+          if (error) {
+            console.error("Error fetching user profile:", error);
+            throw error;
+          }
+          
+          console.log("Profile data:", data);
           
           if (data) {
             setUserName(data.name || "Investor User");

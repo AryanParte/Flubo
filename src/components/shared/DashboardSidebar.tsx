@@ -39,9 +39,10 @@ export function DashboardSidebar({
   const handleProfileClick = () => {
     // Navigate to profile page with the current user's ID
     if (user) {
+      console.log("Navigating to profile:", profilePath);
       navigate(profilePath);
     } else {
-      // Fallback to basic profile path if no user (shouldn't happen normally)
+      console.log("No user found, fallback navigation to:", profilePath);
       navigate(profilePath);
     }
   };
