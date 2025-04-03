@@ -137,6 +137,12 @@ const StartupDashboard = () => {
 
   const fetchStartupData = async () => {
     try {
+      if (!user) {
+        console.log("No user found, can't fetch startup data");
+        setLoading(false);
+        return;
+      }
+      
       console.log("Fetching startup data for user:", user.id);
       
       // First check if we have a startup_profile
@@ -171,7 +177,7 @@ const StartupDashboard = () => {
         // Fallback to the regular profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('name, verified')
+          .select('name, company, verified')
           .eq('id', user.id)
           .maybeSingle();
         
@@ -180,9 +186,10 @@ const StartupDashboard = () => {
           throw profileError;
         }
         
-        if (profile?.name) {
-          console.log("Found user profile with name:", profile.name);
-          setStartupName(profile.name);
+        if (profile) {
+          console.log("Found user profile:", profile);
+          // Prioritize company name first, then name, then fallback
+          setStartupName(profile.company || profile.name || "Your Company");
           // Show dialog to set industry if we don't have a startup profile
           setShowProfileDialog(true);
           
@@ -269,10 +276,10 @@ const StartupDashboard = () => {
       setSavingBasicProfile(true);
       console.log("Saving basic profile with name:", newCompanyName, "and industry:", newIndustry);
 
-      // Update the profile record
+      // Update the profile record - also update company field
       const { error: profileUpdateError } = await supabase
         .from('profiles')
-        .update({ name: newCompanyName })
+        .update({ name: newCompanyName, company: newCompanyName })
         .eq('id', user.id);
         
       if (profileUpdateError) {
@@ -506,10 +513,10 @@ const StartupDashboard = () => {
                     <div className="flex flex-col items-center">
                       <Avatar className="w-24 h-24 border-4 border-background">
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || user?.email?.charAt(0) || "B"}</AvatarFallback>
+                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "C"}</AvatarFallback>
                       </Avatar>
                       <CardTitle className="mt-4 text-xl text-center">
-                        {startupName || user?.email || "Your Business"}
+                        {startupName || "Your Company"}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground text-center mt-1">
                         {userIndustry || "Industry not specified"}
