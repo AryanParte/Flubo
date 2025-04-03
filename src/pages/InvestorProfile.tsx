@@ -8,6 +8,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardSidebar } from "@/components/shared/DashboardSidebar";
 import { DashboardRightSidebar } from "@/components/shared/DashboardRightSidebar";
+import { supabase } from "@/lib/supabase";
 
 const InvestorProfile = () => {
   const { id: profileId } = useParams();
