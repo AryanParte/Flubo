@@ -1,13 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import { 
-  Image, 
   MessageSquare, 
   ThumbsUp, 
   Share, 
@@ -31,6 +29,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { ProfilePreview } from "./ProfilePreview";
 import { SharePostDialog } from "./SharePostDialog";
+import { UserAvatar } from "./UserAvatar";
 
 export type PostAuthor = {
   id: string;
@@ -122,10 +121,11 @@ export function Post({
     <Card className="p-4">
       <div className="flex justify-between items-start">
         <div className="flex space-x-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={author.avatar} alt={author.name} />
-            <AvatarFallback>{author.name.charAt(0)}</AvatarFallback>
-          </Avatar>
+          <UserAvatar 
+            userId={author.id}
+            avatarUrl={author.avatar}
+            name={author.name}
+          />
           <div>
             <HoverCard>
               <HoverCardTrigger asChild>
