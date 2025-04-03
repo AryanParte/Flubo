@@ -7,6 +7,7 @@ import { SharePostDialog } from "./SharePostDialog";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 
 // Define types for our post structure
 type PostAuthor = {
@@ -52,7 +53,7 @@ export const FeedTab = () => {
             content, 
             created_at, 
             likes, 
-            comments_count as comments,
+            comments_count, 
             image_url,
             hashtags,
             profiles:user_id (
@@ -96,7 +97,7 @@ export const FeedTab = () => {
         if (postsError) throw postsError;
         
         // Check if user has liked each post
-        const postsWithLikes = await Promise.all((postData || []).map(async (post) => {
+        const postsWithLikes = await Promise.all((postData || []).map(async (post: any) => {
           const { data: likeData } = await supabase
             .from('post_likes')
             .select('id')
@@ -109,7 +110,7 @@ export const FeedTab = () => {
             content: post.content,
             created_at: post.created_at,
             likes: post.likes,
-            comments: post.comments,
+            comments: post.comments_count, // Fixed: using comments_count from the query
             image_url: post.image_url,
             hashtags: post.hashtags,
             author: {
