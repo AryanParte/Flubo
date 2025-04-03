@@ -28,6 +28,7 @@ import { FeedTab } from "@/components/shared/FeedTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
 import { VerificationOnboarding } from "@/components/startup/VerificationOnboarding";
+import { safeQueryResult } from "@/lib/supabase-helpers";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("feed");
@@ -98,20 +99,29 @@ const StartupDashboard = () => {
         .eq('user_id', user.id);
         
       if (totalPosts && totalPosts > 0) {
-        const { data: interactions } = await supabase
-          .from('post_likes')
-          .select('post_id')
-          .in('post_id', 
-            supabase.from('posts')
-              .select('id')
-              .eq('user_id', user.id)
-          );
+        // Fix: First get the post IDs in a separate query
+        const { data: userPosts } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', user.id);
         
-        const interactionCount = interactions?.length || 0;
-        const engagementRate = totalPosts > 0 ? 
-          Math.round((interactionCount / totalPosts) * 100) : 0;
+        // Then use those IDs to query for interactions
+        if (userPosts && userPosts.length > 0) {
+          const postIds = userPosts.map(post => post.id);
+          
+          const { data: interactions } = await supabase
+            .from('post_likes')
+            .select('post_id')
+            .in('post_id', postIds);
         
-        setEngagement(`${engagementRate}%`);
+          const interactionCount = interactions?.length || 0;
+          const engagementRate = totalPosts > 0 ? 
+            Math.round((interactionCount / totalPosts) * 100) : 0;
+          
+          setEngagement(`${engagementRate}%`);
+        } else {
+          setEngagement("0%");
+        }
       } else {
         setEngagement("0%");
       }
