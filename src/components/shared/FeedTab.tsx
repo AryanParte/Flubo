@@ -1,10 +1,10 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Post } from "./Post";
-import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { useAuth } from "@/context/AuthContext";
 import { SharePostDialog } from "./SharePostDialog";
+import { toast } from "@/components/ui/use-toast";
 
 // Define types for our post structure
 type PostAuthor = {
@@ -26,68 +26,88 @@ type PostData = {
 
 export const FeedTab = () => {
   const { user } = useAuth();
-  const [showPostDialog, setShowPostDialog] = React.useState(false);
+  const [showPostDialog, setShowPostDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [posts, setPosts] = useState<PostData[]>([]);
   
-  const {
-    data: posts,
-    isLoading,
-    error,
-  } = useSupabaseQuery<PostData[]>({
-    queryKey: ["feed-posts"],
-    queryFn: async () => {
-      const response = await fetch("/api/feed");
-      const { data, error } = await response.json();
+  React.useEffect(() => {
+    const fetchFeedData = async () => {
+      if (!user) return;
       
-      if (error) throw new Error(error.message);
+      setIsLoading(true);
+      setError(null);
       
-      // For demo, we'll return some mock data
-      return [
-        {
-          id: "1",
-          content: "Excited to announce our seed round of $2M led by Acme Ventures! We're building the future of fintech and can't wait to share more.",
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-          author: {
-            id: "author-1",
-            name: "TechFin Solutions",
-            avatar_url: null,
-            verified: true
+      try {
+        // For demo, we'll use mock data
+        // In a real app, this would be a fetch call to an API
+        // const response = await fetch("/api/feed");
+        // const { data, error } = await response.json();
+        
+        // if (error) throw new Error(error.message);
+        
+        // Mock data for development
+        const mockPosts = [
+          {
+            id: "1",
+            content: "Excited to announce our seed round of $2M led by Acme Ventures! We're building the future of fintech and can't wait to share more.",
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+            author: {
+              id: "author-1",
+              name: "TechFin Solutions",
+              avatar_url: null,
+              verified: true
+            },
+            likes: 24,
+            comments: 5,
+            user_has_liked: false,
           },
-          likes: 24,
-          comments: 5,
-          user_has_liked: false,
-        },
-        {
-          id: "2",
-          content: "Looking for experienced React developers to join our team. We're working on cutting-edge AI applications that are changing how businesses operate. DM if interested!",
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          author: {
-            id: "author-2",
-            name: "AI Innovations Co",
-            avatar_url: null,
-            verified: false
+          {
+            id: "2",
+            content: "Looking for experienced React developers to join our team. We're working on cutting-edge AI applications that are changing how businesses operate. DM if interested!",
+            created_at: new Date(Date.now() - 86400000).toISOString(),
+            author: {
+              id: "author-2",
+              name: "AI Innovations Co",
+              avatar_url: null,
+              verified: false
+            },
+            likes: 12,
+            comments: 8,
+            user_has_liked: true,
           },
-          likes: 12,
-          comments: 8,
-          user_has_liked: true,
-        },
-        {
-          id: "3",
-          content: "Just released our latest research paper on sustainable energy solutions. Read it here: flubo.com/research/sustainable-energy",
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          author: {
-            id: "author-3",
-            name: "GreenTech Innovations",
-            avatar_url: null,
-            verified: true
-          },
-          likes: 42,
-          comments: 15,
-          user_has_liked: false,
-        }
-      ];
-    },
-    enabled: !!user,
-  });
+          {
+            id: "3",
+            content: "Just released our latest research paper on sustainable energy solutions. Read it here: flubo.com/research/sustainable-energy",
+            created_at: new Date(Date.now() - 172800000).toISOString(),
+            author: {
+              id: "author-3",
+              name: "GreenTech Innovations",
+              avatar_url: null,
+              verified: true
+            },
+            likes: 42,
+            comments: 15,
+            user_has_liked: false,
+          }
+        ];
+        
+        setPosts(mockPosts);
+      } catch (err: any) {
+        console.error("Error fetching feed:", err);
+        setError(err);
+        toast({
+          title: "Error loading feed",
+          description: "Could not load feed posts at this time",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchFeedData();
+  }, [user]);
   
   return (
     <div className="space-y-6">

@@ -35,7 +35,7 @@ export function useSupabaseQuery<T>(config: QueryConfig<T>) {
         const result = await queryFn();
         setData(result);
         setError(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error in useSupabaseQuery:', err);
         setError(err as PostgrestError);
         setData(null);
@@ -45,7 +45,9 @@ export function useSupabaseQuery<T>(config: QueryConfig<T>) {
     };
 
     fetchData();
-  }, [enabled, ...queryKey]);
+  // Using a stringified version of queryKey to avoid unnecessary re-renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, JSON.stringify(queryKey)]);
 
   return { 
     data, 
