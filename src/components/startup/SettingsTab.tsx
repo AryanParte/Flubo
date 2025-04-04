@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -259,12 +258,6 @@ export const SettingsTab = () => {
           >
             Security
           </div>
-          <div 
-            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
-            onClick={() => setActiveTab("subscription")}
-          >
-            Subscription
-          </div>
         </div>
         
         <div className="flex-1">
@@ -491,50 +484,6 @@ export const SettingsTab = () => {
                       "Update Password"
                     )}
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === "subscription" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Subscription Settings</CardTitle>
-                <CardDescription>
-                  Manage your subscription plan and billing.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg font-medium">Current Plan: Free</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Basic features for startups getting started
-                      </p>
-                    </div>
-                    <Button variant="outline">Upgrade</Button>
-                  </div>
-                  <Separator />
-                  
-                  <div className="space-y-3">
-                    <h4 className="font-medium">Plan Features:</h4>
-                    <ul className="space-y-1 text-sm">
-                      <li className="flex items-center">
-                        <span className="mr-2">✓</span> Up to 5 investor matches
-                      </li>
-                      <li className="flex items-center">
-                        <span className="mr-2">✓</span> Basic analytics
-                      </li>
-                      <li className="flex items-center">
-                        <span className="mr-2">✓</span> Standard support
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                
-                <div className="pt-2">
-                  <Button variant="outline">View Billing History</Button>
                 </div>
               </CardContent>
             </Card>
