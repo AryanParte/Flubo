@@ -35,7 +35,7 @@ export const FindCompaniesTab = () => {
   
   return (
     <div>
-      {/* Search Bar - Now positioned below the tab navigation */}
+      {/* Search Bar */}
       <div className="glass-card rounded-lg p-4 mb-8 animate-fade-in">
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />

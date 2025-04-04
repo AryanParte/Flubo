@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "./discover/FilterBar";
 import { StartupCard } from "./discover/StartupCard";
