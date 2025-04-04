@@ -181,8 +181,10 @@ const StartupDashboard = () => {
         
         if (profile) {
           console.log("Found user profile with company name:", profile.company);
-          setStartupName(profile.company || profile.name || "");
-          setShowProfileDialog(true);
+          const companyName = profile.company || profile.name || "";
+          setStartupName(companyName);
+          setNewCompanyName(companyName);
+          setShowProfileDialog(!companyName);
           setIsUserVerified(!!profile.verified);
         } else {
           console.log("No profile found at all. New user");
@@ -484,10 +486,10 @@ const StartupDashboard = () => {
                     <div className="flex flex-col items-center">
                       <Avatar className="w-24 h-24 border-4 border-background">
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "C"}</AvatarFallback>
+                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "S"}</AvatarFallback>
                       </Avatar>
                       <h3 className="mt-4 text-xl text-center">
-                        {startupName || "Your Company"}
+                        {startupName || ""}
                       </h3>
                       <p className="text-sm text-muted-foreground text-center mt-1">
                         {userIndustry || "Industry not specified"}
