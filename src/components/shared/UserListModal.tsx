@@ -32,19 +32,20 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
     console.log(`UserListModal - open: ${open}, userId: ${userId}, type: ${type}`);
   }, [open, userId, type]);
   
-  // Reset state when modal closes or userId changes
+  // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setError(null);
     }
   }, [open]);
   
+  // Only fetch users when modal is open AND we have a userId
   useEffect(() => {
     if (open) {
-      setLoading(true);
-      setError(null);
-      if (userId) {
+      if (userId && userId.length > 0) {
         console.log(`Modal opened for ${type}, fetching users for ID: ${userId}`);
+        setLoading(true);
+        setError(null);
         fetchUsers();
       } else {
         console.error("Cannot fetch users: userId is empty");
