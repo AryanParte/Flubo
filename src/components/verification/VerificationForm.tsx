@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -35,9 +36,10 @@ interface BusinessFormValues {
 interface InvestorFormValues {
   fullName: string;
   linkedinUrl: string;
-  investmentSize: string;
-  interests: string;
-  reason: string;
+  investorType: string;
+  hasPreviouslyInvested: string;
+  backedStartups: string;
+  investmentNetwork: string;
 }
 
 export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = ({ userType }) => {
@@ -55,16 +57,6 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
       otherProfileUrl: "",
       hasProduct: "yes",
       milestone: "",
-    },
-  });
-  
-  const investorForm = useForm<InvestorFormValues>({
-    defaultValues: {
-      fullName: "",
-      linkedinUrl: "",
-      investmentSize: "",
-      interests: "",
-      reason: "",
     },
   });
   
@@ -89,6 +81,17 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
       loadProfile();
     }
   }, [user, userType]);
+  
+  const investorForm = useForm<InvestorFormValues>({
+    defaultValues: {
+      fullName: "",
+      linkedinUrl: "",
+      investorType: "",
+      hasPreviouslyInvested: "yes",
+      backedStartups: "",
+      investmentNetwork: "",
+    },
+  });
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -184,10 +187,20 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
     try {
       setLoading(true);
       
+      let documentUrl = null;
+      if (documentFile) {
+        documentUrl = await uploadDocument(user.id);
+      }
+      
+      const verificationData = {
+        ...data,
+        documentUrl
+      };
+      
       const { data: paymentData, error } = await supabase.functions.invoke("verification-payment", {
         body: {
           verificationType: "investor",
-          verificationResponses: data,
+          verificationResponses: verificationData,
         },
       });
       
@@ -419,10 +432,13 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Please enter your full name</FormLabel>
+              <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="Full Name" {...field} />
+                <Input placeholder="Enter your full name" {...field} />
               </FormControl>
+              <FormDescription>
+                Used for cross-checking with provided profiles
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -433,10 +449,13 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
           name="linkedinUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Please share a LinkedIn profile or investment profile</FormLabel>
+              <FormLabel>LinkedIn Profile or Public Investment Profile (required)</FormLabel>
               <FormControl>
                 <Input placeholder="https://linkedin.com/in/yourprofile" {...field} />
               </FormControl>
+              <FormDescription>
+                LinkedIn, Crunchbase, AngelList, or any other profile confirming you're an investor
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -444,41 +463,98 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
         
         <FormField
           control={investorForm.control}
-          name="investmentSize"
+          name="investorType"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>How much do you typically invest per startup?</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select investment range" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="10k-25k">$10k–$25k</SelectItem>
-                  <SelectItem value="25k-100k">$25k–$100k</SelectItem>
-                  <SelectItem value="100k-500k">$100k–$500k</SelectItem>
-                  <SelectItem value="500k-1m">$500k–$1M</SelectItem>
-                  <SelectItem value="1m-plus">$1M+</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={investorForm.control}
-          name="interests"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>What sectors or regions are you most interested in?</FormLabel>
+            <FormItem className="space-y-3">
+              <FormLabel>Do you represent an investment firm, syndicate, or are you an independent investor?</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="SaaS, Healthcare, AI, Europe, Asia..."
-                  className="resize-none"
-                  {...field}
-                />
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Independent" id="type-independent" />
+                    <Label htmlFor="type-independent">Independent</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Part of a Syndicate" id="type-syndicate" />
+                    <Label htmlFor="type-syndicate">Part of a Syndicate</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Represent a VC/Fund" id="type-fund" />
+                    <Label htmlFor="type-fund">Represent a VC/Fund</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Prefer not to say" id="type-notsay" />
+                    <Label htmlFor="type-notsay">Prefer not to say</Label>
+                  </div>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <div className="space-y-3">
+          <FormLabel>Optional: Upload any supporting documentation that proves your investor status</FormLabel>
+          <div className="flex items-center gap-3">
+            <div className="border border-border rounded-md p-3 w-full">
+              <input
+                type="file"
+                id="investor-document-upload"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <label
+                htmlFor="investor-document-upload"
+                className="flex items-center gap-2 cursor-pointer text-sm"
+              >
+                <Upload className="h-4 w-4" />
+                {documentFile ? documentFile.name : "Choose a file"}
+              </label>
+            </div>
+            {documentFile && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDocumentFile(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          <FormDescription>
+            e.g., deal memos, LP certificate, firm badge, accreditation, portfolio screenshots — will not be public
+          </FormDescription>
+        </div>
+        
+        <FormField
+          control={investorForm.control}
+          name="hasPreviouslyInvested"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Have you previously invested in startups?</FormLabel>
+              <FormDescription>
+                This helps us verify you're active in the ecosystem
+              </FormDescription>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="invested-yes" />
+                    <Label htmlFor="invested-yes">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="invested-no" />
+                    <Label htmlFor="invested-no">No</Label>
+                  </div>
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -487,16 +563,26 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
         
         <FormField
           control={investorForm.control}
-          name="reason"
+          name="backedStartups"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Why are you interested in verifying your account on Flubo?</FormLabel>
+              <FormLabel>If yes, please list one or two startups you've backed (name only)</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Tell us why you want to verify your account..."
-                  className="resize-none"
-                  {...field}
-                />
+                <Input placeholder="Startup names (optional)" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={investorForm.control}
+          name="investmentNetwork"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Are you part of any known investment network or platform?</FormLabel>
+              <FormControl>
+                <Input placeholder="AngelList, On Deck, etc. (optional)" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
