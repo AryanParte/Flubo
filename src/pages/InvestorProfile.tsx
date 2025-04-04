@@ -2,7 +2,7 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { ProfileTab } from "@/components/investor/ProfileTab";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserListModal } from "@/components/shared/UserListModal";
 import { useParams } from "react-router-dom";
 
@@ -20,6 +20,11 @@ const InvestorProfile = () => {
     console.log("Opening following modal from InvestorProfile");
     setShowFollowing(true);
   };
+  
+  // Log state changes to debug modal visibility issues
+  useEffect(() => {
+    console.log("InvestorProfile modal states:", { showFollowers, showFollowing, profileId });
+  }, [showFollowers, showFollowing, profileId]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -35,25 +40,22 @@ const InvestorProfile = () => {
       </main>
       <MinimalFooter />
 
-      {profileId && (
-        <>
-          <UserListModal
-            open={showFollowers}
-            onOpenChange={setShowFollowers}
-            title="Followers"
-            userId={profileId}
-            type="followers"
-          />
-          
-          <UserListModal
-            open={showFollowing}
-            onOpenChange={setShowFollowing}
-            title="Following"
-            userId={profileId}
-            type="following"
-          />
-        </>
-      )}
+      {/* Always render the modals but control visibility with 'open' prop */}
+      <UserListModal
+        open={showFollowers}
+        onOpenChange={setShowFollowers}
+        title="Followers"
+        userId={profileId || ''}
+        type="followers"
+      />
+      
+      <UserListModal
+        open={showFollowing}
+        onOpenChange={setShowFollowing}
+        title="Following"
+        userId={profileId || ''}
+        type="following"
+      />
     </div>
   );
 };

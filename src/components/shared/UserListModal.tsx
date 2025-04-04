@@ -25,6 +25,11 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
   const [followStatus, setFollowStatus] = useState<Record<string, boolean>>({});
   const [followLoading, setFollowLoading] = useState<Record<string, boolean>>({});
   
+  // Debug the modal state and userId
+  useEffect(() => {
+    console.log(`UserListModal - open: ${open}, userId: ${userId}, type: ${type}`);
+  }, [open, userId, type]);
+  
   useEffect(() => {
     if (open && userId) {
       console.log(`Modal opened for ${type}, fetching users for ID: ${userId}`);
@@ -38,6 +43,12 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
   }, [open, userId, type]);
   
   const fetchUsers = async () => {
+    if (!userId || userId.length === 0) {
+      console.error("Cannot fetch users: userId is empty");
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
       let usersData;
