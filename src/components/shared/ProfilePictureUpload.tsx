@@ -37,7 +37,10 @@ export function ProfilePictureUpload({
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      console.log("Uploading file to path:", filePath);
 
       // Upload the file to Supabase storage
       const { error: uploadError } = await supabase.storage
@@ -45,13 +48,18 @@ export function ProfilePictureUpload({
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
+        console.error("Upload error:", uploadError);
         throw uploadError;
       }
+
+      console.log("Upload successful, getting public URL");
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
+
+      console.log("Public URL obtained:", publicUrl);
 
       // Update the profile with the new avatar URL
       const { error: updateError } = await supabase
@@ -60,9 +68,11 @@ export function ProfilePictureUpload({
         .eq('id', user.id);
 
       if (updateError) {
+        console.error("Profile update error:", updateError);
         throw updateError;
       }
 
+      console.log("Profile updated successfully");
       setAvatarUrl(publicUrl);
       onAvatarUpdate(publicUrl);
       
@@ -70,11 +80,11 @@ export function ProfilePictureUpload({
         title: "Profile picture updated",
         description: "Your profile picture has been updated successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast({
         title: "Error",
-        description: "An error occurred while uploading your profile picture.",
+        description: error?.message || "An error occurred while uploading your profile picture.",
         variant: "destructive",
       });
     } finally {
