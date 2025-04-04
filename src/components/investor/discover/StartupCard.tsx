@@ -38,7 +38,9 @@ export const StartupCard = ({
         {startup.logo ? (
           <img src={startup.logo} alt={`${startup.name} logo`} className="max-h-full max-w-full object-contain" />
         ) : (
-          <span className="font-medium text-6xl">{startup.name.charAt(0)}</span>
+          <span className="font-medium text-6xl">
+            {startup.name ? startup.name.charAt(0) : "?"}
+          </span>
         )}
       </div>
       

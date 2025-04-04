@@ -486,7 +486,9 @@ const StartupDashboard = () => {
                     <div className="flex flex-col items-center">
                       <Avatar className="w-24 h-24 border-4 border-background">
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-                        <AvatarFallback className="text-xl">{startupName?.charAt(0) || "S"}</AvatarFallback>
+                        <AvatarFallback className="text-xl">
+                          {startupName ? startupName.charAt(0) : "S"}
+                        </AvatarFallback>
                       </Avatar>
                       <h3 className="mt-4 text-xl text-center">
                         {startupName || ""}

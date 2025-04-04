@@ -47,7 +47,9 @@ export const CompanyCard = ({
           {company.logo ? (
             <img src={company.logo} alt={`${company.name} logo`} className="max-h-full max-w-full object-contain" />
           ) : (
-            <span className="font-medium text-4xl">{company.name.charAt(0)}</span>
+            <span className="font-medium text-4xl">
+              {company.name ? company.name.charAt(0) : "?"}
+            </span>
           )}
         </div>
         
