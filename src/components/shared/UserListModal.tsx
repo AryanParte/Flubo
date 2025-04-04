@@ -68,28 +68,32 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
       let usersData;
       
       if (type === "followers") {
-        // Get users who follow this user
+        // Get users who follow this user - these users have the current userId as their following_id
         const { data, error } = await supabase
           .from('followers')
           .select(`
             follower_id,
-            profiles:follower_id(id, name, user_type, company, position)
+            profiles:follower_id(*)
           `)
           .eq('following_id', userId);
           
         if (error) throw error;
+        
+        // Extract the profile data from the nested structure
         usersData = data.map(item => item.profiles);
       } else {
-        // Get users this user follows
+        // Get users this user follows - the current userId is the follower_id
         const { data, error } = await supabase
           .from('followers')
           .select(`
             following_id,
-            profiles:following_id(id, name, user_type, company, position)
+            profiles:following_id(*)
           `)
           .eq('follower_id', userId);
           
         if (error) throw error;
+        
+        // Extract the profile data from the nested structure
         usersData = data.map(item => item.profiles);
       }
       
