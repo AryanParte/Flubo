@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -13,11 +12,13 @@ import { Loader2, UserCheck } from "lucide-react";
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
 import { useNavigate } from "react-router-dom";
+import { ProfilePictureUpload } from "@/components/shared/ProfilePictureUpload";
 
 export const SettingsTab = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [profileData, setProfileData] = useState({
     name: "",
@@ -26,6 +27,8 @@ export const SettingsTab = () => {
     position: "",
     phone: ""
   });
+  
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
@@ -58,17 +61,11 @@ export const SettingsTab = () => {
       
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*, verified, verified_at, verified_type')
+        .select('*, verified, verified_at, verified_type, avatar_url')
         .eq('id', user.id)
         .single();
       
       if (profileError) throw profileError;
-      
-      const { data: preferencesData, error: preferencesError } = await supabase
-        .from('investor_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
       
       if (profileData) {
         setProfileData({
@@ -79,10 +76,17 @@ export const SettingsTab = () => {
           phone: profileData.phone || ""
         });
         
+        setAvatarUrl(profileData.avatar_url);
         setIsVerified(!!profileData.verified);
         setVerifiedType(profileData.verified_type);
         setVerifiedAt(profileData.verified_at);
       }
+      
+      const { data: preferencesData, error: preferencesError } = await supabase
+        .from('investor_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
       
       if (!preferencesError && preferencesData) {
         setPreferences({
@@ -109,6 +113,40 @@ export const SettingsTab = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const saveProfileData = async () => {
+    if (!user) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: profileData.name,
+          email: profileData.email,
+          company: profileData.company,
+          position: profileData.position,
+          phone: profileData.phone
+        })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved."
+      });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your profile.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
     }
   };
   
@@ -159,7 +197,13 @@ export const SettingsTab = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                <ProfilePictureUpload 
+                  currentAvatarUrl={avatarUrl} 
+                  userName={profileData.name} 
+                  onAvatarUpdate={(url) => setAvatarUrl(url)} 
+                />
+                
+                <form onSubmit={(e) => { e.preventDefault(); saveProfileData(); }} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="name">Full Name</label>
@@ -209,8 +253,12 @@ export const SettingsTab = () => {
                     </div>
                   </div>
                   <div className="flex justify-end mt-4">
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Saving..." : "Save Changes"}
+                    <Button type="submit" disabled={saving}>
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                        </>
+                      ) : "Save Changes"}
                     </Button>
                   </div>
                 </form>

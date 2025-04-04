@@ -16,23 +16,30 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Loader2, UserCheck } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
 import { useNavigate } from "react-router-dom";
+import { ProfilePictureUpload } from "@/components/shared/ProfilePictureUpload";
 
 export const SettingsTab = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("notifications");
+  const [activeTab, setActiveTab] = useState("profile");
   const [isVerified, setIsVerified] = useState(false);
   const [verifiedType, setVerifiedType] = useState<string | null>(null);
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profile, setProfile] = useState({
+    name: "",
+    phone: "",
+    company: "",
+    position: "",
+  });
   const navigate = useNavigate();
 
-  // Email notification settings
+  // Email notification settings 
   const [emailSettings, setEmailSettings] = useState<{
     'new-match': boolean;
     'messages': boolean;
@@ -72,7 +79,7 @@ export const SettingsTab = () => {
       try {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("verified, verified_at, verified_type")
+          .select("verified, verified_at, verified_type, avatar_url, name, phone, company, position")
           .eq("id", user.id)
           .single();
           
@@ -82,6 +89,13 @@ export const SettingsTab = () => {
           setIsVerified(!!profileData.verified);
           setVerifiedType(profileData.verified_type);
           setVerifiedAt(profileData.verified_at);
+          setAvatarUrl(profileData.avatar_url);
+          setProfile({
+            name: profileData.name || "",
+            phone: profileData.phone || "",
+            company: profileData.company || "",
+            position: profileData.position || "",
+          });
         }
           
         const { data, error } = await supabase
@@ -146,6 +160,40 @@ export const SettingsTab = () => {
       }
     }
   );
+
+  // Update profile information
+  const updateProfile = async () => {
+    if (!user) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          name: profile.name,
+          phone: profile.phone,
+          company: profile.company,
+          position: profile.position,
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved.",
+      });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Save notification settings
   const saveNotificationSettings = async () => {
@@ -241,6 +289,12 @@ export const SettingsTab = () => {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="w-full sm:w-64 space-y-2">
           <div 
+            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
+            onClick={() => setActiveTab("profile")}
+          >
+            Profile
+          </div>
+          <div 
             className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "notifications" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
             onClick={() => setActiveTab("notifications")}
           >
@@ -261,6 +315,74 @@ export const SettingsTab = () => {
         </div>
         
         <div className="flex-1">
+          {activeTab === "profile" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Settings</CardTitle>
+                <CardDescription>
+                  Update your personal and company information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <ProfilePictureUpload 
+                  currentAvatarUrl={avatarUrl} 
+                  userName={profile.name} 
+                  onAvatarUpdate={(url) => setAvatarUrl(url)} 
+                />
+                
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={profile.name}
+                        onChange={(e) => setProfile({...profile, name: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={profile.phone}
+                        onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label htmlFor="company">Company</Label>
+                      <Input
+                        id="company"
+                        value={profile.company}
+                        onChange={(e) => setProfile({...profile, company: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label htmlFor="position">Position</Label>
+                      <Input
+                        id="position"
+                        value={profile.position}
+                        onChange={(e) => setProfile({...profile, position: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button onClick={updateProfile} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                      </>
+                    ) : (
+                      "Save Profile"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           {activeTab === "notifications" && (
             <Card>
               <CardHeader>
