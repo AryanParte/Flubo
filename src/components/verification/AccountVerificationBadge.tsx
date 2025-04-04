@@ -1,51 +1,41 @@
 
 import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { UserCheck, Check } from "lucide-react";
+import { UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AccountVerificationBadgeProps {
-  verified?: boolean;
-  size?: "sm" | "md" | "lg";
   showText?: boolean;
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> = ({
-  verified = false,
+  showText = true,
   size = "md",
-  showText = false,
-  className
+  className,
 }) => {
-  if (!verified) return null;
-  
-  const sizesMap = {
-    sm: "h-3.5 w-3.5",
+  const sizeClasses = {
+    sm: "h-3 w-3",
     md: "h-4 w-4",
-    lg: "h-5 w-5"
+    lg: "h-5 w-5",
   };
-
+  
+  const textClasses = {
+    sm: "text-xs",
+    md: "text-sm",
+    lg: "text-base",
+  };
+  
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className={cn("inline-flex items-center", className)}>
-            <div className={cn(
-              "inline-flex items-center justify-center rounded-full bg-accent/10",
-              size === "sm" ? "p-0.5" : size === "md" ? "p-0.5" : "p-1"
-            )}>
-              <Check className={cn("text-accent", sizesMap[size])} />
-            </div>
-            {showText && (
-              <span className="ml-1 text-xs font-medium text-accent">Verified</span>
-            )}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-xs">Verified Account</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className={cn("inline-flex items-center gap-1", className)}>
+      <div className="bg-accent/10 p-0.5 rounded-full flex items-center justify-center">
+        <UserCheck className={cn("text-accent", sizeClasses[size])} />
+      </div>
+      {showText && (
+        <span className={cn("text-muted-foreground font-medium", textClasses[size])}>
+          Verified
+        </span>
+      )}
+    </div>
   );
 };

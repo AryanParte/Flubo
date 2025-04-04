@@ -45,7 +45,12 @@ serve(async (req) => {
     const formattedPrice = (amount / 100).toFixed(2);
 
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      throw new Error("Stripe secret key not configured");
+    }
+    
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
 
