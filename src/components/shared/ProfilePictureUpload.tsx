@@ -37,22 +37,43 @@ export function ProfilePictureUpload({
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
       console.log("Uploading file to path:", filePath);
+      console.log("User ID:", user.id);
+      console.log("File name:", fileName);
+      console.log("File extension:", fileExt);
+
+      // Check if the avatars bucket exists
+      const { data: buckets, error: bucketsError } = await supabase
+        .storage
+        .listBuckets();
+      
+      if (bucketsError) {
+        console.error("Error listing buckets:", bucketsError);
+        throw new Error("Could not verify storage setup: " + bucketsError.message);
+      }
+      
+      console.log("Available buckets:", buckets.map(b => b.name));
+      
+      if (!buckets.some(b => b.name === 'avatars')) {
+        console.error("Avatars bucket does not exist!");
+        throw new Error("Storage is not properly configured. Please contact support.");
+      }
 
       // Upload the file to Supabase storage
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
-        throw uploadError;
+        throw new Error("Upload failed: " + uploadError.message);
       }
 
-      console.log("Upload successful, getting public URL");
+      console.log("Upload successful, data:", uploadData);
+      console.log("Getting public URL");
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
@@ -69,7 +90,7 @@ export function ProfilePictureUpload({
 
       if (updateError) {
         console.error("Profile update error:", updateError);
-        throw updateError;
+        throw new Error("Could not update profile: " + updateError.message);
       }
 
       console.log("Profile updated successfully");
