@@ -487,7 +487,7 @@ const StartupDashboard = () => {
                         <AvatarFallback className="text-xl">{startupName?.charAt(0) || "C"}</AvatarFallback>
                       </Avatar>
                       <h3 className="mt-4 text-xl text-center">
-                        {startupName || "Capo"}
+                        {startupName || "Your Company"}
                       </h3>
                       <p className="text-sm text-muted-foreground text-center mt-1">
                         {userIndustry || "Industry not specified"}
