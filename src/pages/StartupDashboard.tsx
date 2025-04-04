@@ -487,7 +487,7 @@ const StartupDashboard = () => {
                       <Avatar className="w-24 h-24 border-4 border-background">
                         <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
                         <AvatarFallback className="text-xl">
-                          {startupName ? startupName.charAt(0) : "S"}
+                          {startupName && startupName.trim() !== "" ? startupName.charAt(0).toUpperCase() : "S"}
                         </AvatarFallback>
                       </Avatar>
                       <h3 className="mt-4 text-xl text-center">
