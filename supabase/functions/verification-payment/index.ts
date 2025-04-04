@@ -25,6 +25,7 @@ serve(async (req) => {
       throw new Error("Stripe payment is not configured. Please contact support.");
     }
     
+    console.log("Stripe key found, initializing Stripe...");
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
@@ -41,8 +42,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     
     if (userError || !user) {
+      console.error("Authentication error:", userError);
       throw new Error("User not authenticated");
     }
+
+    console.log("User authenticated:", user.id);
 
     // Parse request data
     const { verificationType, verificationResponses } = await req.json();
@@ -50,6 +54,8 @@ serve(async (req) => {
     if (!verificationType || (verificationType !== "startup" && verificationType !== "investor")) {
       throw new Error("Invalid verification type");
     }
+
+    console.log("Verification request for type:", verificationType);
 
     // Set price based on user type
     const amount = verificationType === "startup" ? STARTUP_PRICE : INVESTOR_PRICE;
@@ -63,6 +69,8 @@ serve(async (req) => {
       })
       .eq("id", user.id);
 
+    console.log("Verification responses stored, creating Stripe customer...");
+
     // Create or retrieve Stripe customer
     let customerId;
     const { data: existingCustomer } = await stripe.customers.list({
@@ -72,6 +80,7 @@ serve(async (req) => {
 
     if (existingCustomer && existingCustomer.length > 0) {
       customerId = existingCustomer[0].id;
+      console.log("Found existing Stripe customer:", customerId);
     } else if (user.email) {
       const newCustomer = await stripe.customers.create({
         email: user.email,
@@ -80,9 +89,11 @@ serve(async (req) => {
         },
       });
       customerId = newCustomer.id;
+      console.log("Created new Stripe customer:", customerId);
     }
 
     // Create a verification payment record
+    console.log("Creating payment record...");
     const { data: paymentRecord, error: paymentError } = await supabaseClient
       .from("verification_payments")
       .insert({
@@ -98,6 +109,7 @@ serve(async (req) => {
     }
 
     // Create Stripe checkout session
+    console.log("Creating Stripe checkout session...");
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -123,6 +135,8 @@ serve(async (req) => {
       success_url: `${req.headers.get("origin")}/verification-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/settings`,
     });
+
+    console.log("Checkout session created:", session.id);
 
     // Update payment record with Stripe session ID
     await supabaseClient
