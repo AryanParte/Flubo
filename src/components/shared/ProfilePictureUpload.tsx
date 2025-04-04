@@ -40,47 +40,32 @@ export function ProfilePictureUpload({
       const fileName = `avatar-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      console.log("Uploading file to path:", filePath);
-      console.log("User ID:", user.id);
-      console.log("File name:", fileName);
-      console.log("File extension:", fileExt);
+      console.log("Starting avatar upload process");
+      console.log("File path:", filePath);
+      console.log("File size:", file.size, "bytes");
+      console.log("File type:", file.type);
 
-      // Check if the avatars bucket exists
-      const { data: buckets, error: bucketsError } = await supabase
-        .storage
-        .listBuckets();
-      
-      if (bucketsError) {
-        console.error("Error listing buckets:", bucketsError);
-        throw new Error("Could not verify storage setup: " + bucketsError.message);
-      }
-      
-      console.log("Available buckets:", buckets.map(b => b.name));
-      
-      if (!buckets.some(b => b.name === 'avatars')) {
-        console.error("Avatars bucket does not exist!");
-        throw new Error("Storage is not properly configured. Please contact support.");
-      }
-
-      // Upload the file to Supabase storage
+      // Upload the file directly without checking buckets first
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { 
+          upsert: true,
+          contentType: file.type 
+        });
 
       if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw new Error("Upload failed: " + uploadError.message);
+        console.error("Upload error details:", uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      console.log("Upload successful, data:", uploadData);
-      console.log("Getting public URL");
+      console.log("Upload successful:", uploadData);
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      console.log("Public URL obtained:", publicUrl);
+      console.log("Public URL:", publicUrl);
 
       // Update the profile with the new avatar URL
       const { error: updateError } = await supabase
@@ -90,7 +75,7 @@ export function ProfilePictureUpload({
 
       if (updateError) {
         console.error("Profile update error:", updateError);
-        throw new Error("Could not update profile: " + updateError.message);
+        throw new Error(`Could not update profile: ${updateError.message}`);
       }
 
       console.log("Profile updated successfully");
