@@ -68,7 +68,6 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
     },
   });
   
-  // Load existing profile data
   React.useEffect(() => {
     if (user) {
       const loadProfile = async () => {
@@ -139,7 +138,6 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
         documentUrl = await uploadDocument(user.id);
       }
       
-      // Add the document URL to the verification data
       const verificationData = {
         ...data,
         documentUrl
@@ -413,7 +411,6 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
     );
   }
   
-  // Investor form
   return (
     <Form {...investorForm}>
       <form onSubmit={investorForm.handleSubmit(onSubmitInvestor)} className="space-y-6">
