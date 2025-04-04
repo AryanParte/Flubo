@@ -1,617 +1,720 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
-import { toast } from "@/components/ui/use-toast";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Loader2, UserCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
 import { useNavigate } from "react-router-dom";
 import { ProfilePictureUpload } from "@/components/shared/ProfilePictureUpload";
 
-export const SettingsTab = () => {
+export const SettingsTab: React.FC = () => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  
   const [activeTab, setActiveTab] = useState("profile");
   const [isVerified, setIsVerified] = useState(false);
   const [verifiedType, setVerifiedType] = useState<string | null>(null);
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+  
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [profile, setProfile] = useState({
+  
+  const [profileData, setProfileData] = useState({
     name: "",
-    phone: "",
+    email: "",
     company: "",
     position: "",
+    phone: "",
   });
-  const navigate = useNavigate();
-
-  // Email notification settings 
-  const [emailSettings, setEmailSettings] = useState<{
-    'new-match': boolean;
-    'messages': boolean;
-    'profile-views': boolean;
-    'funding-updates': boolean;
-    'newsletters': boolean;
-  }>({
-    'new-match': true,
-    'messages': true,
-    'profile-views': false,
-    'funding-updates': true,
-    'newsletters': false,
+  
+  const [startupProfile, setStartupProfile] = useState({
+    bio: "",
+    tagline: "",
+    website: "",
+    location: "",
+    founded: "",
+    employees: "",
+    industry: "",
+    stage: "",
   });
-
-  // Push notification settings
-  const [pushSettings, setPushSettings] = useState<{
-    'push-matches': boolean;
-    'push-messages': boolean;
-    'push-reminders': boolean;
-  }>({
-    'push-matches': true,
-    'push-messages': true,
-    'push-reminders': true,
+  
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailNewMatch: true,
+    emailMessages: true,
+    emailProfileViews: false,
+    emailFundingUpdates: true,
+    emailNewsletters: false,
+    pushMatches: true,
+    pushMessages: true,
+    pushReminders: true,
   });
-
-  // Security settings
-  const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Load user settings from database
+  
   useEffect(() => {
-    if (!user) return;
-
-    const loadSettings = async () => {
-      setLoading(true);
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("verified, verified_at, verified_type, avatar_url, name, phone, company, position")
-          .eq("id", user.id)
-          .single();
-          
-        if (profileError) {
-          console.error("Error fetching profile:", profileError);
-        } else if (profileData) {
-          setIsVerified(!!profileData.verified);
-          setVerifiedType(profileData.verified_type);
-          setVerifiedAt(profileData.verified_at);
-          setAvatarUrl(profileData.avatar_url);
-          setProfile({
-            name: profileData.name || "",
-            phone: profileData.phone || "",
-            company: profileData.company || "",
-            position: profileData.position || "",
-          });
-        }
-          
-        const { data, error } = await supabase
-          .from("startup_notification_settings")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          setEmailSettings({
-            'new-match': data.email_new_match,
-            'messages': data.email_messages,
-            'profile-views': data.email_profile_views,
-            'funding-updates': data.email_funding_updates,
-            'newsletters': data.email_newsletters,
-          });
-
-          setPushSettings({
-            'push-matches': data.push_matches,
-            'push-messages': data.push_messages,
-            'push-reminders': data.push_reminders,
-          });
-        }
-      } catch (error) {
-        console.error("Error loading settings:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load your settings. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSettings();
-  }, [user]);
-
-  // Listen for realtime updates to settings
-  useRealtimeSubscription<any>(
-    'startup_notification_settings',
-    ['UPDATE'],
-    ({ new: newData }) => {
-      if (newData && user && newData.user_id === user.id) {
-        setEmailSettings({
-          'new-match': newData.email_new_match,
-          'messages': newData.email_messages,
-          'profile-views': newData.email_profile_views,
-          'funding-updates': newData.email_funding_updates,
-          'newsletters': newData.email_newsletters,
-        });
-
-        setPushSettings({
-          'push-matches': newData.push_matches,
-          'push-messages': newData.push_messages,
-          'push-reminders': newData.push_reminders,
-        });
-      }
+    if (user) {
+      fetchUserData();
     }
-  );
-
-  // Update profile information
-  const updateProfile = async () => {
+  }, [user]);
+  
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, verified, verified_at, verified_type, avatar_url')
+        .eq('id', user.id)
+        .single();
+      
+      if (profileError) throw profileError;
+      
+      if (profileData) {
+        setProfileData({
+          name: profileData.name || "",
+          email: profileData.email || user.email || "",
+          company: profileData.company || "",
+          position: profileData.position || "",
+          phone: profileData.phone || ""
+        });
+        
+        setAvatarUrl(profileData.avatar_url);
+        setIsVerified(!!profileData.verified);
+        setVerifiedType(profileData.verified_type);
+        setVerifiedAt(profileData.verified_at);
+      }
+      
+      const { data: startupData, error: startupError } = await supabase
+        .from('startup_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (!startupError && startupData) {
+        setStartupProfile({
+          bio: startupData.bio || "",
+          tagline: startupData.tagline || "",
+          website: startupData.website || "",
+          location: startupData.location || "",
+          founded: startupData.founded || "",
+          employees: startupData.employees || "",
+          industry: startupData.industry || "",
+          stage: startupData.stage || "",
+        });
+      }
+      
+      const { data: notificationData, error: notificationError } = await supabase
+        .from('startup_notification_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!notificationError && notificationData) {
+        setNotificationSettings({
+          emailNewMatch: notificationData.email_new_match || true,
+          emailMessages: notificationData.email_messages || true,
+          emailProfileViews: notificationData.email_profile_views || false,
+          emailFundingUpdates: notificationData.email_funding_updates || true,
+          emailNewsletters: notificationData.email_newsletters || false,
+          pushMatches: notificationData.push_matches || true,
+          pushMessages: notificationData.push_messages || true,
+          pushReminders: notificationData.push_reminders || true
+        });
+      }
+      
+      setProfileLoaded(true);
+    } catch (error) {
+      console.error("Error fetching profile data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleSaveProfile = async () => {
     if (!user) return;
-
+    
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
+      // Update basic profile
+      const { error: profileError } = await supabase
+        .from('profiles')
         .update({
-          name: profile.name,
-          phone: profile.phone,
-          company: profile.company,
-          position: profile.position,
+          name: profileData.name,
+          email: profileData.email,
+          company: profileData.company,
+          position: profileData.position,
+          phone: profileData.phone
         })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
+        .eq('id', user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Update startup profile
+      const { error: startupError } = await supabase
+        .from('startup_profiles')
+        .upsert({
+          id: user.id,
+          bio: startupProfile.bio,
+          tagline: startupProfile.tagline,
+          website: startupProfile.website,
+          location: startupProfile.location,
+          founded: startupProfile.founded,
+          employees: startupProfile.employees,
+          industry: startupProfile.industry,
+          stage: startupProfile.stage
+        });
+        
+      if (startupError) throw startupError;
+      
       toast({
         title: "Profile updated",
-        description: "Your profile information has been saved.",
+        description: "Your profile information has been saved."
       });
     } catch (error) {
       console.error("Error saving profile:", error);
       toast({
         title: "Error",
-        description: "Failed to save your profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Save notification settings
-  const saveNotificationSettings = async () => {
-    if (!user) return;
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("startup_notification_settings")
-        .upsert({
-          user_id: user.id,
-          email_new_match: emailSettings['new-match'],
-          email_messages: emailSettings.messages,
-          email_profile_views: emailSettings['profile-views'],
-          email_funding_updates: emailSettings['funding-updates'],
-          email_newsletters: emailSettings.newsletters,
-          push_matches: pushSettings['push-matches'],
-          push_messages: pushSettings['push-messages'],
-          push_reminders: pushSettings['push-reminders'],
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Settings updated",
-        description: "Your notification settings have been saved.",
-      });
-    } catch (error) {
-      console.error("Error saving settings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save your settings. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Change password
-  const changePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords don't match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) throw error;
-
-      setPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-
-      toast({
-        title: "Password updated",
-        description: "Your password has been changed successfully.",
-      });
-    } catch (error) {
-      console.error("Error changing password:", error);
-      toast({
-        title: "Error",
-        description: "Failed to change your password. Please try again.",
-        variant: "destructive",
+        description: "Failed to save profile changes.",
+        variant: "destructive"
       });
     } finally {
       setSaving(false);
     }
   };
   
+  const handleSaveNotifications = async () => {
+    if (!user) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('startup_notification_settings')
+        .upsert({
+          user_id: user.id,
+          email_new_match: notificationSettings.emailNewMatch,
+          email_messages: notificationSettings.emailMessages,
+          email_profile_views: notificationSettings.emailProfileViews,
+          email_funding_updates: notificationSettings.emailFundingUpdates,
+          email_newsletters: notificationSettings.emailNewsletters,
+          push_matches: notificationSettings.pushMatches,
+          push_messages: notificationSettings.pushMessages,
+          push_reminders: notificationSettings.pushReminders
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Notification settings updated",
+        description: "Your notification preferences have been saved."
+      });
+    } catch (error) {
+      console.error("Error saving notification settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  const handleAvatarUpdate = (url: string) => {
+    setAvatarUrl(url);
+  };
+  
   const handleGetVerified = () => {
     navigate("/verification");
   };
-
-  if (loading) {
+  
+  if (loading && !profileLoaded) {
     return (
-      <div className="flex justify-center items-center p-8">
+      <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-
+  
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="w-full sm:w-64 space-y-2">
-          <div 
-            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
-            onClick={() => setActiveTab("profile")}
-          >
-            Profile
-          </div>
-          <div 
-            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "notifications" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
-            onClick={() => setActiveTab("notifications")}
-          >
-            Notifications
-          </div>
-          <div 
-            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
-            onClick={() => setActiveTab("verification")}
-          >
-            Verification
-          </div>
-          <div 
-            className={`px-4 py-2 rounded-md cursor-pointer transition-colors ${activeTab === "security" ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}
-            onClick={() => setActiveTab("security")}
-          >
-            Security
-          </div>
-        </div>
-        
-        <div className="flex-1">
-          {activeTab === "profile" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Settings</CardTitle>
-                <CardDescription>
-                  Update your personal and company information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <ProfilePictureUpload 
-                  currentAvatarUrl={avatarUrl} 
-                  userName={profile.name} 
-                  onAvatarUpdate={(url) => setAvatarUrl(url)} 
-                />
-                
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        value={profile.name}
-                        onChange={(e) => setProfile({...profile, name: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        value={profile.phone}
-                        onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="company">Company</Label>
-                      <Input
-                        id="company"
-                        value={profile.company}
-                        onChange={(e) => setProfile({...profile, company: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="position">Position</Label>
-                      <Input
-                        id="position"
-                        value={profile.position}
-                        onChange={(e) => setProfile({...profile, position: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button onClick={updateProfile} disabled={saving}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-                      </>
-                    ) : (
-                      "Save Profile"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {activeTab === "notifications" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notification Settings</CardTitle>
-                <CardDescription>
-                  Control how and when you receive notifications.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Email Notifications</h3>
-                    <Switch
-                      checked={Object.values(emailSettings).some(Boolean)}
-                      onCheckedChange={(checked) => {
-                        const updatedSettings: typeof emailSettings = {
-                          'new-match': checked,
-                          'messages': checked,
-                          'profile-views': checked,
-                          'funding-updates': checked,
-                          'newsletters': checked,
-                        };
-                        setEmailSettings(updatedSettings);
-                      }}
-                    />
-                  </div>
-                  <Separator />
-                  
-                  <div className="space-y-3">
-                    {Object.entries(emailSettings).map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-center">
-                        <Label htmlFor={`email-${key}`} className="flex-grow">
-                          {key === 'new-match' && 'New matches'}
-                          {key === 'messages' && 'Messages'}
-                          {key === 'profile-views' && 'Profile views'}
-                          {key === 'funding-updates' && 'Funding updates'}
-                          {key === 'newsletters' && 'Newsletters'}
-                        </Label>
-                        <Switch
-                          id={`email-${key}`}
-                          checked={value}
-                          onCheckedChange={(checked) =>
-                            setEmailSettings({
-                              ...emailSettings,
-                              [key]: checked,
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <TabsList className="mb-6">
+        <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="verification">Verification</TabsTrigger>
+        <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        <TabsTrigger value="security">Security</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="profile">
+        <Card>
+          <CardHeader>
+            <CardTitle>Business Profile</CardTitle>
+            <CardDescription>
+              Manage your business profile information visible to investors
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <ProfilePictureUpload 
+              currentAvatarUrl={avatarUrl} 
+              userName={profileData.name} 
+              onAvatarUpdate={handleAvatarUpdate} 
+            />
+            
+            <Separator />
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Push Notifications</h3>
-                    <Switch
-                      checked={Object.values(pushSettings).some(Boolean)}
-                      onCheckedChange={(checked) => {
-                        const updatedSettings: typeof pushSettings = {
-                          'push-matches': checked,
-                          'push-messages': checked,
-                          'push-reminders': checked,
-                        };
-                        setPushSettings(updatedSettings);
-                      }}
-                    />
-                  </div>
-                  <Separator />
-                  
-                  <div className="space-y-3">
-                    {Object.entries(pushSettings).map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-center">
-                        <Label htmlFor={`push-${key}`} className="flex-grow">
-                          {key === 'push-matches' && 'New matches'}
-                          {key === 'push-messages' && 'Messages'}
-                          {key === 'push-reminders' && 'Reminders'}
-                        </Label>
-                        <Switch
-                          id={`push-${key}`}
-                          checked={value}
-                          onCheckedChange={(checked) =>
-                            setPushSettings({
-                              ...pushSettings,
-                              [key]: checked,
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Button onClick={saveNotificationSettings} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-          
-          {activeTab === "verification" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Verification</CardTitle>
-                <CardDescription>
-                  Verify your account to build trust and get prioritized in search results.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isVerified ? (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4 p-4 bg-accent/5 rounded-lg">
-                      <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                        <UserCheck className="h-6 w-6 text-accent" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium flex items-center gap-2">
-                          Verified Account
-                          <AccountVerificationBadge verified size="md" />
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          Your account was verified on {new Date(verifiedAt!).toLocaleDateString()} as a {verifiedType}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Verification Benefits</h4>
-                      <ul className="space-y-2">
-                        <li className="flex items-start gap-2">
-                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
-                          </div>
-                          <span className="text-sm">Your profile displays a verification badge</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
-                          </div>
-                          <span className="text-sm">Your profile is prioritized in search results and matches</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="mt-1 h-4 w-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <div className="h-1.5 w-1.5 rounded-full bg-accent"></div>
-                          </div>
-                          <span className="text-sm">Other users will trust your profile more</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <VerificationPrompt 
-                    onGetVerified={handleGetVerified}
-                    userType="startup"
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Business Name</Label>
+                  <Input 
+                    id="name" 
+                    value={profileData.name}
+                    onChange={(e) => setProfileData({...profileData, name: e.target.value})}
                   />
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === "security" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>
-                  Manage your account security and password.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Change Password</h3>
-                  <Separator />
-                  
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="current-password">Current Password</Label>
-                      <Input
-                        id="current-password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="new-password">New Password</Label>
-                      <Input
-                        id="new-password"
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="confirm-password">Confirm New Password</Label>
-                      <Input
-                        id="confirm-password"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={changePassword}
-                    disabled={saving || !password || !newPassword || !confirmPassword}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...
-                      </>
-                    ) : (
-                      "Update Password"
-                    )}
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    </div>
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input 
+                    id="phone" 
+                    value={profileData.phone}
+                    onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="position">Your Position</Label>
+                  <Input 
+                    id="position" 
+                    value={profileData.position}
+                    onChange={(e) => setProfileData({...profileData, position: e.target.value})}
+                    placeholder="CEO, Founder, etc."
+                  />
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Business Details</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="tagline">Tagline</Label>
+                    <Input 
+                      id="tagline" 
+                      value={startupProfile.tagline}
+                      onChange={(e) => setStartupProfile({...startupProfile, tagline: e.target.value})}
+                      placeholder="One-line description of your business"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input 
+                      id="website" 
+                      value={startupProfile.website}
+                      onChange={(e) => setStartupProfile({...startupProfile, website: e.target.value})}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="location">Location</Label>
+                    <Input 
+                      id="location" 
+                      value={startupProfile.location}
+                      onChange={(e) => setStartupProfile({...startupProfile, location: e.target.value})}
+                      placeholder="City, Country"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="founded">Founded</Label>
+                    <Input 
+                      id="founded" 
+                      value={startupProfile.founded}
+                      onChange={(e) => setStartupProfile({...startupProfile, founded: e.target.value})}
+                      placeholder="YYYY"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="employees">Employees</Label>
+                    <Select 
+                      value={startupProfile.employees}
+                      onValueChange={(value) => setStartupProfile({...startupProfile, employees: value})}
+                    >
+                      <SelectTrigger id="employees">
+                        <SelectValue placeholder="Number of employees" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1-5">1-5</SelectItem>
+                        <SelectItem value="6-10">6-10</SelectItem>
+                        <SelectItem value="11-25">11-25</SelectItem>
+                        <SelectItem value="26-50">26-50</SelectItem>
+                        <SelectItem value="51-100">51-100</SelectItem>
+                        <SelectItem value="101-250">101-250</SelectItem>
+                        <SelectItem value="251+">251+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="industry">Industry</Label>
+                    <Select 
+                      value={startupProfile.industry}
+                      onValueChange={(value) => setStartupProfile({...startupProfile, industry: value})}
+                    >
+                      <SelectTrigger id="industry">
+                        <SelectValue placeholder="Select industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AI & ML">AI & ML</SelectItem>
+                        <SelectItem value="Fintech">Fintech</SelectItem>
+                        <SelectItem value="Health Tech">Health Tech</SelectItem>
+                        <SelectItem value="EdTech">EdTech</SelectItem>
+                        <SelectItem value="CleanTech">CleanTech</SelectItem>
+                        <SelectItem value="E-commerce">E-commerce</SelectItem>
+                        <SelectItem value="SaaS">SaaS</SelectItem>
+                        <SelectItem value="Hardware">Hardware</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="stage">Stage</Label>
+                    <Select 
+                      value={startupProfile.stage}
+                      onValueChange={(value) => setStartupProfile({...startupProfile, stage: value})}
+                    >
+                      <SelectTrigger id="stage">
+                        <SelectValue placeholder="Select stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pre-seed">Pre-seed</SelectItem>
+                        <SelectItem value="Seed">Seed</SelectItem>
+                        <SelectItem value="Series A">Series A</SelectItem>
+                        <SelectItem value="Series B">Series B</SelectItem>
+                        <SelectItem value="Series C+">Series C+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="bio">About Your Business</Label>
+                  <Textarea 
+                    id="bio" 
+                    value={startupProfile.bio}
+                    onChange={(e) => setStartupProfile({...startupProfile, bio: e.target.value})}
+                    placeholder="Describe your business, product, and mission..."
+                    className="min-h-[120px]"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleSaveProfile} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="verification">
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Verification</CardTitle>
+            <CardDescription>
+              Verify your business account to build trust and get prioritized
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isVerified ? (
+              <div className="space-y-4">
+                <div className="flex items-center p-4 bg-accent/10 rounded-lg">
+                  <div className="mr-4 bg-accent/20 w-12 h-12 rounded-full flex items-center justify-center">
+                    <svg className="h-6 w-6 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-lg flex items-center">
+                      Verified Account
+                      <AccountVerificationBadge verified size="md" />
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Your account was verified on {verifiedAt && new Date(verifiedAt).toLocaleDateString()} as a {verifiedType}
+                    </p>
+                  </div>
+                </div>
+                
+                <h4 className="font-medium mt-6">Benefits of verification:</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <svg className="h-5 w-5 text-primary mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Higher visibility in search results</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="h-5 w-5 text-primary mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Verification badge on your profile</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="h-5 w-5 text-primary mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Priority matching with investors</span>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <VerificationPrompt 
+                onGetVerified={handleGetVerified}
+                userType="startup"
+              />
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="notifications">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notification Settings</CardTitle>
+            <CardDescription>
+              Control how and when you receive updates
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Email Notifications</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-new-match">New matches</Label>
+                    <p className="text-sm text-muted-foreground">Get notified when you match with an investor</p>
+                  </div>
+                  <Switch 
+                    id="email-new-match"
+                    checked={notificationSettings.emailNewMatch}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      emailNewMatch: checked
+                    })}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-messages">New messages</Label>
+                    <p className="text-sm text-muted-foreground">Get notified about new messages from investors</p>
+                  </div>
+                  <Switch 
+                    id="email-messages"
+                    checked={notificationSettings.emailMessages}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      emailMessages: checked
+                    })}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-profile-views">Profile views</Label>
+                    <p className="text-sm text-muted-foreground">Get notified when an investor views your profile</p>
+                  </div>
+                  <Switch 
+                    id="email-profile-views"
+                    checked={notificationSettings.emailProfileViews}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      emailProfileViews: checked
+                    })}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-funding-updates">Funding updates</Label>
+                    <p className="text-sm text-muted-foreground">Get updates about funding opportunities</p>
+                  </div>
+                  <Switch 
+                    id="email-funding-updates"
+                    checked={notificationSettings.emailFundingUpdates}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      emailFundingUpdates: checked
+                    })}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-newsletters">Newsletters</Label>
+                    <p className="text-sm text-muted-foreground">Receive our monthly newsletter</p>
+                  </div>
+                  <Switch 
+                    id="email-newsletters"
+                    checked={notificationSettings.emailNewsletters}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      emailNewsletters: checked
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-medium mb-4">Push Notifications</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="push-matches">Matches</Label>
+                    <p className="text-sm text-muted-foreground">Get notified for new investor matches</p>
+                  </div>
+                  <Switch 
+                    id="push-matches"
+                    checked={notificationSettings.pushMatches}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      pushMatches: checked
+                    })}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="push-messages">Messages</Label>
+                    <p className="text-sm text-muted-foreground">Get notified for new messages</p>
+                  </div>
+                  <Switch 
+                    id="push-messages"
+                    checked={notificationSettings.pushMessages}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      pushMessages: checked
+                    })}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="push-reminders">Reminders</Label>
+                    <p className="text-sm text-muted-foreground">Get notified about activity reminders</p>
+                  </div>
+                  <Switch 
+                    id="push-reminders"
+                    checked={notificationSettings.pushReminders}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      pushReminders: checked
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleSaveNotifications} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Notification Settings"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="security">
+        <Card>
+          <CardHeader>
+            <CardTitle>Security Settings</CardTitle>
+            <CardDescription>
+              Manage your password and account security
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input id="current-password" type="password" />
+            </div>
+            <div>
+              <Label htmlFor="new-password">New Password</Label>
+              <Input id="new-password" type="password" />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input id="confirm-password" type="password" />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button>
+              Update Password
+            </Button>
+          </CardFooter>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 };

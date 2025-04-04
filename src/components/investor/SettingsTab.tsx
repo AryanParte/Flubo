@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,10 @@ export const SettingsTab = () => {
     }
   };
   
+  const handleAvatarUpdate = (url: string) => {
+    setAvatarUrl(url);
+  };
+  
   const handleGetVerified = () => {
     navigate("/verification");
   };
@@ -200,7 +205,7 @@ export const SettingsTab = () => {
                 <ProfilePictureUpload 
                   currentAvatarUrl={avatarUrl} 
                   userName={profileData.name} 
-                  onAvatarUpdate={(url) => setAvatarUrl(url)} 
+                  onAvatarUpdate={handleAvatarUpdate} 
                 />
                 
                 <form onSubmit={(e) => { e.preventDefault(); saveProfileData(); }} className="space-y-4">
