@@ -1,6 +1,6 @@
 
-import React from "react";
-import { Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "./FilterBar";
 import { CompanyCard } from "./CompanyCard";
@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export const FindCompaniesTab = () => {
   const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
   const {
     companies,
     loading,
@@ -26,8 +27,34 @@ export const FindCompaniesTab = () => {
     handleMessageSent,
   } = useDiscoverCompanies();
   
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Implement search functionality here
+    console.log("Searching for:", searchQuery);
+  };
+  
   return (
     <div>
+      {/* Search Bar - Now positioned below the tab navigation */}
+      <div className="glass-card rounded-lg p-4 mb-8 animate-fade-in">
+        <form onSubmit={handleSearch} className="relative">
+          <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search companies using natural language, e.g. 'Design agencies in Europe' or 'SaaS companies for healthcare'"
+            className="w-full h-12 pl-11 pr-4 rounded-md bg-background/70 border border-border/40 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button 
+            type="submit" 
+            className="absolute right-2 top-2 bg-accent text-accent-foreground px-3 py-2 rounded-md text-sm font-medium"
+          >
+            Search
+          </button>
+        </form>
+      </div>
+      
       {/* Filters and Sort */}
       <FilterBar 
         appliedFilters={appliedFilters}
