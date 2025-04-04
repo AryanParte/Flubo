@@ -37,10 +37,10 @@ export function ProfilePictureUpload({
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${user.id}/${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
 
       // Upload the file to Supabase storage
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
