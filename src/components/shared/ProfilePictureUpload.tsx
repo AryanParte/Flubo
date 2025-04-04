@@ -41,11 +41,27 @@ export function ProfilePictureUpload({
       const filePath = `${user.id}/${fileName}`;
 
       console.log("Starting avatar upload process");
+      console.log("User ID:", user.id);
       console.log("File path:", filePath);
       console.log("File size:", file.size, "bytes");
       console.log("File type:", file.type);
+      
+      // First verify the bucket exists
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error("Error checking buckets:", bucketsError);
+        throw new Error(`Storage error: ${bucketsError.message}`);
+      }
+      
+      console.log("Available buckets:", buckets.map(b => b.name));
+      
+      if (!buckets.some(b => b.name === 'avatars')) {
+        console.error("Avatars bucket not found!");
+        throw new Error("The storage bucket for avatars is not available. Please contact support.");
+      }
 
-      // Upload the file directly without checking buckets first
+      // Upload the file
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { 
@@ -61,11 +77,13 @@ export function ProfilePictureUpload({
       console.log("Upload successful:", uploadData);
 
       // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
+      const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      console.log("Public URL:", publicUrl);
+      console.log("Public URL data:", urlData);
+      const publicUrl = urlData.publicUrl;
+      console.log("Final public URL:", publicUrl);
 
       // Update the profile with the new avatar URL
       const { error: updateError } = await supabase
@@ -78,7 +96,7 @@ export function ProfilePictureUpload({
         throw new Error(`Could not update profile: ${updateError.message}`);
       }
 
-      console.log("Profile updated successfully");
+      console.log("Profile updated successfully with URL:", publicUrl);
       setAvatarUrl(publicUrl);
       onAvatarUpdate(publicUrl);
       
