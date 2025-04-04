@@ -4,16 +4,21 @@ import { UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AccountVerificationBadgeProps {
+  verified?: boolean;
   showText?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> = ({
+  verified = true,
   showText = true,
   size = "md",
   className,
 }) => {
+  // If not verified, don't render anything
+  if (!verified) return null;
+  
   const sizeClasses = {
     sm: "h-3 w-3",
     md: "h-4 w-4",
