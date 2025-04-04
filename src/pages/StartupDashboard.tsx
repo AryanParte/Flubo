@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
@@ -41,6 +42,7 @@ const StartupDashboard = () => {
   const [searching, setSearching] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [isUserVerified, setIsUserVerified] = useState(false);
+  const [verificationPromptShown, setVerificationPromptShown] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -49,6 +51,7 @@ const StartupDashboard = () => {
     if (user) {
       fetchStartupData();
       checkProfileCompletion();
+      checkVerificationShownStatus();
       
       // Set the active tab if specified in URL
       const tabParam = searchParams.get("tab");
@@ -57,6 +60,30 @@ const StartupDashboard = () => {
       }
     }
   }, [user, searchParams]);
+
+  const checkVerificationShownStatus = async () => {
+    if (!user) return;
+    
+    try {
+      // Check if verification prompt has been shown before
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('verification_prompt_shown')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error("Error checking verification prompt status:", error);
+        return;
+      }
+      
+      if (data) {
+        setVerificationPromptShown(!!data.verification_prompt_shown);
+      }
+    } catch (error) {
+      console.error("Error in checkVerificationShownStatus:", error);
+    }
+  };
 
   const fetchStartupData = async () => {
     try {
@@ -140,15 +167,19 @@ const StartupDashboard = () => {
       // Check if user is verified
       const { data: profile } = await supabase
         .from('profiles')
-        .select('verified')
+        .select('verified, verification_prompt_shown')
         .eq('id', user.id)
         .single();
         
       if (profile) {
         setIsUserVerified(!!profile.verified);
+        setVerificationPromptShown(!!profile.verification_prompt_shown);
         
-        // Show verification dialog if they have a completed profile but aren't verified yet
-        if (requiredFieldsFilled && !profile.verified) {
+        // Show verification dialog only if:
+        // 1. They have a completed profile with required fields
+        // 2. They are not verified yet
+        // 3. The verification prompt has not been shown before
+        if (requiredFieldsFilled && !profile.verified && !profile.verification_prompt_shown) {
           // Only show after a slight delay so it doesn't appear immediately on login
           setTimeout(() => {
             setShowVerificationDialog(true);
@@ -269,10 +300,12 @@ const StartupDashboard = () => {
       setHasRequiredFields(true);
       setShowProfileDialog(false);
       
-      // Show verification dialog after profile setup
-      setTimeout(() => {
-        setShowVerificationDialog(true);
-      }, 500);
+      // Show verification dialog after profile setup only if it hasn't been shown before
+      if (!verificationPromptShown) {
+        setTimeout(() => {
+          setShowVerificationDialog(true);
+        }, 500);
+      }
 
       toast({
         title: "Profile updated",
@@ -632,7 +665,23 @@ const StartupDashboard = () => {
       {/* Account Verification Dialog */}
       <VerificationOnboarding
         open={showVerificationDialog}
-        onOpenChange={setShowVerificationDialog}
+        onOpenChange={(open) => {
+          setShowVerificationDialog(open);
+          // When closing the dialog, mark verification prompt as shown
+          if (!open && !verificationPromptShown) {
+            supabase
+              .from('profiles')
+              .update({ verification_prompt_shown: true })
+              .eq('id', user?.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error("Error updating verification prompt status:", error);
+                } else {
+                  setVerificationPromptShown(true);
+                }
+              });
+          }
+        }}
         userType="startup"
       />
     </div>
