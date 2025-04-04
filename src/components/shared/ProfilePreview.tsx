@@ -77,7 +77,7 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
             .from("startup_profiles")
             .select("*")
             .eq("id", userId)
-            .maybeSingle();
+            .single();
 
           if (!startupError && startupData) {
             additionalData = { ...startupData };
@@ -141,9 +141,6 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
 
   const isInvestor = profile.user_type === "investor";
   const preferences = profile.investor_preferences || {};
-  
-  // Get company name based on user type
-  const companyName = isInvestor ? profile.company : profile.name;
 
   return (
     <div className="space-y-6">
@@ -161,9 +158,9 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
               </h3>
               <p className="text-muted-foreground">{profile.user_type === "startup" ? "Business" : "Investor"}</p>
               
-              {companyName && (
+              {profile.company && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  {profile.position ? `${profile.position} at ${companyName}` : companyName}
+                  {profile.position} at {profile.company}
                 </p>
               )}
             </div>

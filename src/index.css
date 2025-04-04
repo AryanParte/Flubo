@@ -95,7 +95,6 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
   }
 
   .glass-card {
@@ -144,44 +143,4 @@
   opacity: 0;
   transform: translateY(-10px);
   transition: opacity 300ms, transform 300ms;
-}
-
-/* Enhanced card styling */
-.card-hover-effect {
-  @apply transition-all duration-200 hover:shadow-md;
-}
-
-/* Better text truncation */
-.truncate-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Responsive fixes */
-@media (max-width: 640px) {
-  .responsive-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Ensure card content doesn't overflow */
-.card {
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.card-content {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-/* Make sure text doesn't overflow containers */
-.truncate-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }

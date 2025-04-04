@@ -1,23 +1,16 @@
 
 import React, { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, X, Search, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/AuthContext";
+import { Loader2, Search } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Contact {
   id: string;
@@ -26,11 +19,11 @@ interface Contact {
   user_type: string;
 }
 
-export interface SharePostDialogProps {
+interface SharePostDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  postId?: string;
-  postContent?: string;
+  postId: string;
+  postContent: string;
   postImage?: string | null;
   postAuthor?: {
     name: string;
@@ -38,14 +31,14 @@ export interface SharePostDialogProps {
   };
 }
 
-export function SharePostDialog({
+export const SharePostDialog = ({
   isOpen,
   onClose,
   postId,
   postContent,
   postImage,
   postAuthor
-}: SharePostDialogProps) {
+}: SharePostDialogProps) => {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -54,262 +47,290 @@ export function SharePostDialog({
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [postDetails, setPostDetails] = useState<any>(null);
-  
-  // Load contacts
+
+  // Fetch post details if author info wasn't provided
   useEffect(() => {
-    if (!isOpen || !user) return;
+    const fetchPostDetails = async () => {
+      if (!postAuthor && postId) {
+        try {
+          const { data, error } = await supabase
+            .from('posts')
+            .select('content, image_url, user_id, profiles:user_id(name)')
+            .eq('id', postId)
+            .single();
+            
+          if (error) {
+            console.error("Error fetching post details:", error);
+            return;
+          }
+          
+          if (data) {
+            setPostDetails(data);
+          }
+        } catch (error) {
+          console.error("Error in fetchPostDetails:", error);
+        }
+      }
+    };
     
-    const loadContacts = async () => {
+    fetchPostDetails();
+  }, [postId, postAuthor]);
+
+  // Fetch the user's contacts (people they've messaged before)
+  useEffect(() => {
+    const fetchContacts = async () => {
+      if (!user?.id || !isOpen) return;
+      
       setLoading(true);
       try {
-        // For now, we'll use some mock contacts
-        // In a real app, you'd fetch these from your API
-        const mockContacts = [
-          {
-            id: "contact-1",
-            name: "John Doe",
-            avatar: "",
-            user_type: "investor"
-          },
-          {
-            id: "contact-2",
-            name: "Jane Smith",
-            avatar: "",
-            user_type: "investor"
-          },
-          {
-            id: "contact-3",
-            name: "Tech Startup Inc",
-            avatar: "",
-            user_type: "startup"
-          }
-        ];
+        // Get unique contacts from messages (either sender or recipient)
+        const { data: messages, error } = await supabase
+          .from('messages')
+          .select('sender_id, recipient_id, sender:sender_id(id, name, user_type), recipient:recipient_id(id, name, user_type)')
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         
-        setContacts(mockContacts);
-      } catch (error) {
-        console.error("Error loading contacts:", error);
-        toast({
-          title: "Error loading contacts",
-          description: "Could not load contacts. Please try again later.",
-          variant: "destructive"
+        if (error) {
+          console.error("Error fetching contacts:", error);
+          toast({
+            title: "Error",
+            description: "Could not load your contacts",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Process messages to get unique contacts
+        const contactMap = new Map<string, Contact>();
+        
+        messages?.forEach((msg: any) => {
+          // If user is the sender, add recipient as contact
+          if (msg.sender_id === user.id && msg.recipient) {
+            const contact = {
+              id: msg.recipient.id,
+              name: msg.recipient.name || "Unknown",
+              avatar: msg.recipient.name ? msg.recipient.name.charAt(0).toUpperCase() : "?",
+              user_type: msg.recipient.user_type || "unknown"
+            };
+            contactMap.set(contact.id, contact);
+          }
+          
+          // If user is the recipient, add sender as contact
+          if (msg.recipient_id === user.id && msg.sender) {
+            const contact = {
+              id: msg.sender.id,
+              name: msg.sender.name || "Unknown",
+              avatar: msg.sender.name ? msg.sender.name.charAt(0).toUpperCase() : "?",
+              user_type: msg.sender.user_type || "unknown"
+            };
+            contactMap.set(contact.id, contact);
+          }
         });
+        
+        // Convert map to array and set state
+        setContacts(Array.from(contactMap.values()));
+      } catch (error) {
+        console.error("Error in fetchContacts:", error);
       } finally {
         setLoading(false);
       }
     };
     
-    // If we have a postId but no content, load the post details
-    const loadPostDetails = async () => {
-      if (!postId) return;
-      
-      try {
-        // Here you'd fetch the post details from your API
-        // For now, we'll use the provided props
-        setPostDetails({
-          content: postContent,
-          image_url: postImage,
-          author: postAuthor
-        });
-      } catch (error) {
-        console.error("Error loading post details:", error);
-      }
-    };
-    
-    loadContacts();
-    loadPostDetails();
-  }, [isOpen, user, postId, postContent, postImage, postAuthor]);
-  
-  // Filter contacts based on search query
-  const filteredContacts = searchQuery
-    ? contacts.filter(contact => 
-        contact.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : contacts;
-  
-  const handleSelectContact = (contact: Contact) => {
-    setSelectedContact(contact);
-  };
-  
-  const handleShare = async () => {
-    if (!user) {
+    fetchContacts();
+  }, [user?.id, isOpen]);
+
+  const handleSendShare = async () => {
+    if (!selectedContact || !user?.id) {
       toast({
-        title: "Authentication required",
-        description: "You must be logged in to share posts",
-        variant: "destructive"
+        title: "Select a contact",
+        description: "Please select a contact to share with",
+        variant: "destructive",
       });
       return;
     }
-    
-    if (!selectedContact) {
-      toast({
-        title: "No recipient selected",
-        description: "Please select a recipient to share with",
-        variant: "default"
-      });
-      return;
-    }
-    
-    setSending(true);
-    
+
     try {
-      // Here you'd implement your share functionality
-      // For now, we'll just simulate a successful share
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setSending(true);
+      
+      // Create a JSON representation of the post preview
+      const postPreview = {
+        id: postId,
+        content: postContent,
+        image_url: postImage,
+        author: postAuthor || (postDetails?.profiles ? { 
+          name: postDetails.profiles.name, 
+          avatar: postDetails.profiles.name.charAt(0).toUpperCase() 
+        } : null)
+      };
+      
+      // Create message content with the post preview
+      const shareMessage = JSON.stringify({
+        type: "shared_post",
+        message: message || "Shared a post with you",
+        post: postPreview
+      });
+      
+      // Insert message to database
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          content: shareMessage,
+          sender_id: user.id,
+          recipient_id: selectedContact.id,
+          sent_at: new Date().toISOString()
+        });
+        
+      if (error) {
+        console.error("Error sharing post:", error);
+        toast({
+          title: "Error",
+          description: "Failed to share post",
+          variant: "destructive",
+        });
+        return;
+      }
       
       toast({
         title: "Post shared",
-        description: `Successfully shared post with ${selectedContact.name}`,
-        variant: "default"
+        description: `Your post has been shared with ${selectedContact.name}`,
       });
       
+      // Clear input and close dialog
+      setMessage("");
+      setSelectedContact(null);
       onClose();
     } catch (error) {
-      console.error("Error sharing post:", error);
+      console.error("Error in handleSendShare:", error);
       toast({
-        title: "Error sharing post",
-        description: "Could not share the post. Please try again later.",
-        variant: "destructive"
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
       });
     } finally {
       setSending(false);
     }
   };
-  
+
+  const filteredContacts = searchQuery 
+    ? contacts.filter(contact => 
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : contacts;
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Share Post</DialogTitle>
-          <DialogDescription>
-            Share this post with your connections
-          </DialogDescription>
         </DialogHeader>
         
-        <div className="mt-2 flex-1 overflow-hidden">
-          {/* Post preview if sharing an existing post */}
-          {postDetails && (
-            <Card className="p-3 mb-4 bg-muted/30 border border-border/40 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={postDetails.author?.avatar} />
-                  <AvatarFallback>{postDetails.author?.name?.charAt(0) || "U"}</AvatarFallback>
-                </Avatar>
-                <div className="text-sm font-medium">{postDetails.author?.name || "Unknown User"}</div>
+        <div className="mt-2 mb-4">
+          <Card className="p-3 bg-secondary/50 border border-border/50">
+            <div className="flex items-start space-x-2 mb-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>
+                  {postAuthor?.avatar || (postDetails?.profiles?.name.charAt(0).toUpperCase() || '?')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="font-medium text-sm truncate">
+                  {postAuthor?.name || postDetails?.profiles?.name || 'Unknown User'}
+                </p>
               </div>
-              
-              <div className="text-sm line-clamp-2 mb-2">
-                {postDetails.content}
+            </div>
+            <div className="text-sm text-muted-foreground line-clamp-2 mb-2">
+              {postContent}
+            </div>
+            {postImage || postDetails?.image_url ? (
+              <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+                <img 
+                  src={postImage || postDetails?.image_url} 
+                  alt="Post image"
+                  className="object-cover w-full h-full"
+                />
               </div>
-              
-              {postDetails.image_url && (
-                <div className="relative h-24 w-full bg-muted rounded overflow-hidden">
-                  <img 
-                    src={postDetails.image_url} 
-                    alt="Post attachment" 
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              )}
-            </Card>
-          )}
-          
-          {/* Message input */}
-          <div className="mb-4">
-            <Textarea
-              placeholder="Add a message (optional)"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="resize-none"
-              rows={3}
-            />
-          </div>
-          
-          {/* Contact search */}
-          <div className="mb-2 relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search connections..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          
-          {/* Contacts list */}
-          <ScrollArea className="h-[200px]">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Loading contacts...</span>
-              </div>
-            ) : filteredContacts.length > 0 ? (
-              <div className="space-y-2 pr-3">
-                {filteredContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className={`flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-accent/10 ${
-                      selectedContact?.id === contact.id ? "bg-accent/20" : ""
-                    }`}
-                    onClick={() => handleSelectContact(contact)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={contact.avatar} alt={contact.name} />
-                        <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="text-sm font-medium">{contact.name}</div>
-                        <div className="text-xs text-muted-foreground capitalize">{contact.user_type}</div>
-                      </div>
-                    </div>
-                    
-                    {selectedContact?.id === contact.id && (
-                      <div className="h-4 w-4 rounded-full bg-accent" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                {searchQuery ? "No contacts found matching your search" : "No contacts available"}
-              </div>
-            )}
-          </ScrollArea>
+            ) : null}
+          </Card>
         </div>
         
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose}>
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+            <Input
+              placeholder="Search contacts..."
+              className="pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <div className="border rounded-md">
+            <ScrollArea className="h-48">
+              {loading ? (
+                <div className="flex items-center justify-center h-full py-4">
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  <span>Loading contacts...</span>
+                </div>
+              ) : filteredContacts.length > 0 ? (
+                filteredContacts.map(contact => (
+                  <div 
+                    key={contact.id}
+                    className={`p-3 cursor-pointer flex items-center border-b border-border/60 hover:bg-secondary/50 ${selectedContact?.id === contact.id ? 'bg-secondary' : ''}`}
+                    onClick={() => setSelectedContact(contact)}
+                  >
+                    <Avatar className="h-10 w-10 mr-3">
+                      <AvatarFallback className="bg-accent/10 text-accent">
+                        {contact.avatar}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center">
+                        <p className="font-medium text-sm truncate">{contact.name}</p>
+                        <span className="ml-2 text-xs text-muted-foreground px-1.5 py-0.5 bg-secondary rounded-full">
+                          {contact.user_type === 'investor' ? 'Investor' : 'Business'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-full p-4">
+                  <p className="text-muted-foreground text-center">
+                    {searchQuery 
+                      ? "No contacts matching your search" 
+                      : "No contacts found. Start a conversation with someone first."}
+                  </p>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+          
+          <Textarea
+            placeholder="Add a message (optional)"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="min-h-[80px]"
+          />
+        </div>
+        
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onClose} disabled={sending}>
             Cancel
           </Button>
           <Button 
-            onClick={handleShare} 
-            disabled={!selectedContact || sending}
+            variant="accent" 
+            onClick={handleSendShare}
+            disabled={sending || !selectedContact}
           >
             {sending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                Sharing...
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Sending...
               </>
             ) : (
-              <>Share</>
+              'Share'
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-// Legacy adapter component with renamed function
-export function SharePostDialogLegacy(props: { 
-  open?: boolean; 
-  onOpenChange?: (open: boolean) => void; 
-}) {
-  const { open, onOpenChange } = props;
-  
-  return (
-    <SharePostDialog
-      isOpen={!!open}
-      onClose={() => onOpenChange && onOpenChange(false)}
-    />
-  );
-}
+};

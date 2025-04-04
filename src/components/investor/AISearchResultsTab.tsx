@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 type StartupResult = {
   name: string;
@@ -137,68 +136,68 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {results.map((startup, index) => (
-          <Card 
+          <div 
             key={index}
-            className="flex flex-col h-full min-h-[450px] border border-border animate-fade-in overflow-hidden"
+            className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="h-32 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
               <span className="font-medium text-2xl">{startup.name.charAt(0)}</span>
             </div>
             
-            <CardContent className="p-6 flex-grow flex flex-col gap-4">
-              <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold truncate max-w-[70%]">{startup.name}</h3>
-                <div className="flex items-center gap-1 px-2.5 py-1 bg-accent/10 rounded text-accent text-xs">
+            <div className="p-6 flex-1 flex flex-col">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-semibold">{startup.name}</h3>
+                <div className="flex items-center space-x-1 px-2 py-1 bg-accent/10 rounded text-accent text-sm">
                   <Sparkles size={14} />
                   <span>{startup.matchScore}% Match</span>
                 </div>
               </div>
               
-              <div className="mb-2">
-                <p className="text-sm text-muted-foreground italic line-clamp-1">{startup.tagline}</p>
+              <div className="mb-4 text-sm">
+                <p className="text-muted-foreground italic">{startup.tagline}</p>
               </div>
               
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Building size={14} className="flex-shrink-0" />
-                  <span className="truncate">{startup.industry}</span>
+              <div className="grid grid-cols-2 gap-y-2 text-sm mb-4">
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <Building size={14} />
+                  <span>{startup.industry}</span>
                 </div>
                 
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <BarChart3 size={14} className="flex-shrink-0" />
-                  <span className="truncate">{startup.stage}</span>
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <BarChart3 size={14} />
+                  <span>{startup.stage}</span>
                 </div>
                 
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <MapPin size={14} className="flex-shrink-0" />
-                  <span className="truncate">{startup.location}</span>
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <MapPin size={14} />
+                  <span>{startup.location}</span>
                 </div>
                 
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Calendar size={14} className="flex-shrink-0" />
-                  <span className="truncate">Founded {startup.foundedYear}</span>
+                <div className="flex items-center space-x-1 text-muted-foreground">
+                  <Calendar size={14} />
+                  <span>Founded {startup.foundedYear}</span>
                 </div>
                 
-                <div className="col-span-2 flex items-center gap-1.5 text-muted-foreground">
-                  <DollarSign size={14} className="flex-shrink-0" />
-                  <span className="truncate">Raised {startup.funding}</span>
+                <div className="col-span-2 flex items-center space-x-1 text-muted-foreground">
+                  <DollarSign size={14} />
+                  <span>Raised {startup.funding}</span>
                 </div>
               </div>
               
-              <p className="text-sm line-clamp-2 min-h-[2.5rem] mt-2">{startup.description}</p>
+              <p className="mb-4 text-sm">{startup.description}</p>
               
               {/* External Links */}
               {(startup.websiteUrl || startup.demoUrl) && (
-                <div className="flex gap-2 mt-auto">
+                <div className="flex space-x-2 mb-4">
                   {startup.demoUrl && (
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="text-xs flex items-center h-8"
+                      className="text-xs flex items-center"
                       onClick={(e) => handleOpenLink(startup.demoUrl!, e)}
                     >
-                      <ExternalLink size={14} className="mr-1.5" />
+                      <ExternalLink size={14} className="mr-1" />
                       Demo
                     </Button>
                   )}
@@ -206,50 +205,48 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="text-xs flex items-center h-8"
+                      className="text-xs flex items-center"
                       onClick={(e) => handleOpenLink(startup.websiteUrl!, e)}
                     >
-                      <Globe size={14} className="mr-1.5" />
+                      <Globe size={14} className="mr-1" />
                       Website
                     </Button>
                   )}
                 </div>
               )}
-            </CardContent>
-            
-            <CardFooter className="px-6 py-4 border-t border-border">
-              <div className="flex gap-3 w-full">
+              
+              <div className="mt-auto flex space-x-3">
                 <Button 
                   variant="accent" 
                   size="sm" 
-                  className="flex-1 h-9"
+                  className="flex-1"
                   onClick={() => handleConnectClick(startup)}
                   disabled={connecting === startup.name}
                 >
                   {connecting === startup.name ? (
                     <>
-                      <Loader2 size={14} className="mr-1.5 animate-spin" />
+                      <Loader2 size={14} className="mr-1 animate-spin" />
                       Connecting...
                     </>
                   ) : (
                     <>
-                      <MessageSquare size={14} className="mr-1.5" />
+                      <MessageSquare size={14} className="mr-1" />
                       Connect
                     </>
                   )}
                 </Button>
                 <Button 
-                  variant={interestedIn.includes(startup.name) ? "default" : "secondary"}
+                  variant={interestedIn.includes(startup.name) ? "default" : "outline"}
                   size="sm"
-                  className="flex-1 h-9"
+                  className="flex-1"
                   onClick={() => handleExpressInterest(startup)}
                 >
-                  <ThumbsUp size={14} className="mr-1.5" />
+                  <ThumbsUp size={14} className="mr-1" />
                   {interestedIn.includes(startup.name) ? "Interested" : "Express Interest"}
                 </Button>
               </div>
-            </CardFooter>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
     </div>

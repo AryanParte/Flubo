@@ -74,17 +74,17 @@ export const InvestorList = ({
   
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+      <div className="glass-card p-6 rounded-lg">
         {showSearch && (
-          <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border">
-            <h2 className="text-lg font-semibold mb-4 md:mb-0">Find Investors</h2>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <h2 className="text-lg font-medium">Find Investors</h2>
             
-            <div className="mt-2 md:mt-0 w-full md:w-auto flex flex-col md:flex-row gap-3">
-              <div className="relative w-full md:w-64 lg:w-80">
+            <div className="mt-4 md:mt-0 w-full md:w-auto flex flex-col md:flex-row gap-3">
+              <div className="relative w-full md:w-72">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                 <input
-                  placeholder="Search by name, industry, location"
-                  className="pl-10 w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  placeholder="Search investors by name, industry, or location"
+                  className="pl-9 w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -96,42 +96,38 @@ export const InvestorList = ({
                 onClick={handleRefresh} 
                 disabled={refreshing}
                 title="Refresh investor data"
-                className="h-9 w-9 rounded-md flex-shrink-0"
+                className="h-10 w-10 rounded-md"
               >
-                <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
               </Button>
             </div>
           </div>
         )}
         
         {showTabs && (
-          <div className="px-6 pt-6">
-            <Tabs defaultValue="all" value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="grid w-full md:w-auto grid-cols-3 md:inline-flex">
-                <TabsTrigger value="all">All Investors</TabsTrigger>
-                <TabsTrigger value="angel">Angel Investors</TabsTrigger>
-                <TabsTrigger value="vc">Venture Capital</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs defaultValue="all" className="mb-6" value={activeTab} onValueChange={handleTabChange}>
+            <TabsList>
+              <TabsTrigger value="all">All Investors</TabsTrigger>
+              <TabsTrigger value="angel">Angel Investors</TabsTrigger>
+              <TabsTrigger value="vc">Venture Capital</TabsTrigger>
+            </TabsList>
+          </Tabs>
         )}
         
-        <div className="p-6">
-          {displayedInvestors.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {displayedInvestors.map((investor) => (
-                <InvestorCard 
-                  key={investor.id} 
-                  investor={investor} 
-                  onShowFollowers={onShowFollowers}
-                  onShowFollowing={onShowFollowing}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-          )}
-        </div>
+        {displayedInvestors.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayedInvestors.map((investor) => (
+              <InvestorCard 
+                key={investor.id} 
+                investor={investor} 
+                onShowFollowers={onShowFollowers}
+                onShowFollowing={onShowFollowing}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        )}
       </div>
     </div>
   );

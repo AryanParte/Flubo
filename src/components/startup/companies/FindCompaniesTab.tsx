@@ -27,57 +27,53 @@ export const FindCompaniesTab = () => {
   } = useDiscoverCompanies();
   
   return (
-    <div className="p-4 md:p-6">
+    <div>
       {/* Filters and Sort */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
-        <div className="p-6">
-          <FilterBar 
-            appliedFilters={appliedFilters}
-            setAppliedFilters={setAppliedFilters}
-            sortOption={sortOption}
-            onSortChange={handleSortChange}
-          />
-        
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-accent mr-2" />
-              <p>Loading companies...</p>
-            </div>
-          ) : companies.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground mb-4">No companies available at the moment.</p>
-              <p className="text-sm text-muted-foreground">Check back later for new company listings.</p>
-            </div>
-          ) : (
-            <>
-              {/* Company Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                {companies.map((company, index) => (
-                  <CompanyCard 
-                    key={company.id}
-                    company={company}
-                    index={index}
-                    onInterested={handleInterestedClick}
-                    onSkip={handleSkipClick}
-                  />
-                ))}
-              </div>
-              
-              {/* Load More */}
-              {companies.length > 0 && (
-                <div className="mt-8 text-center">
-                  <Button 
-                    variant="outline"
-                    onClick={handleLoadMore}
-                  >
-                    Load More Companies
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+      <FilterBar 
+        appliedFilters={appliedFilters}
+        setAppliedFilters={setAppliedFilters}
+        sortOption={sortOption}
+        onSortChange={handleSortChange}
+      />
+      
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-accent mr-2" />
+          <p>Loading companies...</p>
         </div>
-      </div>
+      ) : companies.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-muted-foreground mb-4">No companies available at the moment.</p>
+          <p className="text-sm text-muted-foreground">Check back later for new company listings.</p>
+        </div>
+      ) : (
+        <>
+          {/* Company Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {companies.map((company, index) => (
+              <CompanyCard 
+                key={company.id}
+                company={company}
+                index={index}
+                onInterested={handleInterestedClick}
+                onSkip={handleSkipClick}
+              />
+            ))}
+          </div>
+          
+          {/* Load More */}
+          {companies.length > 0 && (
+            <div className="mt-8 text-center">
+              <Button 
+                variant="outline"
+                onClick={handleLoadMore}
+              >
+                Load More Companies
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Message Dialog */}
       {selectedCompany && user && (
