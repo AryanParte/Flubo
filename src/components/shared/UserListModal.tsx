@@ -65,40 +65,52 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
     
     setLoading(true);
     try {
-      let usersData;
+      let userData = [];
       
       if (type === "followers") {
-        // Get users who follow this user - these users have the current userId as their following_id
+        // Get users who follow this user
         const { data, error } = await supabase
           .from('followers')
-          .select(`
-            follower_id,
-            profiles:follower_id(*)
-          `)
+          .select('follower_id')
           .eq('following_id', userId);
           
         if (error) throw error;
         
-        // Extract the profile data from the nested structure
-        usersData = data.map(item => item.profiles);
+        if (data && data.length > 0) {
+          // Fetch profiles for all follower_ids
+          const followerIds = data.map(item => item.follower_id);
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', followerIds);
+            
+          if (profilesError) throw profilesError;
+          userData = profilesData || [];
+        }
       } else {
-        // Get users this user follows - the current userId is the follower_id
+        // Get users this user follows
         const { data, error } = await supabase
           .from('followers')
-          .select(`
-            following_id,
-            profiles:following_id(*)
-          `)
+          .select('following_id')
           .eq('follower_id', userId);
           
         if (error) throw error;
         
-        // Extract the profile data from the nested structure
-        usersData = data.map(item => item.profiles);
+        if (data && data.length > 0) {
+          // Fetch profiles for all following_ids
+          const followingIds = data.map(item => item.following_id);
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', followingIds);
+            
+          if (profilesError) throw profilesError;
+          userData = profilesData || [];
+        }
       }
       
-      console.log("Fetched users data:", usersData);
-      setUsers(usersData || []);
+      console.log("Fetched users data:", userData);
+      setUsers(userData || []);
       setError(null);
       
       // Initialize follow status for each user
@@ -106,7 +118,7 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
       const loadingStatus: Record<string, boolean> = {};
       
       if (user) {
-        for (const userData of usersData || []) {
+        for (const userData of userData || []) {
           if (userData.id === user.id) continue;
           statuses[userData.id] = false;
           loadingStatus[userData.id] = false;
