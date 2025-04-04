@@ -29,6 +29,11 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
     if (open && userId) {
       console.log(`Modal opened for ${type}, fetching users for ID: ${userId}`);
       fetchUsers();
+    } else {
+      // Reset state when modal closes
+      setUsers([]);
+      setFollowStatus({});
+      setFollowLoading({});
     }
   }, [open, userId, type]);
   
