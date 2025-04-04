@@ -65,7 +65,7 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
     
     setLoading(true);
     try {
-      let userData = [];
+      let usersData = [];
       
       if (type === "followers") {
         // Get users who follow this user
@@ -85,7 +85,7 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
             .in('id', followerIds);
             
           if (profilesError) throw profilesError;
-          userData = profilesData || [];
+          usersData = profilesData || [];
         }
       } else {
         // Get users this user follows
@@ -105,12 +105,12 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
             .in('id', followingIds);
             
           if (profilesError) throw profilesError;
-          userData = profilesData || [];
+          usersData = profilesData || [];
         }
       }
       
-      console.log("Fetched users data:", userData);
-      setUsers(userData || []);
+      console.log("Fetched users data:", usersData);
+      setUsers(usersData || []);
       setError(null);
       
       // Initialize follow status for each user
@@ -118,20 +118,20 @@ export function UserListModal({ open, onOpenChange, title, userId, type }: UserL
       const loadingStatus: Record<string, boolean> = {};
       
       if (user) {
-        for (const userData of userData || []) {
-          if (userData.id === user.id) continue;
-          statuses[userData.id] = false;
-          loadingStatus[userData.id] = false;
+        for (const userProfile of usersData || []) {
+          if (userProfile.id === user.id) continue;
+          statuses[userProfile.id] = false;
+          loadingStatus[userProfile.id] = false;
           
           // Check follow status
           const { data: followData } = await supabase
             .from('followers')
             .select('*')
             .eq('follower_id', user.id)
-            .eq('following_id', userData.id)
+            .eq('following_id', userProfile.id)
             .maybeSingle();
             
-          statuses[userData.id] = !!followData;
+          statuses[userProfile.id] = !!followData;
         }
       }
       
