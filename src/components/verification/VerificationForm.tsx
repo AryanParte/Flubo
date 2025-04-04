@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -154,11 +153,14 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
       });
       
       if (error) {
-        throw error;
+        console.error("Payment creation error:", error);
+        throw new Error(error.message || "Failed to create payment session");
       }
       
       if (paymentData?.url) {
         window.location.href = paymentData.url;
+      } else if (paymentData?.error) {
+        throw new Error(paymentData.error);
       } else {
         throw new Error("Payment URL not returned");
       }
@@ -166,7 +168,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
       console.error("Verification error:", error);
       toast({
         title: "Error",
-        description: "Failed to process verification. Please try again.",
+        description: error.message || "Failed to process verification. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -205,11 +207,14 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
       });
       
       if (error) {
-        throw error;
+        console.error("Payment creation error:", error);
+        throw new Error(error.message || "Failed to create payment session");
       }
       
       if (paymentData?.url) {
         window.location.href = paymentData.url;
+      } else if (paymentData?.error) {
+        throw new Error(paymentData.error);
       } else {
         throw new Error("Payment URL not returned");
       }
@@ -217,7 +222,7 @@ export const VerificationForm: React.FC<{ userType: "startup" | "investor" }> = 
       console.error("Verification error:", error);
       toast({
         title: "Error",
-        description: "Failed to process verification. Please try again.",
+        description: error.message || "Failed to process verification. Please try again.",
         variant: "destructive",
       });
     } finally {

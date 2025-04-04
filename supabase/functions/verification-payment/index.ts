@@ -18,6 +18,17 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize Stripe first to catch any API key issues early
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      console.error("Stripe secret key is not configured");
+      throw new Error("Stripe payment is not configured. Please contact support.");
+    }
+    
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2023-10-16",
+    });
+    
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -43,16 +54,6 @@ serve(async (req) => {
     // Set price based on user type
     const amount = verificationType === "startup" ? STARTUP_PRICE : INVESTOR_PRICE;
     const formattedPrice = (amount / 100).toFixed(2);
-
-    // Initialize Stripe
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeSecretKey) {
-      throw new Error("Stripe secret key not configured");
-    }
-    
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2023-10-16",
-    });
 
     // Store verification responses
     await supabaseClient
