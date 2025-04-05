@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,8 +22,11 @@ export const StartupCard = ({
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
+    console.log("Opening URL:", url);
     if (url && url !== '#') {
       window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      console.log("URL is invalid:", url);
     }
   };
 
@@ -39,6 +41,8 @@ export const StartupCard = ({
   // Default placeholder URLs - in a real app, these would come from the database
   const demoUrl = startup.demoUrl || '#';
   const websiteUrl = startup.websiteUrl || '#';
+  console.log("Startup website URL:", websiteUrl, "Original website field:", startup.website);
+  
   const hasDemoContent = startup.demoUrl || startup.demoVideo || startup.demoVideoPath;
   const hasWebsite = websiteUrl && websiteUrl !== '#';
 

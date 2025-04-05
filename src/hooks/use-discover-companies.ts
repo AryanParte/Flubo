@@ -107,7 +107,7 @@ export const useDiscoverCompanies = () => {
         score: Math.floor(Math.random() * 40) + 60, // 60-99% match
         lookingForFunding: company.looking_for_funding || false,
         lookingForDesignPartner: company.looking_for_design_partner || false,
-        websiteUrl: company.website || '#',
+        websiteUrl: company.website || '#', // Map website field to websiteUrl property
         demoUrl: company.demo_url || '#',
         demoVideo: company.demo_video || undefined,
         demoVideoPath: company.demo_video_path || undefined
