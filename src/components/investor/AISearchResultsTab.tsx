@@ -138,17 +138,18 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
         {results.map((startup, index) => (
           <div 
             key={index}
-            className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in"
+            className="rounded-lg overflow-hidden flex flex-col glossy-card animate-fade-in"
             style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className="h-32 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
+            <span className="glossy-highlight" />
+            <div className="h-32 bg-gradient-to-r from-accent/30 to-accent/10 flex items-center justify-center">
               <span className="font-medium text-2xl">{startup.name.charAt(0)}</span>
             </div>
             
             <div className="p-6 flex-1 flex flex-col">
               <div className="flex justify-between items-start mb-3">
                 <h3 className="text-lg font-semibold">{startup.name}</h3>
-                <div className="flex items-center space-x-1 px-2 py-1 bg-accent/10 rounded text-accent text-sm">
+                <div className="flex items-center space-x-1 px-2 py-1 bg-accent/20 backdrop-blur-sm rounded text-accent text-sm">
                   <Sparkles size={14} />
                   <span>{startup.matchScore}% Match</span>
                 </div>
@@ -194,7 +195,7 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="text-xs flex items-center"
+                      className="text-xs flex items-center backdrop-blur-sm"
                       onClick={(e) => handleOpenLink(startup.demoUrl!, e)}
                     >
                       <ExternalLink size={14} className="mr-1" />
@@ -205,7 +206,7 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="text-xs flex items-center"
+                      className="text-xs flex items-center backdrop-blur-sm"
                       onClick={(e) => handleOpenLink(startup.websiteUrl!, e)}
                     >
                       <Globe size={14} className="mr-1" />
@@ -219,7 +220,7 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
                 <Button 
                   variant="accent" 
                   size="sm" 
-                  className="flex-1"
+                  className="flex-1 backdrop-blur-sm"
                   onClick={() => handleConnectClick(startup)}
                   disabled={connecting === startup.name}
                 >
@@ -238,7 +239,7 @@ export const AISearchResultsTab = ({ results }: AISearchResultsTabProps) => {
                 <Button 
                   variant={interestedIn.includes(startup.name) ? "default" : "outline"}
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 backdrop-blur-sm"
                   onClick={() => handleExpressInterest(startup)}
                 >
                   <ThumbsUp size={14} className="mr-1" />

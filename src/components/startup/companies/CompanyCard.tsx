@@ -56,11 +56,12 @@ export const CompanyCard = ({
   return (
     <>
       <div 
-        className="rounded-lg overflow-hidden flex flex-col bg-card border border-border animate-fade-in cursor-pointer"
+        className="rounded-lg overflow-hidden flex flex-col glossy-card animate-fade-in cursor-pointer"
         style={{ animationDelay: `${index * 100}ms` }}
         onClick={handleCardClick}
       >
-        <div className="h-48 bg-gradient-to-r from-accent/20 to-accent/5 flex items-center justify-center">
+        <span className="glossy-highlight" />
+        <div className="h-48 bg-gradient-to-r from-accent/30 to-accent/10 flex items-center justify-center">
           {company.logo ? (
             <img src={company.logo} alt={`${company.name} logo`} className="max-h-full max-w-full object-contain" />
           ) : (
@@ -71,7 +72,7 @@ export const CompanyCard = ({
         <div className="p-6 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-3">
             <h3 className="font-semibold text-xl">{company.name}</h3>
-            <div className="bg-accent/10 text-accent text-xs font-medium rounded-full px-2.5 py-1 flex items-center">
+            <div className="bg-accent/20 backdrop-blur-sm text-accent text-xs font-medium rounded-full px-2.5 py-1 flex items-center">
               {company.score}% Match
             </div>
           </div>
@@ -84,11 +85,11 @@ export const CompanyCard = ({
           <p className="text-sm text-muted-foreground mb-4">{company.bio || company.tagline || 'No description available'}</p>
           
           <div className="flex flex-wrap gap-2 mb-4">
-            <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs">
+            <div className="px-2 py-1 rounded-md bg-secondary/70 backdrop-blur-sm text-secondary-foreground text-xs">
               {company.industry || 'Technology'}
             </div>
             {company.raised_amount && (
-              <div className="px-2 py-1 rounded-md bg-secondary/50 text-secondary-foreground text-xs">
+              <div className="px-2 py-1 rounded-md bg-secondary/50 backdrop-blur-sm text-secondary-foreground text-xs">
                 Raised: {company.raised_amount}
               </div>
             )}
@@ -96,13 +97,13 @@ export const CompanyCard = ({
 
           <div className="flex flex-wrap gap-2 mb-4">
             {company.lookingForFunding && (
-              <div className="px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs flex items-center">
+              <div className="px-2 py-1 rounded-md bg-green-100/70 backdrop-blur-sm text-green-800 dark:bg-green-900/40 dark:text-green-400 text-xs flex items-center">
                 <Briefcase className="h-3 w-3 mr-1" />
                 Seeking Investment
               </div>
             )}
             {company.lookingForDesignPartner && (
-              <div className="px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-xs flex items-center">
+              <div className="px-2 py-1 rounded-md bg-blue-100/70 backdrop-blur-sm text-blue-800 dark:bg-blue-900/40 dark:text-blue-400 text-xs flex items-center">
                 <Handshake className="h-3 w-3 mr-1" />
                 Seeking Design Partner
               </div>
@@ -114,7 +115,7 @@ export const CompanyCard = ({
           <Button 
             variant="outline" 
             size="sm" 
-            className="text-xs flex items-center"
+            className="text-xs flex items-center backdrop-blur-sm"
             onClick={(e) => handleDemoClick(e)}
             disabled={!hasDemoContent}
           >
@@ -124,7 +125,7 @@ export const CompanyCard = ({
           <Button 
             variant="outline" 
             size="sm" 
-            className="text-xs flex items-center"
+            className="text-xs flex items-center backdrop-blur-sm"
             onClick={(e) => handleOpenLink(websiteUrl, e)}
             disabled={!hasWebsite}
           >
@@ -136,7 +137,7 @@ export const CompanyCard = ({
         <div className="px-6 pb-6 mt-auto flex space-x-2">
           <Button 
             variant="secondary"
-            className="flex-1 flex justify-center items-center"
+            className="flex-1 flex justify-center items-center backdrop-blur-sm"
             onClick={(e) => {
               e.stopPropagation();
               onSkip(company.id);
@@ -147,7 +148,7 @@ export const CompanyCard = ({
           </Button>
           <Button 
             variant="accent"
-            className="flex-1 flex justify-center items-center"
+            className="flex-1 flex justify-center items-center backdrop-blur-sm"
             onClick={(e) => {
               e.stopPropagation();
               onInterested(company.id);
@@ -166,7 +167,8 @@ export const CompanyCard = ({
       />
 
       <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl glossy-card">
+          <span className="glossy-highlight" />
           <DialogHeader>
             <DialogTitle className="flex justify-between items-center">
               <span>{company.name} - Demo</span>

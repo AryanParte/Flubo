@@ -119,7 +119,8 @@ export function Post({
   };
   
   return (
-    <Card className="p-4">
+    <Card className="p-4 glossy-card">
+      <span className="glossy-highlight" />
       <div className="flex justify-between items-start">
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10">
@@ -131,7 +132,8 @@ export function Post({
               <HoverCardTrigger asChild>
                 <p className="font-medium cursor-pointer hover:underline">{author.name}</p>
               </HoverCardTrigger>
-              <HoverCardContent className="w-80 p-0" align="start">
+              <HoverCardContent className="w-80 p-0 glossy-card" align="start">
+                <span className="glossy-highlight" />
                 <ProfilePreview userId={author.id} />
               </HoverCardContent>
             </HoverCard>
@@ -145,7 +147,8 @@ export function Post({
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="glossy-card">
+            <span className="glossy-highlight" />
             <DropdownMenuItem>Save Post</DropdownMenuItem>
             <DropdownMenuItem>Follow {author.name}</DropdownMenuItem>
             <DropdownMenuItem>Report Post</DropdownMenuItem>
@@ -162,7 +165,7 @@ export function Post({
               <Badge 
                 key={tag} 
                 variant="secondary" 
-                className="text-xs cursor-pointer hover:bg-accent"
+                className="text-xs cursor-pointer hover:bg-accent backdrop-blur-sm"
                 onClick={() => onHashtagClick && onHashtagClick(tag)}
               >
                 #{tag}
