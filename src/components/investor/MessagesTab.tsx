@@ -241,20 +241,18 @@ export const MessagesTab = () => {
     handleRealtimeUpdate
   );
   
+  // Monitor realtime connection status
   useEffect(() => {
     if (channel) {
       console.log("Channel established:", channel);
       setRealtimeStatus(channel.state);
       
-      const subscription = channel.subscribe((status) => {
-        console.log("Realtime status:", status);
-        setRealtimeStatus(status);
-      });
+      // We don't call subscribe() here anymore as it's already handled in the hook
       
       const testConnectionInterval = setInterval(() => {
         if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-          console.log("Attempting to reconnect channel...");
-          channel.subscribe();
+          console.log("Channel not in SUBSCRIBED state:", channel.state);
+          // Don't attempt to resubscribe, the hook handles reconnection
         }
       }, 10000);
       
