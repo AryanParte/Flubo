@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 import { sendMessage } from "@/services/message-service";
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -256,7 +257,7 @@ export const MessagesTab = () => {
       
       // Test the connection with a heartbeat
       const testConnectionInterval = setInterval(() => {
-        if (channel.state !== 'SUBSCRIBED') {
+        if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.log("Attempting to reconnect channel...");
           channel.subscribe();
         }
@@ -454,7 +455,7 @@ export const MessagesTab = () => {
       {/* Realtime connection indicator */}
       <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-muted-foreground">
         <span>Realtime:</span>
-        {realtimeStatus === 'SUBSCRIBED' ? (
+        {realtimeStatus === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED ? (
           <div className="flex items-center text-green-500">
             <Wifi size={14} className="mr-1" />
             <span>Connected</span>

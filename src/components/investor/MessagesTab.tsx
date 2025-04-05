@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image, Wifi, WifiOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 import { sendMessage } from "@/services/message-service";
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -241,7 +241,6 @@ export const MessagesTab = () => {
     handleRealtimeUpdate
   );
   
-  // Monitor realtime connection status
   useEffect(() => {
     if (channel) {
       console.log("Channel established:", channel);
@@ -252,9 +251,8 @@ export const MessagesTab = () => {
         setRealtimeStatus(status);
       });
       
-      // Test the connection with a heartbeat
       const testConnectionInterval = setInterval(() => {
-        if (channel.state !== 'SUBSCRIBED') {
+        if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.log("Attempting to reconnect channel...");
           channel.subscribe();
         }
@@ -300,7 +298,6 @@ export const MessagesTab = () => {
     try {
       setSendingMessage(true);
       
-      // Create the new message object for optimistic update
       const now = new Date().toISOString();
       const optimisticMessage = {
         id: `temp-${Date.now()}`,
@@ -309,11 +306,9 @@ export const MessagesTab = () => {
         time: formatMessageTime(now)
       };
       
-      // Apply optimistic update to UI
       setConversations(prev => 
         prev.map(convo => {
           if (convo.id === selectedChat) {
-            // Update the conversation with the new message
             return {
               ...convo,
               messages: [...convo.messages, optimisticMessage],
@@ -326,13 +321,10 @@ export const MessagesTab = () => {
         })
       );
       
-      // Clear the input immediately for better UX
       setMessage("");
       
-      // Scroll to bottom immediately for better UX
       setTimeout(scrollToBottom, 50);
       
-      // Now send the actual message to the server
       const { success, error, message: sentMessage } = await sendMessage(
         userId,
         selectedChat,
@@ -351,7 +343,6 @@ export const MessagesTab = () => {
       
       console.log("Message sent successfully:", sentMessage);
       
-      // Update the temporary message with the real message ID
       if (sentMessage && sentMessage.id) {
         setConversations(prev => 
           prev.map(convo => {
@@ -430,10 +421,9 @@ export const MessagesTab = () => {
 
   return (
     <div className="border border-border rounded-lg bg-background/50 flex h-[calc(100vh-15rem)] relative">
-      {/* Realtime connection indicator */}
       <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-muted-foreground">
         <span>Realtime:</span>
-        {realtimeStatus === 'SUBSCRIBED' ? (
+        {realtimeStatus === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED ? (
           <div className="flex items-center text-green-500">
             <Wifi size={14} className="mr-1" />
             <span>Connected</span>
