@@ -46,7 +46,9 @@ export const fetchCompanies = async (
         demo_video_path,
         website,
         stealth_mode
-      `);
+      `)
+      // Add filter for stealth mode - only show companies NOT in stealth mode
+      .eq('stealth_mode', false);
     
     // Apply exclusions
     if (excludedIds.length > 0) {
