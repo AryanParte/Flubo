@@ -68,21 +68,37 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
+      // Set up a simple progress tracker
+      let progressInterval: number;
+      const simulateProgress = () => {
+        progressInterval = window.setInterval(() => {
+          setUploadProgress(prev => {
+            // Cap at 90% until we know it's complete
+            if (prev < 90) {
+              return prev + 5;
+            }
+            return prev;
+          });
+        }, 500);
+      };
+      
+      simulateProgress();
+
       // Upload the file
       const { error: uploadError, data } = await supabase.storage
         .from('demo-videos')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: true,
-          onUploadProgress: (progress) => {
-            if (progress.totalBytes > 0) {
-              const percent = Math.round((progress.uploadedBytes / progress.totalBytes) * 100);
-              setUploadProgress(percent);
-            }
-          }
+          upsert: true
         });
 
+      // Clear the progress interval
+      clearInterval(progressInterval);
+
       if (uploadError) throw uploadError;
+
+      // Complete the progress
+      setUploadProgress(100);
 
       // Get the public URL for the uploaded video
       const { data: urlData } = supabase.storage
