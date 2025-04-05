@@ -2,9 +2,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
 import { Startup } from "@/types/startup";
 import { useAuth } from "@/context/AuthContext";
+import { fetchCompanies, recordInterest, skipCompany } from "@/services/company-discovery-service";
+import { enrichCompanyData, sortCompanies, filterByMatchScore } from "@/utils/company-utils";
 
 export type AppliedFilters = {
   stage?: string[];
@@ -25,92 +26,22 @@ export const useDiscoverCompanies = () => {
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Startup | null>(null);
   
-  const fetchCompanies = useCallback(async () => {
+  const loadCompanies = useCallback(async () => {
     if (!user?.id) return;
     
     try {
       setLoading(true);
       
-      const { data: existingConnections } = await supabase
-        .from('investor_matches')
-        .select('startup_id')
-        .eq('investor_id', user.id);
+      // Fetch raw company data
+      const rawCompanies = await fetchCompanies(user.id, appliedFilters, sortOption);
       
-      const excludedIds = existingConnections?.map(match => match.startup_id) || [];
-      
-      if (user.id) {
-        excludedIds.push(user.id);
-      }
-      
-      let query = supabase
-        .from('startup_profiles')
-        .select(`
-          id,
-          name,
-          tagline,
-          bio,
-          industry,
-          location,
-          stage,
-          raised_amount,
-          created_at,
-          looking_for_funding,
-          looking_for_design_partner,
-          demo_url,
-          demo_video,
-          demo_video_path,
-          website
-        `);
-      
-      if (excludedIds.length > 0) {
-        for (const id of excludedIds) {
-          if (id) {
-            query = query.neq('id', id);
-          }
-        }
-      }
-      
-      query = query.limit(20);
-      
-      if (appliedFilters.stage && appliedFilters.stage.length > 0) {
-        query = query.in('stage', appliedFilters.stage);
-      }
-      
-      if (appliedFilters.industry && appliedFilters.industry.length > 0) {
-        query = query.in('industry', appliedFilters.industry);
-      }
-      
-      if (appliedFilters.location && appliedFilters.location.length > 0) {
-        query = query.in('location', appliedFilters.location);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching companies:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load companies',
-          variant: 'destructive',
-        });
+      if (!rawCompanies) {
+        setCompanies([]);
         return;
       }
       
-      const enrichedCompanies = data.map(company => {
-        const websiteField = company.website && typeof company.website === 'string' ? company.website.trim() : '';
-        
-        return {
-          ...company,
-          score: Math.floor(Math.random() * 40) + 60,
-          lookingForFunding: company.looking_for_funding || false,
-          lookingForDesignPartner: company.looking_for_design_partner || false,
-          website: websiteField,
-          websiteUrl: websiteField,
-          demoUrl: company.demo_url || '#',
-          demoVideo: company.demo_video || undefined,
-          demoVideoPath: company.demo_video_path || undefined
-        };
-      });
+      // Process the data
+      const enrichedCompanies = enrichCompanyData(rawCompanies);
       
       console.log("Fetched companies with website data:", enrichedCompanies.map(c => ({
         id: c.id,
@@ -119,31 +50,13 @@ export const useDiscoverCompanies = () => {
         websiteUrl: c.websiteUrl
       })));
       
-      let sortedCompanies = [...enrichedCompanies];
+      // Sort and filter companies
+      let processedCompanies = sortCompanies(enrichedCompanies, sortOption);
+      processedCompanies = filterByMatchScore(processedCompanies, appliedFilters.minMatch);
       
-      if (sortOption === 'match') {
-        sortedCompanies.sort((a, b) => b.score - a.score);
-      } else if (sortOption === 'recent') {
-        sortedCompanies.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      } else if (sortOption === 'raised') {
-        sortedCompanies.sort((a, b) => {
-          const amountA = parseFloat(a.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
-          const amountB = parseFloat(b.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
-          return amountB - amountA;
-        });
-      }
-      
-      if (appliedFilters.minMatch) {
-        sortedCompanies = sortedCompanies.filter(company => 
-          company.score >= appliedFilters.minMatch!
-        );
-      }
-      
-      setCompanies(sortedCompanies);
+      setCompanies(processedCompanies);
     } catch (error) {
-      console.error('Error in fetchCompanies:', error);
+      console.error('Error in loadCompanies:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred',
@@ -155,8 +68,8 @@ export const useDiscoverCompanies = () => {
   }, [user?.id, appliedFilters, sortOption]);
   
   useEffect(() => {
-    fetchCompanies();
-  }, [fetchCompanies]);
+    loadCompanies();
+  }, [loadCompanies]);
   
   const handleSortChange = (newSort: SortOption) => {
     setSortOption(newSort);
@@ -179,24 +92,9 @@ export const useDiscoverCompanies = () => {
       setSelectedCompany(company);
       setMessageDialogOpen(true);
       
-      const { error } = await supabase
-        .from('investor_matches')
-        .insert({
-          investor_id: user.id,
-          startup_id: companyId,
-          match_score: company.score,
-          status: 'pending' // Changed from 'interested' to 'pending' to match allowed values
-        });
+      const result = await recordInterest(user.id, companyId, company.score);
       
-      if (error) {
-        console.error('Error recording interest:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to record your interest',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (!result.success) return;
       
       setCompanies(prev => prev.filter(c => c.id !== companyId));
       
@@ -214,23 +112,9 @@ export const useDiscoverCompanies = () => {
     if (!user?.id) return;
     
     try {
-      const { error } = await supabase
-        .from('investor_matches')
-        .insert({
-          investor_id: user.id,
-          startup_id: companyId,
-          status: 'skipped'
-        });
+      const result = await skipCompany(user.id, companyId);
       
-      if (error) {
-        console.error('Error recording skip:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to record your choice',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (!result.success) return;
       
       setCompanies(prev => prev.filter(c => c.id !== companyId));
       
