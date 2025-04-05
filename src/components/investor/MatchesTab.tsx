@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { MessageSquare, ThumbsUp, ThumbsDown, Eye, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ export const MatchesTab = () => {
     try {
       setLoading(true);
       
-      // Fetch AI matches - startups that have chatted with this investor's AI persona
       const { data: aiChats, error: aiError } = await supabase
         .from('ai_persona_chats')
         .select(`
@@ -54,9 +52,7 @@ export const MatchesTab = () => {
         console.error("Error fetching AI matches:", aiError);
         toast({ title: "Error", description: "Failed to load AI matches", variant: "destructive" });
       } else if (aiChats) {
-        // Now fetch startup profile data separately for each startup_id
         const enhancedMatches = await Promise.all((aiChats || []).map(async (chat) => {
-          // Default values for startup info
           const startup_id = chat.startup_id || '';
           const defaultStartup = {
             id: startup_id,
@@ -65,14 +61,12 @@ export const MatchesTab = () => {
             location: "Unknown",
             industry: "Technology",
             bio: "No description available",
-            raised_amount: "N/A",
+            raisedAmount: "N/A",
             tagline: "No tagline available"
           };
           
-          // Get profile data
           const profileData = chat.profiles;
           
-          // Fetch startup profile data separately
           let startupProfileData = null;
           if (chat.startup_id) {
             const { data: profileData, error: profileError } = await supabase
@@ -88,7 +82,6 @@ export const MatchesTab = () => {
             }
           }
           
-          // Check if ai_match_feed_status exists
           const { data: statusData } = await supabase
             .from('ai_match_feed_status')
             .select('status')
@@ -107,7 +100,7 @@ export const MatchesTab = () => {
             location: startupProfileData?.location || defaultStartup.location,
             industry: startupProfileData?.industry || defaultStartup.industry,
             bio: startupProfileData?.bio || defaultStartup.bio,
-            raised_amount: startupProfileData?.raised_amount || defaultStartup.raised_amount,
+            raisedAmount: startupProfileData?.raised_amount || defaultStartup.raisedAmount,
             tagline: startupProfileData?.tagline || defaultStartup.tagline,
             lookingForFunding: startupProfileData?.looking_for_funding || false,
             lookingForDesignPartner: startupProfileData?.looking_for_design_partner || false,
@@ -116,8 +109,7 @@ export const MatchesTab = () => {
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
           };
         }));
-
-        // Filter out ignored matches
+        
         const filteredMatches = enhancedMatches.filter(
           match => match.matchStatus !== 'ignored'
         );
@@ -125,7 +117,6 @@ export const MatchesTab = () => {
         setAiMatches(filteredMatches);
       }
       
-      // Fetch confirmed matches (mutual interest)
       const { data: mutualMatches, error: mutualError } = await supabase
         .from('investor_matches')
         .select(`
@@ -147,9 +138,7 @@ export const MatchesTab = () => {
       if (mutualError) {
         console.error("Error fetching confirmed matches:", mutualError);
       } else if (mutualMatches) {
-        // Now fetch startup profile data separately for each startup_id
         const enhancedConfirmedMatches = await Promise.all((mutualMatches || []).map(async (match) => {
-          // Default values for startup info
           const startup_id = match.startup_id || '';
           const defaultStartup = {
             id: startup_id,
@@ -158,14 +147,12 @@ export const MatchesTab = () => {
             location: "Unknown",
             industry: "Technology",
             bio: "No description available",
-            raised_amount: "N/A",
+            raisedAmount: "N/A",
             tagline: "No tagline available"
           };
           
-          // Get profile data
           const profileData = match.profiles;
           
-          // Fetch startup profile data separately
           let startupProfileData = null;
           if (match.startup_id) {
             const { data: profileData, error: profileError } = await supabase
@@ -189,7 +176,7 @@ export const MatchesTab = () => {
             location: startupProfileData?.location || defaultStartup.location,
             industry: startupProfileData?.industry || defaultStartup.industry,
             bio: startupProfileData?.bio || defaultStartup.bio,
-            raised_amount: startupProfileData?.raised_amount || defaultStartup.raised_amount,
+            raisedAmount: startupProfileData?.raised_amount || defaultStartup.raisedAmount,
             tagline: startupProfileData?.tagline || defaultStartup.tagline,
             lookingForFunding: startupProfileData?.looking_for_funding || false,
             lookingForDesignPartner: startupProfileData?.looking_for_design_partner || false
@@ -214,13 +201,11 @@ export const MatchesTab = () => {
     try {
       setViewingChat(chatId);
       
-      // Mark as viewed in the feed status
       const currentMatch = aiMatches.find(match => match.chatId === chatId);
       if (currentMatch && currentMatch.matchStatus === 'new' && user) {
         await updateMatchStatus(currentMatch.id, chatId, 'viewed');
       }
       
-      // Fetch chat messages
       const { data, error } = await supabase
         .from('ai_persona_messages')
         .select('sender_type, content, created_at')
@@ -255,7 +240,6 @@ export const MatchesTab = () => {
     try {
       if (!user) return;
       
-      // Check if a status record already exists
       const { data: existingStatus } = await supabase
         .from('ai_match_feed_status')
         .select('id')
@@ -264,13 +248,11 @@ export const MatchesTab = () => {
         .single();
       
       if (existingStatus) {
-        // Update existing status
         await supabase
           .from('ai_match_feed_status')
           .update({ status, updated_at: new Date().toISOString() })
           .eq('id', existingStatus.id);
       } else {
-        // Create new status record
         await supabase
           .from('ai_match_feed_status')
           .insert({
@@ -281,13 +263,11 @@ export const MatchesTab = () => {
           });
       }
       
-      // Update local state
       setAiMatches(prevMatches => 
         prevMatches.map(match => 
           match.id === startupId ? { ...match, matchStatus: status as any } : match
         )
       );
-      
     } catch (error) {
       console.error("Error updating match status:", error);
       toast({
@@ -319,7 +299,6 @@ export const MatchesTab = () => {
     try {
       await updateMatchStatus(startup.id, startup.chatId, 'requested_demo');
       
-      // Create a message to the startup
       await supabase
         .from('messages')
         .insert({
@@ -345,12 +324,10 @@ export const MatchesTab = () => {
     try {
       await updateMatchStatus(startup.id, startup.chatId, 'ignored');
       
-      // Remove from current view
       setAiMatches(prevMatches => 
         prevMatches.filter(match => match.id !== startup.id)
       );
       
-      // Reset current index if needed
       if (currentMatchIndex >= aiMatches.length - 1) {
         setCurrentMatchIndex(Math.max(0, aiMatches.length - 2));
       }
@@ -391,7 +368,6 @@ export const MatchesTab = () => {
     );
   }
 
-  // Show empty state if no matches
   if (aiMatches.length === 0 && confirmedMatches.length === 0) {
     return (
       <div className="p-10 text-center rounded-lg border border-dashed border-border mb-8">
@@ -410,13 +386,11 @@ export const MatchesTab = () => {
 
   return (
     <div>
-      {/* AI Match Feed */}
       {aiMatches.length > 0 && !viewingChat && (
         <>
           <h2 className="text-xl font-semibold mb-6">AI Match Feed</h2>
           <div className="flex items-center justify-center mb-8">
             <div className="glass-card rounded-xl overflow-hidden w-full max-w-2xl">
-              {/* Match Card Header */}
               <div className="bg-gradient-to-r from-accent/20 to-accent/5 p-5">
                 <div className="flex justify-between items-center">
                   <div>
@@ -432,7 +406,6 @@ export const MatchesTab = () => {
                 </div>
               </div>
               
-              {/* Match Card Body */}
               <div className="p-6">
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Match Summary</h4>
@@ -447,15 +420,14 @@ export const MatchesTab = () => {
                     <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground mr-2">
                       {aiMatches[currentMatchIndex]?.industry}
                     </div>
-                    {aiMatches[currentMatchIndex]?.raised_amount && aiMatches[currentMatchIndex]?.raised_amount !== "N/A" && (
+                    {aiMatches[currentMatchIndex]?.raisedAmount && aiMatches[currentMatchIndex]?.raisedAmount !== "N/A" && (
                       <div className="text-muted-foreground">
-                        Raised: {aiMatches[currentMatchIndex]?.raised_amount}
+                        Raised: {aiMatches[currentMatchIndex]?.raisedAmount}
                       </div>
                     )}
                   </div>
                 </div>
                 
-                {/* Action Buttons */}
                 <div className="flex space-x-2 mb-4">
                   <Button 
                     variant="secondary"
@@ -495,7 +467,6 @@ export const MatchesTab = () => {
                 </div>
               </div>
               
-              {/* Pagination Controls */}
               <div className="flex justify-between p-4 border-t border-border">
                 <Button 
                   variant="ghost" 
@@ -522,7 +493,6 @@ export const MatchesTab = () => {
         </>
       )}
       
-      {/* AI Chat View */}
       {viewingChat && (
         <div className="mb-8">
           <div className="flex items-center mb-4">
@@ -588,7 +558,6 @@ export const MatchesTab = () => {
         </div>
       )}
       
-      {/* Confirmed Matches */}
       {confirmedMatches.length > 0 && (
         <>
           <h3 className="text-lg font-medium mb-4">Confirmed Matches</h3>
