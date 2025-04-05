@@ -24,14 +24,12 @@ export const useDiscoverCompanies = () => {
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Startup | null>(null);
   
-  // Fetch companies
   const fetchCompanies = useCallback(async () => {
     if (!user?.id) return;
     
     try {
       setLoading(true);
       
-      // Get existing connections to exclude them
       const { data: existingConnections } = await supabase
         .from('investor_matches')
         .select('startup_id')
@@ -39,12 +37,10 @@ export const useDiscoverCompanies = () => {
       
       const excludedIds = existingConnections?.map(match => match.startup_id) || [];
       
-      // Always exclude the user's own company
       if (user.id) {
         excludedIds.push(user.id);
       }
       
-      // Fetch companies from the database
       let query = supabase
         .from('startup_profiles')
         .select(`
@@ -65,7 +61,6 @@ export const useDiscoverCompanies = () => {
           website
         `);
       
-      // Only apply the exclusion if there are IDs to exclude
       if (excludedIds.length > 0) {
         for (const id of excludedIds) {
           if (id) {
@@ -76,7 +71,6 @@ export const useDiscoverCompanies = () => {
       
       query = query.limit(20);
       
-      // Apply filters
       if (appliedFilters.stage && appliedFilters.stage.length > 0) {
         query = query.in('stage', appliedFilters.stage);
       }
@@ -101,19 +95,21 @@ export const useDiscoverCompanies = () => {
         return;
       }
       
-      // Transform data and add match score
-      const enrichedCompanies = data.map(company => ({
-        ...company,
-        score: Math.floor(Math.random() * 40) + 60, // 60-99% match
-        lookingForFunding: company.looking_for_funding || false,
-        lookingForDesignPartner: company.looking_for_design_partner || false,
-        websiteUrl: company.website || '#', // Map website field to websiteUrl property
-        demoUrl: company.demo_url || '#',
-        demoVideo: company.demo_video || undefined,
-        demoVideoPath: company.demo_video_path || undefined
-      }));
+      const enrichedCompanies = data.map(company => {
+        const websiteField = company.website && company.website.trim() !== '' ? company.website : null;
+        
+        return {
+          ...company,
+          score: Math.floor(Math.random() * 40) + 60,
+          lookingForFunding: company.looking_for_funding || false,
+          lookingForDesignPartner: company.looking_for_design_partner || false,
+          websiteUrl: websiteField || '#',
+          demoUrl: company.demo_url || '#',
+          demoVideo: company.demo_video || undefined,
+          demoVideoPath: company.demo_video_path || undefined
+        };
+      });
       
-      // Sort companies
       let sortedCompanies = [...enrichedCompanies];
       
       if (sortOption === 'match') {
@@ -130,7 +126,6 @@ export const useDiscoverCompanies = () => {
         });
       }
       
-      // Filter by minimum match if specified
       if (appliedFilters.minMatch) {
         sortedCompanies = sortedCompanies.filter(company => 
           company.score >= appliedFilters.minMatch!
@@ -169,15 +164,12 @@ export const useDiscoverCompanies = () => {
     }
     
     try {
-      // Find the company
       const company = companies.find(c => c.id === companyId);
       if (!company) return;
       
-      // Set the selected company and open message dialog
       setSelectedCompany(company);
       setMessageDialogOpen(true);
       
-      // Create a match record
       const { error } = await supabase
         .from('investor_matches')
         .insert({
@@ -197,7 +189,6 @@ export const useDiscoverCompanies = () => {
         return;
       }
       
-      // Remove the company from the list
       setCompanies(prev => prev.filter(c => c.id !== companyId));
       
     } catch (error) {
@@ -214,7 +205,6 @@ export const useDiscoverCompanies = () => {
     if (!user?.id) return;
     
     try {
-      // Create a match record with status 'skipped'
       const { error } = await supabase
         .from('investor_matches')
         .insert({
@@ -233,7 +223,6 @@ export const useDiscoverCompanies = () => {
         return;
       }
       
-      // Remove the company from the list
       setCompanies(prev => prev.filter(c => c.id !== companyId));
       
       toast({
@@ -246,7 +235,6 @@ export const useDiscoverCompanies = () => {
   }, [user?.id]);
   
   const handleLoadMore = () => {
-    // In a real app, this would fetch more companies with pagination
     toast({
       title: 'Coming soon',
       description: 'Pagination will be implemented in the future',
@@ -263,7 +251,6 @@ export const useDiscoverCompanies = () => {
       description: 'You can now message this company directly',
     });
     
-    // Navigate to messages page
     navigate('/business/messages');
   };
   

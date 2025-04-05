@@ -26,7 +26,8 @@ export const CompanyCard = ({
     event.stopPropagation();
     console.log("Opening URL:", url);
     if (url && url !== '#') {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const validUrl = url.startsWith('http') ? url : `https://${url}`;
+      window.open(validUrl, '_blank', 'noopener,noreferrer');
     } else {
       console.log("URL is invalid:", url);
     }
@@ -38,15 +39,12 @@ export const CompanyCard = ({
 
   const handleDemoClick = (event: React.MouseEvent) => {
     event.stopPropagation();
-    // Only open the modal if we have a video or URL to show
     if (company.demoUrl || company.demoVideo || company.demoVideoPath) {
       setShowDemoModal(true);
     }
   };
 
-  // Default placeholder URLs - in a real app, these would come from the database
-  const demoUrl = company.demoUrl || '#';
-  const websiteUrl = company.websiteUrl || '#';
+  const websiteUrl = company.websiteUrl || company.website || '#';
   console.log("Company website URL:", websiteUrl, "Original website field:", company.website);
   
   const hasDemoContent = company.demoUrl || company.demoVideo || company.demoVideoPath;
@@ -93,7 +91,6 @@ export const CompanyCard = ({
             )}
           </div>
 
-          {/* Partnership Status Indicators */}
           <div className="flex flex-wrap gap-2 mb-4">
             {company.lookingForFunding && (
               <div className="px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs flex items-center">
@@ -110,7 +107,6 @@ export const CompanyCard = ({
           </div>
         </div>
 
-        {/* External Links */}
         <div className="px-6 flex space-x-2 mb-4">
           <Button 
             variant="outline" 
@@ -160,14 +156,12 @@ export const CompanyCard = ({
         </div>
       </div>
 
-      {/* Profile Popup */}
       <CompanyProfilePopup 
         company={company} 
         isOpen={isProfileOpen} 
         onClose={() => setIsProfileOpen(false)} 
       />
 
-      {/* Demo Modal */}
       <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>

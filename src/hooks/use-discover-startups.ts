@@ -91,16 +91,20 @@ export const useDiscoverStartups = () => {
         return;
       }
       
-      const enrichedStartups = data.map(startup => ({
-        ...startup,
-        score: Math.floor(Math.random() * 40) + 60,
-        lookingForFunding: startup.looking_for_funding || false,
-        lookingForDesignPartner: startup.looking_for_design_partner || false,
-        websiteUrl: startup.website || '#',
-        demoUrl: startup.demo_url || '#',
-        demoVideo: startup.demo_video || undefined,
-        demoVideoPath: startup.demo_video_path || undefined
-      }));
+      const enrichedStartups = data.map(startup => {
+        const websiteField = startup.website && startup.website.trim() !== '' ? startup.website : null;
+        
+        return {
+          ...startup,
+          score: Math.floor(Math.random() * 40) + 60,
+          lookingForFunding: startup.looking_for_funding || false,
+          lookingForDesignPartner: startup.looking_for_design_partner || false,
+          websiteUrl: websiteField || '#',
+          demoUrl: startup.demo_url || '#',
+          demoVideo: startup.demo_video || undefined,
+          demoVideoPath: startup.demo_video_path || undefined
+        };
+      });
       
       let sortedStartups = [...enrichedStartups];
       
