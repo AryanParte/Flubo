@@ -20,7 +20,7 @@ export const SettingsTab = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState("verification");
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -160,7 +160,6 @@ export const SettingsTab = () => {
   };
 
   const tabItems = [
-    { id: "profile", label: "Profile" },
     { id: "verification", label: "Verification" },
     { id: "notifications", label: "Notifications" },
     { id: "investment", label: "Investment" },
@@ -193,84 +192,6 @@ export const SettingsTab = () => {
         </div>
         
         <div className="flex-1">
-          {activeTab === "profile" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Settings</CardTitle>
-                <CardDescription>
-                  Update your personal and company information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <ProfilePictureUpload 
-                  currentAvatarUrl={avatarUrl} 
-                  userName={profileData.name} 
-                  onAvatarUpdate={handleAvatarUpdate} 
-                />
-                
-                <form onSubmit={(e) => { e.preventDefault(); saveProfileData(); }} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="name">Full Name</label>
-                      <Input 
-                        id="name" 
-                        name="name" 
-                        value={profileData.name} 
-                        onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="email">Email Address</label>
-                      <Input 
-                        id="email" 
-                        name="email" 
-                        type="email" 
-                        value={profileData.email} 
-                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="company">Company</label>
-                      <Input 
-                        id="company" 
-                        name="company" 
-                        value={profileData.company} 
-                        onChange={(e) => setProfileData(prev => ({ ...prev, company: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="position">Position</label>
-                      <Input 
-                        id="position" 
-                        name="position" 
-                        value={profileData.position} 
-                        onChange={(e) => setProfileData(prev => ({ ...prev, position: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="phone">Phone Number</label>
-                      <Input 
-                        id="phone" 
-                        name="phone" 
-                        value={profileData.phone} 
-                        onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end mt-4">
-                    <Button type="submit" disabled={saving}>
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-                        </>
-                      ) : "Save Changes"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-          
           {activeTab === "verification" && (
             <Card>
               <CardHeader>
