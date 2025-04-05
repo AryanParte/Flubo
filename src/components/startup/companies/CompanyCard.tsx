@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export const CompanyCard = ({
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
     console.log("Opening URL:", url);
-    if (url && url !== '#') {
+    if (url) {
       const validUrl = url.startsWith('http') ? url : `https://${url}`;
       window.open(validUrl, '_blank', 'noopener,noreferrer');
     } else {
@@ -44,11 +45,13 @@ export const CompanyCard = ({
     }
   };
 
-  const websiteUrl = company.websiteUrl || company.website || '#';
+  // Get the website URL from any available source
+  const websiteUrl = company.websiteUrl || company.website || null;
   console.log("Company website URL:", websiteUrl, "Original website field:", company.website);
   
   const hasDemoContent = company.demoUrl || company.demoVideo || company.demoVideoPath;
-  const hasWebsite = websiteUrl && websiteUrl !== '#';
+  // Consider any non-null website value as valid
+  const hasWebsite = Boolean(websiteUrl && websiteUrl !== '#' && websiteUrl.trim() !== '');
 
   return (
     <>

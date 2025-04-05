@@ -17,6 +17,22 @@ export const MatchCard = ({
   onRequestDemo, 
   onIgnore 
 }: MatchCardProps) => {
+  // Get the website URL from any available source
+  const websiteUrl = startup.websiteUrl || startup.website || null;
+  // Consider any non-null website value as valid
+  const hasWebsite = Boolean(websiteUrl && websiteUrl !== '#' && websiteUrl.trim() !== '');
+  
+  const handleOpenLink = (url: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    console.log("Opening URL:", url);
+    if (url) {
+      const validUrl = url.startsWith('http') ? url : `https://${url}`;
+      window.open(validUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      console.log("URL is invalid:", url);
+    }
+  };
+
   return (
     <div 
       className="rounded-lg overflow-hidden flex flex-col bg-[#0F1620] border border-[#1E2A3B] animate-fade-in"
@@ -63,6 +79,17 @@ export const MatchCard = ({
               Seeking Design Partner
             </div>
           )}
+        </div>
+        
+        <div className="flex space-x-2 mb-4">
+          <button
+            className="inline-flex items-center px-3 py-1 rounded-full bg-[#1F2A3B] text-gray-300 text-xs hover:bg-[#2A3A4F]"
+            onClick={(e) => hasWebsite && handleOpenLink(websiteUrl, e)}
+            disabled={!hasWebsite}
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Visit Website
+          </button>
         </div>
         
         <div className="mt-auto flex space-x-2">

@@ -96,19 +96,27 @@ export const useDiscoverCompanies = () => {
       }
       
       const enrichedCompanies = data.map(company => {
-        const websiteField = company.website && company.website.trim() !== '' ? company.website : null;
+        const websiteField = company.website && typeof company.website === 'string' ? company.website.trim() : '';
         
         return {
           ...company,
           score: Math.floor(Math.random() * 40) + 60,
           lookingForFunding: company.looking_for_funding || false,
           lookingForDesignPartner: company.looking_for_design_partner || false,
-          websiteUrl: websiteField || '#',
+          website: websiteField,
+          websiteUrl: websiteField,
           demoUrl: company.demo_url || '#',
           demoVideo: company.demo_video || undefined,
           demoVideoPath: company.demo_video_path || undefined
         };
       });
+      
+      console.log("Fetched companies with website data:", enrichedCompanies.map(c => ({
+        id: c.id,
+        name: c.name,
+        website: c.website,
+        websiteUrl: c.websiteUrl
+      })));
       
       let sortedCompanies = [...enrichedCompanies];
       

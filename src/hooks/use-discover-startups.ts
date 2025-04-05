@@ -92,19 +92,27 @@ export const useDiscoverStartups = () => {
       }
       
       const enrichedStartups = data.map(startup => {
-        const websiteField = startup.website && startup.website.trim() !== '' ? startup.website : null;
+        const websiteField = startup.website && typeof startup.website === 'string' ? startup.website.trim() : '';
         
         return {
           ...startup,
           score: Math.floor(Math.random() * 40) + 60,
           lookingForFunding: startup.looking_for_funding || false,
           lookingForDesignPartner: startup.looking_for_design_partner || false,
-          websiteUrl: websiteField || '#',
+          website: websiteField,
+          websiteUrl: websiteField,
           demoUrl: startup.demo_url || '#',
           demoVideo: startup.demo_video || undefined,
           demoVideoPath: startup.demo_video_path || undefined
         };
       });
+      
+      console.log("Fetched startups with website data:", enrichedStartups.map(s => ({
+        id: s.id,
+        name: s.name,
+        website: s.website,
+        websiteUrl: s.websiteUrl
+      })));
       
       let sortedStartups = [...enrichedStartups];
       
