@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -291,6 +290,45 @@ export const MessagesTab = () => {
       }
       
       console.log("Message sent successfully:", data);
+      
+      // Immediately update UI with the new message
+      if (data && data.length > 0) {
+        const newMsg = data[0];
+        
+        // Update conversations state to include the new message
+        setConversations(prevConversations => {
+          const updatedConversations = [...prevConversations];
+          const convoIndex = updatedConversations.findIndex(c => c.id === selectedChat);
+          
+          if (convoIndex !== -1) {
+            const updatedConvo = { ...updatedConversations[convoIndex] };
+            
+            // Add message to the conversation
+            updatedConvo.messages.push({
+              id: newMsg.id,
+              sender: "you",
+              text: newMsg.content,
+              time: formatMessageTime(newMsg.sent_at)
+            });
+            
+            // Update last message info
+            updatedConvo.lastMessage = newMsg.content;
+            updatedConvo.time = formatMessageTime(newMsg.sent_at);
+            updatedConvo.last_message_time = new Date(newMsg.sent_at);
+            
+            // Replace the conversation in the array
+            updatedConversations[convoIndex] = updatedConvo;
+            
+            // Move this conversation to the top (most recent)
+            if (convoIndex > 0) {
+              const mostRecent = updatedConversations.splice(convoIndex, 1)[0];
+              updatedConversations.unshift(mostRecent);
+            }
+          }
+          
+          return updatedConversations;
+        });
+      }
       
       setMessage("");
       

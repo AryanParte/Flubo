@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -57,6 +56,10 @@ export function useRealtimeSubscription<T>(
     // Subscribe to the channel with better logging and reconnection logic
     newChannel.subscribe((status) => {
       console.log(`Realtime subscription status for ${table} (${subscriptionIdRef.current}):`, status);
+      
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ Successfully subscribed to real-time updates for ${table}`);
+      }
       
       if (status === 'TIMED_OUT') {
         console.log(`Subscription timed out for ${table}, reconnecting...`);
