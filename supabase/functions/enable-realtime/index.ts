@@ -1,83 +1,139 @@
 
-// This function enables real-time functionality directly without depending on database functions
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     // Create a Supabase client with the Admin key
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    )
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing Supabase URL or Service Key");
-      return new Response(JSON.stringify({ error: "Server configuration error" }), { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    console.log("Enabling realtime for messages table...")
+
+    // First, set the replica identity to full if not already set
+    const replicaIdentitySql = `
+      ALTER TABLE IF EXISTS public.messages REPLICA IDENTITY FULL;
+    `;
+    
+    const { error: replicaError } = await supabaseAdmin.query(replicaIdentitySql);
+    
+    if (replicaError) {
+      console.error("Error setting replica identity:", replicaError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Error setting replica identity", 
+          details: replicaError 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
     }
     
-    console.log("Attempting to enable realtime manually");
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Add the table to the realtime publication
+    const realtimeEnableSql = `
+      BEGIN;
+      
+      -- Create the publication if it doesn't exist
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime'
+        ) THEN
+          CREATE PUBLICATION supabase_realtime;
+        END IF;
+      END
+      $$;
+      
+      -- Add the table to the publication if it's not already added
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+      
+      COMMIT;
+    `;
     
-    // Direct SQL execution for enabling realtime instead of relying on functions
-    // Enable REPLICA IDENTITY FULL for messages table
-    try {
-      const { error: messagesReplicaError } = await supabase.rpc(
-        'execute_sql',
-        { query: 'ALTER TABLE public.messages REPLICA IDENTITY FULL;' }
-      );
-      
-      if (messagesReplicaError) {
-        console.log("Could not set REPLICA IDENTITY using RPC, trying direct query", messagesReplicaError);
-        // Fallback to direct query
-        await supabase.from('messages').select('id').limit(1);
-      } else {
-        console.log("Set REPLICA IDENTITY for messages table");
-      }
-      
-      // Try to add to publication
-      const { error: publicationError } = await supabase.rpc(
-        'execute_sql',
-        { query: 'CREATE PUBLICATION IF NOT EXISTS supabase_realtime; ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;' }
-      );
-      
-      if (publicationError) {
-        console.log("Could not modify publication using RPC", publicationError);
-      } else {
-        console.log("Added messages table to realtime publication");
-      }
-      
-    } catch (error) {
-      console.error("Error in direct SQL execution:", error);
-      // Continue despite errors - the channel setup on client side should still work
+    const { error: enableError } = await supabaseAdmin.query(realtimeEnableSql);
+    
+    if (enableError) {
+      console.error("Error enabling realtime:", enableError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Error enabling realtime", 
+          details: enableError 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
     }
     
-    return new Response(JSON.stringify({ 
-      success: true,
-      message: "Attempted to enable realtime for messages",
-      note: "Realtime functionality may still work through client-side channel setup even if server configuration failed"
-    }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    // Verify that the setup is working correctly
+    const verificationSql = `
+      SELECT pg_get_publication_tables('supabase_realtime');
+    `;
+    
+    const { data: verificationData, error: verificationError } = await supabaseAdmin.query(verificationSql);
+    
+    if (verificationError) {
+      console.error("Error verifying realtime setup:", verificationError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Error verifying realtime setup", 
+          details: verificationError 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+    
+    // Return success response
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Realtime enabled for messages table",
+        tables: verificationData
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
   } catch (error) {
     console.error("Unexpected error:", error);
-    return new Response(JSON.stringify({ 
-      error: "Unexpected error",
-      details: error.message
-    }), { 
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Unexpected error", 
+        details: error.message 
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      }
+    )
   }
-});
+})
