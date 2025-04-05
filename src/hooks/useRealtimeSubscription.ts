@@ -1,7 +1,6 @@
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { RealtimeChannel, REALTIME_LISTEN_TYPES, REALTIME_SUBSCRIBE_STATES, REALTIME_CHANNEL_STATES } from '@supabase/supabase-js';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -100,7 +99,7 @@ export function useRealtimeSubscription<T>(
             retryConnection();
           }
           
-          if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+          if (status === 'SUBSCRIBED') {
             // Reset retry count when connection is successful
             retryCountRef.current = 0;
             isSubscribedRef.current = true;

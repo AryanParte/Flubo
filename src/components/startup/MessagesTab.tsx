@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 import { sendMessage } from "@/services/message-service";
-import { REALTIME_SUBSCRIBE_STATES, REALTIME_CHANNEL_STATES } from "@supabase/supabase-js";
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -249,9 +249,8 @@ export const MessagesTab = () => {
       setRealtimeStatus(channel.state);
       
       const testConnectionInterval = setInterval(() => {
-        if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+        if (channel.state !== "SUBSCRIBED") {
           console.log("Channel not in SUBSCRIBED state:", channel.state);
-          // Don't attempt to resubscribe, the hook handles reconnection
         }
       }, 10000);
       
@@ -446,7 +445,7 @@ export const MessagesTab = () => {
     <div className="border border-border rounded-lg bg-background/50 flex h-[calc(100vh-15rem)] relative">
       <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-muted-foreground">
         <span>Realtime:</span>
-        {realtimeStatus === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED ? (
+        {realtimeStatus === "SUBSCRIBED" ? (
           <div className="flex items-center text-green-500">
             <Wifi size={14} className="mr-1" />
             <span>Connected</span>
