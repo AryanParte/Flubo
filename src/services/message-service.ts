@@ -25,25 +25,20 @@ export const sendMessage = async (
       await createStartupInvestorConnection(senderId, recipientId);
     }
     
-    // Create a message object to return for optimistic UI updates
-    const messageObj = {
-      sender_id: senderId,
-      recipient_id: recipientId,
-      content,
-      sent_at: new Date().toISOString()
-    };
-    
     // Send the message
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('messages')
-      .insert(messageObj)
-      .select();
+      .insert({
+        sender_id: senderId,
+        recipient_id: recipientId,
+        content
+      });
     
     if (error) {
       throw error;
     }
     
-    return { success: true, message: data?.[0] || messageObj };
+    return { success: true };
   } catch (error) {
     console.error('Error sending message:', error);
     toast({
@@ -68,8 +63,8 @@ export const getConversations = async (userId: string) => {
         recipient_id,
         sent_at,
         read_at,
-        sender:sender_id(id, name, avatar_url, user_type),
-        recipient:recipient_id(id, name, avatar_url, user_type)
+        sender:sender_id(id, name, avatar_url),
+        recipient:recipient_id(id, name, avatar_url)
       `)
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .order('sent_at', { ascending: false })
@@ -93,7 +88,6 @@ export const getConversations = async (userId: string) => {
           id: otherPersonId,
           name: otherPerson?.name || 'Unknown',
           avatar_url: otherPerson?.avatar_url,
-          user_type: otherPerson?.user_type || 'unknown',
           last_message: message.content,
           last_message_time: message.sent_at,
           unread: !isUserSender && !message.read_at ? 1 : 0

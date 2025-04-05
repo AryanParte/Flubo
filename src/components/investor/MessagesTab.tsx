@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Search, MoreHorizontal, Send, Paperclip, Image, Wifi, WifiOff } from "lucide-react";
+import { Search, MoreHorizontal, Send, Paperclip, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
-import { sendMessage } from "@/services/message-service";
 
 type Message = {
   id: string;
@@ -32,7 +31,6 @@ type Conversation = {
     sender: "you" | "them";
     text: string;
     time: string;
-    id?: string;
   }[];
   last_message_time: Date;
 };
@@ -46,7 +44,6 @@ export const MessagesTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<string>("initializing");
   const messageEndRef = useRef<HTMLDivElement>(null);
   const firstLoadRef = useRef(true);
   
@@ -235,38 +232,11 @@ export const MessagesTab = () => {
     }
   }, [userId, fetchMessages]);
   
-  const channel = useRealtimeSubscription<Message>(
+  useRealtimeSubscription<Message>(
     'messages',
     ['INSERT', 'UPDATE', 'DELETE'],
     handleRealtimeUpdate
   );
-  
-  // Monitor realtime connection status
-  useEffect(() => {
-    if (channel) {
-      console.log("Channel established:", channel);
-      setRealtimeStatus(channel.state);
-      
-      const subscription = channel.subscribe((status) => {
-        console.log("Realtime status:", status);
-        setRealtimeStatus(status);
-      });
-      
-      // Test the connection with a heartbeat
-      const testConnectionInterval = setInterval(() => {
-        if (channel.state !== 'SUBSCRIBED') {
-          console.log("Attempting to reconnect channel...");
-          channel.subscribe();
-        }
-      }, 10000);
-      
-      return () => {
-        clearInterval(testConnectionInterval);
-      };
-    } else {
-      setRealtimeStatus("not connected");
-    }
-  }, [channel]);
 
   const formatMessageTime = (timestamp: string) => {
     if (!timestamp) return "Unknown";
@@ -300,46 +270,17 @@ export const MessagesTab = () => {
     try {
       setSendingMessage(true);
       
-      // Create the new message object for optimistic update
-      const now = new Date().toISOString();
-      const optimisticMessage = {
-        id: `temp-${Date.now()}`,
-        sender: "you" as const,
-        text: message.trim(),
-        time: formatMessageTime(now)
-      };
-      
-      // Apply optimistic update to UI
-      setConversations(prev => 
-        prev.map(convo => {
-          if (convo.id === selectedChat) {
-            // Update the conversation with the new message
-            return {
-              ...convo,
-              messages: [...convo.messages, optimisticMessage],
-              lastMessage: optimisticMessage.text,
-              time: optimisticMessage.time,
-              last_message_time: new Date(now)
-            };
-          }
-          return convo;
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          content: message.trim(),
+          sender_id: userId,
+          recipient_id: selectedChat,
+          sent_at: new Date().toISOString()
         })
-      );
-      
-      // Clear the input immediately for better UX
-      setMessage("");
-      
-      // Scroll to bottom immediately for better UX
-      setTimeout(scrollToBottom, 50);
-      
-      // Now send the actual message to the server
-      const { success, error, message: sentMessage } = await sendMessage(
-        userId,
-        selectedChat,
-        optimisticMessage.text
-      );
+        .select();
         
-      if (!success) {
+      if (error) {
         console.error("Error sending message:", error);
         toast({
           title: "Error",
@@ -349,27 +290,11 @@ export const MessagesTab = () => {
         return;
       }
       
-      console.log("Message sent successfully:", sentMessage);
+      console.log("Message sent successfully:", data);
       
-      // Update the temporary message with the real message ID
-      if (sentMessage && sentMessage.id) {
-        setConversations(prev => 
-          prev.map(convo => {
-            if (convo.id === selectedChat) {
-              return {
-                ...convo,
-                messages: convo.messages.map(msg => 
-                  msg.id === optimisticMessage.id
-                    ? { ...msg, id: sentMessage.id }
-                    : msg
-                )
-              };
-            }
-            return convo;
-          })
-        );
-      }
+      setMessage("");
       
+      scrollToBottom();
     } catch (error) {
       console.error("Error in handleSendMessage:", error);
       toast({
@@ -429,23 +354,7 @@ export const MessagesTab = () => {
   }
 
   return (
-    <div className="border border-border rounded-lg bg-background/50 flex h-[calc(100vh-15rem)] relative">
-      {/* Realtime connection indicator */}
-      <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-muted-foreground">
-        <span>Realtime:</span>
-        {realtimeStatus === 'SUBSCRIBED' ? (
-          <div className="flex items-center text-green-500">
-            <Wifi size={14} className="mr-1" />
-            <span>Connected</span>
-          </div>
-        ) : (
-          <div className="flex items-center text-amber-500">
-            <WifiOff size={14} className="mr-1" />
-            <span>{realtimeStatus}</span>
-          </div>
-        )}
-      </div>
-      
+    <div className="border border-border rounded-lg bg-background/50 flex h-[calc(100vh-15rem)]">
       <div className="w-1/3 border-r border-border">
         <div className="p-3 border-b border-border">
           <div className="relative">
@@ -514,7 +423,7 @@ export const MessagesTab = () => {
             {selectedChatData.messages.length > 0 ? (
               selectedChatData.messages.map((msg, index) => (
                 <div 
-                  key={msg.id || index} 
+                  key={index} 
                   className={`flex ${msg.sender === 'you' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div 
