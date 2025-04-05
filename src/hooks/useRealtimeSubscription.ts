@@ -15,7 +15,6 @@ export function useRealtimeSubscription<T>(
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionIdRef = useRef<string>(`${table}_${Math.random().toString(36).substring(2, 9)}`);
   const retryCountRef = useRef(0);
-  const isSubscribedRef = useRef(false);
   const maxRetries = 5;
 
   // Update the callback ref when the callback changes
@@ -35,7 +34,6 @@ export function useRealtimeSubscription<T>(
         if (channelRef.current) {
           supabase.removeChannel(channelRef.current);
           channelRef.current = null;
-          isSubscribedRef.current = false;
         }
         
         createChannelIfNeeded();
@@ -83,29 +81,25 @@ export function useRealtimeSubscription<T>(
         );
       });
 
-      // Only subscribe if not already subscribed
-      if (!isSubscribedRef.current) {
-        // Subscribe to the channel with better logging and reconnection logic
-        newChannel.subscribe((status) => {
-          console.log(`Realtime subscription status for ${table} (${subscriptionIdRef.current}):`, status);
-          
-          if (status === 'TIMED_OUT') {
-            console.log(`Subscription timed out for ${table}, reconnecting...`);
-            retryConnection();
-          }
-          
-          if (status === 'CHANNEL_ERROR') {
-            console.error(`Channel error for ${table}`);
-            retryConnection();
-          }
-          
-          if (status === 'SUBSCRIBED') {
-            // Reset retry count when connection is successful
-            retryCountRef.current = 0;
-            isSubscribedRef.current = true;
-          }
-        });
-      }
+      // Subscribe to the channel with better logging and reconnection logic
+      newChannel.subscribe((status) => {
+        console.log(`Realtime subscription status for ${table} (${subscriptionIdRef.current}):`, status);
+        
+        if (status === 'TIMED_OUT') {
+          console.log(`Subscription timed out for ${table}, reconnecting...`);
+          retryConnection();
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Channel error for ${table}`);
+          retryConnection();
+        }
+        
+        if (status === 'SUBSCRIBED') {
+          // Reset retry count when connection is successful
+          retryCountRef.current = 0;
+        }
+      });
       
       setChannel(newChannel);
       return newChannel;
@@ -121,8 +115,8 @@ export function useRealtimeSubscription<T>(
 
     // Heartbeat to keep connection alive
     const heartbeatInterval = setInterval(() => {
-      if (channelRef.current && !isSubscribedRef.current) {
-        console.log(`Channel for ${table} is not subscribed, attempting reconnect...`);
+      if (channelRef.current && channelRef.current.state !== 'SUBSCRIBED') {
+        console.log(`Channel for ${table} is ${channelRef.current.state}, attempting reconnect...`);
         retryConnection();
       }
     }, 30000); // Check every 30 seconds
@@ -134,7 +128,6 @@ export function useRealtimeSubscription<T>(
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
-        isSubscribedRef.current = false;
       }
     };
   }, [table, createChannelIfNeeded, retryConnection]);

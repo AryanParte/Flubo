@@ -10,7 +10,6 @@ import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 import { sendMessage } from "@/services/message-service";
-import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -47,7 +46,7 @@ export const MessagesTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<string>("CLOSED");
+  const [realtimeStatus, setRealtimeStatus] = useState<string>("initializing");
   const messageEndRef = useRef<HTMLDivElement>(null);
   const firstLoadRef = useRef(true);
   
@@ -170,6 +169,7 @@ export const MessagesTab = () => {
     }
   }, [userId, fetchMessages]);
   
+  // Mark messages as read when selecting a chat
   useEffect(() => {
     const markMessagesAsRead = async () => {
       if (!userId || !selectedChat) return;
@@ -243,14 +243,22 @@ export const MessagesTab = () => {
     handleRealtimeUpdate
   );
   
+  // Monitor realtime connection status
   useEffect(() => {
     if (channel) {
       console.log("Channel established:", channel);
       setRealtimeStatus(channel.state);
       
+      const subscription = channel.subscribe((status) => {
+        console.log("Realtime status:", status);
+        setRealtimeStatus(status);
+      });
+      
+      // Test the connection with a heartbeat
       const testConnectionInterval = setInterval(() => {
-        if (channel.state !== "SUBSCRIBED") {
-          console.log("Channel not in SUBSCRIBED state:", channel.state);
+        if (channel.state !== 'SUBSCRIBED') {
+          console.log("Attempting to reconnect channel...");
+          channel.subscribe();
         }
       }, 10000);
       
@@ -258,7 +266,7 @@ export const MessagesTab = () => {
         clearInterval(testConnectionInterval);
       };
     } else {
-      setRealtimeStatus("CLOSED");
+      setRealtimeStatus("not connected");
     }
   }, [channel]);
 
@@ -443,9 +451,10 @@ export const MessagesTab = () => {
 
   return (
     <div className="border border-border rounded-lg bg-background/50 flex h-[calc(100vh-15rem)] relative">
+      {/* Realtime connection indicator */}
       <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-muted-foreground">
         <span>Realtime:</span>
-        {realtimeStatus === "SUBSCRIBED" ? (
+        {realtimeStatus === 'SUBSCRIBED' ? (
           <div className="flex items-center text-green-500">
             <Wifi size={14} className="mr-1" />
             <span>Connected</span>
