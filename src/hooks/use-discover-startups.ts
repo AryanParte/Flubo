@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -180,7 +181,7 @@ export const useDiscoverStartups = () => {
           investor_id: user.id,
           startup_id: startupId,
           match_score: startup.score,
-          status: 'interested'
+          status: 'pending' // Changed from 'interested' to 'pending' to match allowed values
         });
       
       if (error) {

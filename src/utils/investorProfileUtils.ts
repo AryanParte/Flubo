@@ -108,7 +108,7 @@ export const updateAIMatchStatus = async (
   investorId: string, 
   startupId: string, 
   chatId: string, 
-  status: 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored'
+  status: 'new' | 'viewed' | 'followed' | 'pending' | 'accepted' | 'rejected' | 'ignored'
 ) => {
   try {
     // Check if a status record already exists
