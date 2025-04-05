@@ -10,6 +10,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useFollowUser } from "@/hooks/useFollowUser";
+import { VideoUpload } from "./VideoUpload";
+import { VideoPlayer } from "./VideoPlayer";
 
 const emptyStartupProfile = {
   name: "",
@@ -23,6 +25,7 @@ const emptyStartupProfile = {
   bio: "",
   demoUrl: "",
   demoVideo: "",
+  demoVideoPath: "",
   lookingForFunding: false,
   lookingForDesignPartner: false,
   fundraising: {
@@ -179,6 +182,7 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
         bio: startupProfile?.bio || "",
         demoUrl: startupProfile?.demo_url || "",
         demoVideo: startupProfile?.demo_video || "",
+        demoVideoPath: startupProfile?.demo_video_path || "",
         lookingForFunding: startupProfile?.looking_for_funding || false,
         lookingForDesignPartner: startupProfile?.looking_for_design_partner || false,
         fundraising: {
@@ -291,6 +295,7 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
             bio: startup.bio,
             demo_url: startup.demoUrl,
             demo_video: startup.demoVideo,
+            demo_video_path: startup.demoVideoPath,
             looking_for_funding: startup.lookingForFunding,
             looking_for_design_partner: startup.lookingForDesignPartner,
             target_amount: startup.fundraising.target,
@@ -372,6 +377,13 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
     setStartup(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleVideoPathChange = (path: string) => {
+    setStartup(prev => ({
+      ...prev,
+      demoVideoPath: path
     }));
   };
 
@@ -775,63 +787,26 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
 
       <div className="glass-card p-6 rounded-lg">
         <h2 className="text-lg font-medium mb-4">Demo & Links</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">Demo URL</label>
-            {editing ? (
-              <Input 
-                value={startup.demoUrl} 
-                onChange={(e) => handleInputChange('demoUrl', e.target.value)}
-                className="mt-1"
-                placeholder="https://demo.example.com"
+        <div className="space-y-6">
+          <VideoUpload 
+            demoUrl={startup.demoUrl}
+            demoVideo={startup.demoVideo}
+            demoVideoPath={startup.demoVideoPath}
+            onVideoChange={handleInputChange}
+            onPathChange={handleVideoPathChange}
+            disabled={!editing}
+          />
+          
+          {!editing && (startup.demoVideo || startup.demoVideoPath) && (
+            <div className="mt-4">
+              <VideoPlayer 
+                youtubeUrl={startup.demoVideo} 
+                videoPath={startup.demoVideoPath}
+                className="border border-border" 
               />
-            ) : (
-              <p className="mt-1">
-                {startup.demoUrl && (
-                  <a href={startup.demoUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center">
-                    <Link size={14} className="mr-1" />
-                    {startup.demoUrl}
-                  </a>
-                )}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">Demo Video</label>
-            {editing ? (
-              <Input 
-                value={startup.demoVideo} 
-                onChange={(e) => handleInputChange('demoVideo', e.target.value)}
-                className="mt-1"
-                placeholder="https://youtube.com/watch?v=example"
-              />
-            ) : (
-              <p className="mt-1">
-                {startup.demoVideo && (
-                  <a href={startup.demoVideo} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center">
-                    <Video size={14} className="mr-1" />
-                    {startup.demoVideo}
-                  </a>
-                )}
-              </p>
-            )}
-          </div>
-        </div>
-        {startup.demoVideo && !editing && (
-          <div className="mt-4 aspect-video bg-black/20 rounded-md flex items-center justify-center">
-            <div className="text-center">
-              <Video className="h-12 w-12 mx-auto mb-2 text-accent" />
-              <a 
-                href={startup.demoVideo} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-accent hover:underline"
-              >
-                View Demo Video
-              </a>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="glass-card p-6 rounded-lg">

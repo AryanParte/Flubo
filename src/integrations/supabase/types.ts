@@ -632,6 +632,7 @@ export type Database = {
           created_at: string | null
           demo_url: string | null
           demo_video: string | null
+          demo_video_path: string | null
           employees: string | null
           equity_offered: string | null
           founded: string | null
@@ -654,6 +655,7 @@ export type Database = {
           created_at?: string | null
           demo_url?: string | null
           demo_video?: string | null
+          demo_video_path?: string | null
           employees?: string | null
           equity_offered?: string | null
           founded?: string | null
@@ -676,6 +678,7 @@ export type Database = {
           created_at?: string | null
           demo_url?: string | null
           demo_video?: string | null
+          demo_video_path?: string | null
           employees?: string | null
           equity_offered?: string | null
           founded?: string | null
