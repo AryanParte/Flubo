@@ -1,9 +1,11 @@
 
 import React, { useState } from "react";
-import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake } from "lucide-react";
+import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Startup } from "@/types/startup";
 import { CompanyProfilePopup } from "./CompanyProfilePopup";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoPlayer } from "@/components/startup/VideoPlayer";
 
 type CompanyCardProps = {
   company: Startup;
@@ -19,10 +21,11 @@ export const CompanyCard = ({
   onSkip 
 }: CompanyCardProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    if (url) {
+    if (url && url !== '#') {
       window.open(url, '_blank');
     }
   };
@@ -31,9 +34,18 @@ export const CompanyCard = ({
     setIsProfileOpen(true);
   };
 
+  const handleDemoClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    // Only open the modal if we have a video or URL to show
+    if (company.demoUrl || company.demoVideo || company.demoVideoPath) {
+      setShowDemoModal(true);
+    }
+  };
+
   // Default placeholder URLs - in a real app, these would come from the database
   const demoUrl = company.demoUrl || '#';
   const websiteUrl = company.websiteUrl || '#';
+  const hasDemoContent = company.demoUrl || company.demoVideo || company.demoVideoPath;
 
   return (
     <>
@@ -99,8 +111,8 @@ export const CompanyCard = ({
             variant="outline" 
             size="sm" 
             className="text-xs flex items-center"
-            onClick={(e) => handleOpenLink(demoUrl, e)}
-            disabled={!demoUrl || demoUrl === '#'}
+            onClick={(e) => handleDemoClick(e)}
+            disabled={!hasDemoContent}
           >
             <PlayCircle size={14} className="mr-1" />
             Demo
@@ -149,6 +161,31 @@ export const CompanyCard = ({
         isOpen={isProfileOpen} 
         onClose={() => setIsProfileOpen(false)} 
       />
+
+      {/* Demo Modal */}
+      <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>{company.name} - Demo</span>
+              <Button 
+                variant="ghost" 
+                className="h-8 w-8 p-0" 
+                onClick={() => setShowDemoModal(false)}
+              >
+                <X size={16} />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <VideoPlayer 
+              youtubeUrl={company.demoVideo}
+              videoPath={company.demoVideoPath}
+              className="w-full"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

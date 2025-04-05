@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -50,7 +51,11 @@ export const useDiscoverStartups = () => {
           raised_amount,
           created_at,
           looking_for_funding,
-          looking_for_design_partner
+          looking_for_design_partner,
+          demo_url,
+          demo_video,
+          demo_video_path,
+          website
         `);
       
       if (excludedIds.length > 0) {
@@ -91,7 +96,9 @@ export const useDiscoverStartups = () => {
         ...startup,
         score: Math.floor(Math.random() * 40) + 60,
         lookingForFunding: startup.looking_for_funding || false,
-        lookingForDesignPartner: startup.looking_for_design_partner || false
+        lookingForDesignPartner: startup.looking_for_design_partner || false,
+        websiteUrl: startup.website || '#',
+        demoUrl: startup.demo_url || '#'
       }));
       
       let sortedStartups = [...enrichedStartups];
