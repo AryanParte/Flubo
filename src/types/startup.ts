@@ -22,4 +22,5 @@ export interface Startup {
   matchSummary?: string;
   chatId?: string;
   matchStatus?: 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored';
+  created_at?: string; // Added the missing created_at property
 }

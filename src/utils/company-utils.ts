@@ -30,11 +30,14 @@ export const sortCompanies = (companies: Startup[], sortOption: SortOption): Sta
   let sortedCompanies = [...companies];
   
   if (sortOption === 'match') {
-    sortedCompanies.sort((a, b) => b.score - a.score);
+    sortedCompanies.sort((a, b) => (b.score || 0) - (a.score || 0));
   } else if (sortOption === 'recent') {
-    sortedCompanies.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    sortedCompanies.sort((a, b) => {
+      // Add null checks to handle potential undefined created_at values
+      if (!a.created_at) return 1;
+      if (!b.created_at) return -1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   } else if (sortOption === 'raised') {
     sortedCompanies.sort((a, b) => {
       const amountA = parseFloat(a.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
@@ -52,5 +55,5 @@ export const sortCompanies = (companies: Startup[], sortOption: SortOption): Sta
 export const filterByMatchScore = (companies: Startup[], minMatch?: number): Startup[] => {
   if (!minMatch) return companies;
   
-  return companies.filter(company => company.score >= minMatch);
+  return companies.filter(company => (company.score || 0) >= minMatch);
 };
