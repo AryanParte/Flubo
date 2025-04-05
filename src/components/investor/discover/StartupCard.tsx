@@ -43,9 +43,9 @@ export const StartupCard = ({
   const websiteUrl = startup.websiteUrl || startup.website || null;
   console.log("Startup website URL:", websiteUrl, "Original website field:", startup.website);
   
-  const hasDemoContent = startup.demoUrl || startup.demoVideo || startup.demoVideoPath;
-  // Consider any non-null website value as valid
-  const hasWebsite = Boolean(websiteUrl && websiteUrl !== '#' && websiteUrl.trim() !== '');
+  const hasDemoContent = Boolean(startup.demoUrl || startup.demoVideo || startup.demoVideoPath);
+  // Consider any non-empty website value as valid
+  const hasWebsite = Boolean(websiteUrl && websiteUrl.trim() !== '' && websiteUrl !== '#');
 
   return (
     <>
@@ -117,7 +117,7 @@ export const StartupCard = ({
               variant="outline" 
               size="sm" 
               className="text-xs flex items-center"
-              onClick={(e) => handleOpenLink(websiteUrl, e)}
+              onClick={(e) => websiteUrl && handleOpenLink(websiteUrl, e)}
               disabled={!hasWebsite}
             >
               <Globe size={14} className="mr-1" />

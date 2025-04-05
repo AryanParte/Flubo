@@ -19,8 +19,8 @@ export const MatchCard = ({
 }: MatchCardProps) => {
   // Get the website URL from any available source
   const websiteUrl = startup.websiteUrl || startup.website || null;
-  // Consider any non-null website value as valid
-  const hasWebsite = Boolean(websiteUrl && websiteUrl !== '#' && websiteUrl.trim() !== '');
+  // Consider any non-empty website value as valid
+  const hasWebsite = Boolean(websiteUrl && websiteUrl.trim() !== '' && websiteUrl !== '#');
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -83,8 +83,8 @@ export const MatchCard = ({
         
         <div className="flex space-x-2 mb-4">
           <button
-            className="inline-flex items-center px-3 py-1 rounded-full bg-[#1F2A3B] text-gray-300 text-xs hover:bg-[#2A3A4F]"
-            onClick={(e) => hasWebsite && handleOpenLink(websiteUrl, e)}
+            className={`inline-flex items-center px-3 py-1 rounded-full ${hasWebsite ? 'bg-[#1F2A3B] text-gray-300 hover:bg-[#2A3A4F]' : 'bg-[#1F2A3B]/50 text-gray-500 cursor-not-allowed'}`}
+            onClick={(e) => websiteUrl && handleOpenLink(websiteUrl, e)}
             disabled={!hasWebsite}
           >
             <ExternalLink className="h-3 w-3 mr-1" />
