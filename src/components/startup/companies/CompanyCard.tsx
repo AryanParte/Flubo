@@ -87,9 +87,9 @@ export const CompanyCard = ({
             <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs">
               {company.industry || 'Technology'}
             </div>
-            {company.raised_amount && (
+            {company.raisedAmount && (
               <div className="px-2 py-1 rounded-md bg-secondary/50 text-secondary-foreground text-xs">
-                Raised: {company.raised_amount}
+                Raised: {company.raisedAmount}
               </div>
             )}
           </div>

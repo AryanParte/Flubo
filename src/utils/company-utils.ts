@@ -18,7 +18,11 @@ export const enrichCompanyData = (companies: any[]): Startup[] => {
       websiteUrl: websiteField,
       demoUrl: company.demo_url || '#',
       demoVideo: company.demo_video || undefined,
-      demoVideoPath: company.demo_video_path || undefined
+      demoVideoPath: company.demo_video_path || undefined,
+      raisedAmount: company.raised_amount || undefined,
+      foundedYear: company.founded || undefined,
+      teamSize: company.employees ? parseInt(company.employees, 10) : undefined,
+      createdAt: company.created_at || undefined
     };
   });
 };
@@ -33,15 +37,15 @@ export const sortCompanies = (companies: Startup[], sortOption: SortOption): Sta
     sortedCompanies.sort((a, b) => (b.score || 0) - (a.score || 0));
   } else if (sortOption === 'recent') {
     sortedCompanies.sort((a, b) => {
-      // Add null checks to handle potential undefined created_at values
-      if (!a.created_at) return 1;
-      if (!b.created_at) return -1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      // Add null checks to handle potential undefined createdAt values
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   } else if (sortOption === 'raised') {
     sortedCompanies.sort((a, b) => {
-      const amountA = parseFloat(a.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
-      const amountB = parseFloat(b.raised_amount?.replace(/[^0-9.-]+/g, '') || '0');
+      const amountA = parseFloat(a.raisedAmount?.replace(/[^0-9.-]+/g, '') || '0');
+      const amountB = parseFloat(b.raisedAmount?.replace(/[^0-9.-]+/g, '') || '0');
       return amountB - amountA;
     });
   }

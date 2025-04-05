@@ -53,14 +53,49 @@ export const sendMessage = async (
 export const getConversations = async (userId: string) => {
   try {
     // Get all conversations where the user is either the sender or recipient
+    // Using a regular query instead of RPC since the get_conversations function is not defined
     const { data, error } = await supabase
-      .rpc('get_conversations', { user_id: userId });
+      .from('messages')
+      .select(`
+        id,
+        content,
+        sender_id,
+        recipient_id,
+        sent_at,
+        read_at,
+        sender:sender_id(id, name, avatar_url),
+        recipient:recipient_id(id, name, avatar_url)
+      `)
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+      .order('sent_at', { ascending: false })
+      .limit(50);
     
     if (error) {
       throw error;
     }
     
-    return data;
+    // Process the data to get unique conversations
+    const conversationsMap = new Map();
+    
+    data?.forEach(message => {
+      // Determine if the user is the sender or recipient
+      const isUserSender = message.sender_id === userId;
+      const otherPersonId = isUserSender ? message.recipient_id : message.sender_id;
+      const otherPerson = isUserSender ? message.recipient : message.sender;
+      
+      if (!conversationsMap.has(otherPersonId)) {
+        conversationsMap.set(otherPersonId, {
+          id: otherPersonId,
+          name: otherPerson?.name || 'Unknown',
+          avatar_url: otherPerson?.avatar_url,
+          last_message: message.content,
+          last_message_time: message.sent_at,
+          unread: !isUserSender && !message.read_at ? 1 : 0
+        });
+      }
+    });
+    
+    return Array.from(conversationsMap.values());
   } catch (error) {
     console.error('Error fetching conversations:', error);
     toast({

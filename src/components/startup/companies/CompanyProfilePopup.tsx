@@ -104,24 +104,24 @@ export const CompanyProfilePopup = ({ company, isOpen, onClose }: CompanyProfile
                   </div>
                 )}
                 
-                {company.founding_year && (
+                {company.foundedYear && (
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                    <span>Founded {company.founding_year}</span>
+                    <span>Founded {company.foundedYear}</span>
                   </div>
                 )}
                 
-                {company.team_size && (
+                {company.teamSize && (
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.team_size} employees</span>
+                    <span>{company.teamSize} employees</span>
                   </div>
                 )}
                 
-                {company.raised_amount && (
+                {company.raisedAmount && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span>Raised: {company.raised_amount}</span>
+                    <span>Raised: {company.raisedAmount}</span>
                   </div>
                 )}
               </div>
