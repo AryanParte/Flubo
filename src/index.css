@@ -148,8 +148,8 @@
 
 /* Glossy/glass card styles */
 .glossy-card {
-  @apply bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-900/70 dark:to-slate-800/40;
-  @apply backdrop-blur-md border border-white/30 dark:border-white/10;
+  @apply bg-gradient-to-br from-white/90 to-white/60 dark:from-slate-900/70 dark:to-slate-800/40;
+  @apply backdrop-blur-md border-2 border-white/50 dark:border-white/10;
   @apply shadow-lg shadow-black/5 dark:shadow-black/20;
   @apply relative overflow-hidden;
 }
@@ -158,20 +158,26 @@
   content: '';
   position: absolute;
   top: 0;
-  left: -50%;
-  width: 100%;
+  left: -100%;
+  width: 150%;
   height: 100%;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.3),
     transparent
   );
-  transform: skewX(-15deg);
+  transform: skewX(-20deg);
+  transition: 0.5s;
   pointer-events: none;
 }
 
+.glossy-card:hover::before {
+  left: 100%;
+}
+
 .glossy-highlight {
-  @apply absolute -top-1 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent;
+  @apply absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/70 to-transparent;
   @apply dark:via-white/20;
 }
+
