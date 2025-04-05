@@ -33,6 +33,25 @@ type Conversation = {
     text: string;
     time: string;
   }[];
+  last_message_time: Date;
+};
+
+const formatMessageTime = (timestamp: string) => {
+  if (!timestamp) return "Unknown";
+  
+  const messageDate = new Date(timestamp);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else if (diffDays < 7) {
+    return messageDate.toLocaleDateString([], { weekday: 'long' });
+  } else {
+    return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
 };
 
 export const MessagesTab = () => {
@@ -219,44 +238,105 @@ export const MessagesTab = () => {
   const handleRealtimeUpdate = useCallback((payload: { new: Message; old: Message; eventType: string }) => {
     console.log("Realtime message update:", payload);
     
-    if (userId && 
-        (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
-         payload.old?.sender_id === userId || payload.old?.recipient_id === userId)) {
+    if (!userId) return;
+    
+    // Check if this message is relevant to the current user
+    if (payload.new?.sender_id === userId || payload.new?.recipient_id === userId || 
+        payload.old?.sender_id === userId || payload.old?.recipient_id === userId) {
       
-      fetchMessages();
-      
-      if (payload.eventType === 'INSERT' && payload.new?.recipient_id === userId) {
-        toast({
-          title: "New Message",
-          description: "You have received a new message",
-        });
+      // If it's a new message insertion
+      if (payload.eventType === 'INSERT') {
+        const newMsg = payload.new;
+        console.log("Processing new incoming message:", newMsg);
+        
+        // Get the other participant's ID
+        const partnerId = newMsg.sender_id === userId ? newMsg.recipient_id : newMsg.sender_id;
+        
+        // Check if we already have this message (to avoid duplicates)
+        const isExistingMessage = conversations.some(c => 
+          c.messages.some(m => m.id === newMsg.id)
+        );
+        
+        if (!isExistingMessage) {
+          console.log("This is a new message not currently in the UI");
+          // Update the UI immediately without a full refetch
+          setConversations(prevConversations => {
+            const updatedConversations = [...prevConversations];
+            
+            // Find if we already have a conversation with this partner
+            const convoIndex = updatedConversations.findIndex(c => c.id === partnerId);
+            
+            if (convoIndex !== -1) {
+              // Update existing conversation
+              const updatedConvo = { ...updatedConversations[convoIndex] };
+              
+              // Add message to the conversation
+              updatedConvo.messages.push({
+                id: newMsg.id,
+                sender: newMsg.sender_id === userId ? "you" : "them",
+                text: newMsg.content,
+                time: formatMessageTime(newMsg.sent_at)
+              });
+              
+              // If this is the most recent message, update the conversation details
+              const msgTime = new Date(newMsg.sent_at);
+              if (msgTime > updatedConvo.last_message_time) {
+                updatedConvo.lastMessage = newMsg.content;
+                updatedConvo.time = formatMessageTime(newMsg.sent_at);
+                updatedConvo.last_message_time = msgTime;
+              }
+              
+              // Increment unread counter if this is an incoming message
+              if (newMsg.sender_id !== userId) {
+                updatedConvo.unread += 1;
+              }
+              
+              // Replace the conversation in the array
+              updatedConversations[convoIndex] = updatedConvo;
+              
+              // Move this conversation to the top (most recent)
+              if (convoIndex > 0) {
+                const mostRecent = updatedConversations.splice(convoIndex, 1)[0];
+                updatedConversations.unshift(mostRecent);
+              }
+              
+              // If the user is viewing this conversation, scroll to show new message
+              if (selectedChat === partnerId) {
+                setTimeout(() => {
+                  scrollToBottom();
+                }, 100);
+              }
+            } else {
+              // This is a new conversation - we need to fetch to get the proper details
+              // as we might not have sender/recipient information
+              console.log("New conversation detected, fetching full messages");
+              fetchMessages();
+              return prevConversations;
+            }
+            
+            return updatedConversations;
+          });
+        }
+        
+        // Show toast notification for incoming messages
+        if (newMsg.recipient_id === userId) {
+          toast({
+            title: "New Message",
+            description: "You have received a new message",
+          });
+        }
+      } else {
+        // For other event types like UPDATE or DELETE, do a full refetch
+        fetchMessages();
       }
     }
-  }, [userId, fetchMessages]);
+  }, [userId, conversations, selectedChat, fetchMessages, scrollToBottom, formatMessageTime]);
 
   useRealtimeSubscription<Message>(
     'messages',
     ['INSERT', 'UPDATE', 'DELETE'],
     handleRealtimeUpdate
   );
-
-  const formatMessageTime = (timestamp: string) => {
-    if (!timestamp) return "Unknown";
-    
-    const messageDate = new Date(timestamp);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return "Yesterday";
-    } else if (diffDays < 7) {
-      return messageDate.toLocaleDateString([], { weekday: 'long' });
-    } else {
-      return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);

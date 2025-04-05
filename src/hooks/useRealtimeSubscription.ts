@@ -43,11 +43,25 @@ export function useRealtimeSubscription<T>(
         (payload: any) => {
           console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callbackRef.current) {
-            callbackRef.current({
-              new: payload.new as T,
-              old: payload.old as T,
-              eventType: event
-            });
+            try {
+              console.log(`Calling callback for ${event} event with payload:`, {
+                new: payload.new,
+                old: payload.old,
+                eventType: event
+              });
+              
+              callbackRef.current({
+                new: payload.new as T,
+                old: payload.old as T,
+                eventType: event
+              });
+              
+              console.log(`Successfully processed ${event} event for ${table}`);
+            } catch (error) {
+              console.error(`Error processing ${event} event for ${table}:`, error);
+            }
+          } else {
+            console.warn(`Received ${event} event for ${table} but no callback is registered`);
           }
         }
       );
