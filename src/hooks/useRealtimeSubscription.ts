@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { RealtimeChannel, REALTIME_LISTEN_TYPES, REALTIME_SUBSCRIBE_STATES, RealtimeChannelStatus } from '@supabase/supabase-js';
+import { RealtimeChannel, REALTIME_LISTEN_TYPES, REALTIME_SUBSCRIBE_STATES, REALTIME_CHANNEL_STATES } from '@supabase/supabase-js';
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -87,7 +87,7 @@ export function useRealtimeSubscription<T>(
       // Only subscribe if not already subscribed
       if (!isSubscribedRef.current) {
         // Subscribe to the channel with better logging and reconnection logic
-        newChannel.subscribe((status: RealtimeChannelStatus) => {
+        newChannel.subscribe((status) => {
           console.log(`Realtime subscription status for ${table} (${subscriptionIdRef.current}):`, status);
           
           if (status === 'TIMED_OUT') {

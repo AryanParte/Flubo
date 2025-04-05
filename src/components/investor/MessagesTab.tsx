@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Search, MoreHorizontal, Send, Paperclip, Image, Wifi, WifiOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { SharedPostPreview } from "@/components/shared/SharedPostPreview";
 import { sendMessage } from "@/services/message-service";
-import { REALTIME_SUBSCRIBE_STATES, RealtimeChannelStatus } from "@supabase/supabase-js";
+import { REALTIME_SUBSCRIBE_STATES, REALTIME_CHANNEL_STATES } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -47,7 +46,7 @@ export const MessagesTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeChannelStatus>("CLOSED");
+  const [realtimeStatus, setRealtimeStatus] = useState<string>("CLOSED");
   const messageEndRef = useRef<HTMLDivElement>(null);
   const firstLoadRef = useRef(true);
   
@@ -242,18 +241,14 @@ export const MessagesTab = () => {
     handleRealtimeUpdate
   );
   
-  // Monitor realtime connection status
   useEffect(() => {
     if (channel) {
       console.log("Channel established:", channel);
-      setRealtimeStatus(channel.state as RealtimeChannelStatus);
-      
-      // We don't call subscribe() here anymore as it's already handled in the hook
+      setRealtimeStatus(channel.state);
       
       const testConnectionInterval = setInterval(() => {
         if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.log("Channel not in SUBSCRIBED state:", channel.state);
-          // Don't attempt to resubscribe, the hook handles reconnection
         }
       }, 10000);
       
