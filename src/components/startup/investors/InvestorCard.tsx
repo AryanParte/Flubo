@@ -30,8 +30,7 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
   }, [investor?.id]);
   
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow glossy-card">
-      <span className="glossy-highlight" />
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex items-start space-x-3">
           <Avatar className="h-12 w-12 rounded-full">
@@ -111,7 +110,7 @@ export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: Inv
         {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1">
             {investor.preferred_sectors.map((sector, index) => (
-              <Badge key={index} variant="outline" className="text-xs backdrop-blur-sm">
+              <Badge key={index} variant="outline" className="text-xs">
                 {sector}
               </Badge>
             ))}

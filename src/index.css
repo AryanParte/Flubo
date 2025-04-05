@@ -97,7 +97,6 @@
     font-family: 'Inter', sans-serif;
   }
 
-  /* Glass effect utilities */
   .glass-card {
     @apply bg-white/80 dark:bg-black/30 backdrop-blur-lg border border-white/20 dark:border-white/10 shadow-sm;
   }
@@ -145,39 +144,3 @@
   transform: translateY(-10px);
   transition: opacity 300ms, transform 300ms;
 }
-
-/* Glossy/glass card styles */
-.glossy-card {
-  @apply bg-gradient-to-br from-white/90 to-white/60 dark:from-slate-900/70 dark:to-slate-800/40;
-  @apply backdrop-blur-md border-2 border-white/50 dark:border-white/10;
-  @apply shadow-lg shadow-black/5 dark:shadow-black/20;
-  @apply relative overflow-hidden;
-}
-
-.glossy-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 150%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
-  transform: skewX(-20deg);
-  transition: 0.5s;
-  pointer-events: none;
-}
-
-.glossy-card:hover::before {
-  left: 100%;
-}
-
-.glossy-highlight {
-  @apply absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/70 to-transparent;
-  @apply dark:via-white/20;
-}
-

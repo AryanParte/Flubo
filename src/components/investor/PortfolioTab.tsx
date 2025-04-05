@@ -22,10 +22,9 @@ export const PortfolioTab = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="p-4 rounded-lg glossy-card">
-          <span className="glossy-highlight" />
+        <div className="p-4 border border-border rounded-lg bg-background">
           <div className="flex items-center">
-            <div className="p-2 rounded-full bg-blue-100/50 dark:bg-blue-900/30 backdrop-blur-sm mr-3">
+            <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/20 mr-3">
               <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
@@ -34,10 +33,9 @@ export const PortfolioTab = () => {
             </div>
           </div>
         </div>
-        <div className="p-4 rounded-lg glossy-card">
-          <span className="glossy-highlight" />
+        <div className="p-4 border border-border rounded-lg bg-background">
           <div className="flex items-center">
-            <div className="p-2 rounded-full bg-green-100/50 dark:bg-green-900/30 backdrop-blur-sm mr-3">
+            <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/20 mr-3">
               <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
@@ -46,10 +44,9 @@ export const PortfolioTab = () => {
             </div>
           </div>
         </div>
-        <div className="p-4 rounded-lg glossy-card">
-          <span className="glossy-highlight" />
+        <div className="p-4 border border-border rounded-lg bg-background">
           <div className="flex items-center">
-            <div className="p-2 rounded-full bg-purple-100/50 dark:bg-purple-900/30 backdrop-blur-sm mr-3">
+            <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/20 mr-3">
               <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
@@ -60,9 +57,8 @@ export const PortfolioTab = () => {
         </div>
       </div>
 
-      <div className="rounded-lg overflow-hidden glossy-card">
-        <span className="glossy-highlight" />
-        <div className="p-4 bg-muted/20 backdrop-blur-sm">
+      <div className="border border-border rounded-lg overflow-hidden">
+        <div className="p-4 bg-muted/50">
           <h3 className="font-medium">Portfolio Companies</h3>
         </div>
         <div className="divide-y divide-border">
@@ -73,7 +69,7 @@ export const PortfolioTab = () => {
             { name: "HealthTech Global", investment: "$125K", date: "Feb 2022", return: "+12%" },
             { name: "EdTech Pioneers", investment: "$75K", date: "Sep 2021", return: "+19%" }
           ].map((company, index) => (
-            <div key={index} className="p-4 hover:bg-muted/20 backdrop-blur-sm transition-colors">
+            <div key={index} className="p-4 hover:bg-muted/30 transition-colors">
               <div className="flex justify-between items-center">
                 <div>
                   <h4 className="font-medium">{company.name}</h4>
