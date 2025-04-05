@@ -24,7 +24,7 @@ export const StartupCard = ({
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (url && url !== '#') {
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -40,6 +40,7 @@ export const StartupCard = ({
   const demoUrl = startup.demoUrl || '#';
   const websiteUrl = startup.websiteUrl || '#';
   const hasDemoContent = startup.demoUrl || startup.demoVideo || startup.demoVideoPath;
+  const hasWebsite = websiteUrl && websiteUrl !== '#';
 
   return (
     <>
@@ -114,7 +115,7 @@ export const StartupCard = ({
               size="sm" 
               className="text-xs flex items-center"
               onClick={(e) => handleOpenLink(websiteUrl, e)}
-              disabled={!websiteUrl || websiteUrl === '#'}
+              disabled={!hasWebsite}
             >
               <Globe size={14} className="mr-1" />
               Website

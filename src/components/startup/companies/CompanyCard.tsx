@@ -26,7 +26,7 @@ export const CompanyCard = ({
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (url && url !== '#') {
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -46,6 +46,7 @@ export const CompanyCard = ({
   const demoUrl = company.demoUrl || '#';
   const websiteUrl = company.websiteUrl || '#';
   const hasDemoContent = company.demoUrl || company.demoVideo || company.demoVideoPath;
+  const hasWebsite = websiteUrl && websiteUrl !== '#';
 
   return (
     <>
@@ -122,7 +123,7 @@ export const CompanyCard = ({
             size="sm" 
             className="text-xs flex items-center"
             onClick={(e) => handleOpenLink(websiteUrl, e)}
-            disabled={!websiteUrl || websiteUrl === '#'}
+            disabled={!hasWebsite}
           >
             <Globe size={14} className="mr-1" />
             Website
