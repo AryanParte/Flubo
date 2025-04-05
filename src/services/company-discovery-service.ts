@@ -44,7 +44,8 @@ export const fetchCompanies = async (
         demo_url,
         demo_video,
         demo_video_path,
-        website
+        website,
+        stealth_mode
       `);
     
     // Apply exclusions
@@ -100,6 +101,18 @@ export const recordInterest = async (
   score: number
 ) => {
   try {
+    // First, create a connection record between the investor and startup
+    const { error: connectionError } = await supabase
+      .from('startup_investor_connections')
+      .upsert({
+        startup_id: companyId,
+        investor_id: userId
+      });
+      
+    if (connectionError) {
+      console.error('Error creating connection:', connectionError);
+    }
+
     const { error } = await supabase
       .from('investor_matches')
       .insert({
@@ -148,6 +161,59 @@ export const skipCompany = async (userId: string, companyId: string) => {
     toast({
       title: 'Error',
       description: 'Failed to record your choice',
+      variant: 'destructive',
+    });
+    return { success: false, error };
+  }
+};
+
+/**
+ * Creates a connection between a startup and an investor
+ * Used when a startup reaches out to an investor
+ */
+export const createStartupInvestorConnection = async (
+  startupId: string,
+  investorId: string
+) => {
+  try {
+    const { error } = await supabase
+      .from('startup_investor_connections')
+      .upsert({
+        startup_id: startupId,
+        investor_id: investorId
+      });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating connection:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Updates the stealth mode setting for a startup
+ */
+export const updateStealthMode = async (userId: string, stealthMode: boolean) => {
+  try {
+    const { error } = await supabase
+      .from('startup_profiles')
+      .update({ stealth_mode: stealthMode })
+      .eq('id', userId);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating stealth mode:', error);
+    toast({
+      title: 'Error',
+      description: 'Failed to update stealth mode setting',
       variant: 'destructive',
     });
     return { success: false, error };

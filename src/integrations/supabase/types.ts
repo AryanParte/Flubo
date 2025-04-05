@@ -546,6 +546,42 @@ export type Database = {
         }
         Relationships: []
       }
+      startup_investor_connections: {
+        Row: {
+          created_at: string
+          id: string
+          investor_id: string
+          startup_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          investor_id: string
+          startup_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          investor_id?: string
+          startup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "startup_investor_connections_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "startup_investor_connections_startup_id_fkey"
+            columns: ["startup_id"]
+            isOneToOne: false
+            referencedRelation: "startup_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       startup_metrics: {
         Row: {
           growth: string | null
@@ -645,6 +681,7 @@ export type Database = {
           name: string | null
           raised_amount: string | null
           stage: string | null
+          stealth_mode: boolean
           tagline: string | null
           target_amount: string | null
           updated_at: string | null
@@ -668,6 +705,7 @@ export type Database = {
           name?: string | null
           raised_amount?: string | null
           stage?: string | null
+          stealth_mode?: boolean
           tagline?: string | null
           target_amount?: string | null
           updated_at?: string | null
@@ -691,6 +729,7 @@ export type Database = {
           name?: string | null
           raised_amount?: string | null
           stage?: string | null
+          stealth_mode?: boolean
           tagline?: string | null
           target_amount?: string | null
           updated_at?: string | null

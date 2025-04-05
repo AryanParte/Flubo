@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
-import { Building, Rss, Search, Loader2, Users } from "lucide-react";
+import { Building, Rss, Search, Loader2, Users, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -19,12 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Import tab components
 import { FeedTab } from "@/components/shared/FeedTab";
 import { FindInvestorsTab } from "@/components/startup/FindInvestorsTab";
 import { FindCompaniesTab } from "@/components/startup/FindCompaniesTab";
 import { VerificationOnboarding } from "@/components/startup/VerificationOnboarding";
+import { updateStealthMode } from "@/services/company-discovery-service";
 
 const StartupDashboard = () => {
   const [activeTab, setActiveTab] = useState("feed");
@@ -37,6 +39,8 @@ const StartupDashboard = () => {
   const [hasRequiredFields, setHasRequiredFields] = useState(false);
   const [lookingForFunding, setLookingForFunding] = useState(false);
   const [lookingForDesignPartner, setLookingForDesignPartner] = useState(false);
+  const [stealthMode, setStealthMode] = useState(false);
+  const [updatingStealthMode, setUpdatingStealthMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
@@ -91,7 +95,7 @@ const StartupDashboard = () => {
       // First check if we have a startup_profile
       const { data: startupProfile, error: startupError } = await supabase
         .from('startup_profiles')
-        .select('name, industry, looking_for_funding, looking_for_design_partner')
+        .select('name, industry, looking_for_funding, looking_for_design_partner, stealth_mode')
         .eq('id', user.id)
         .maybeSingle();
       
@@ -106,6 +110,7 @@ const StartupDashboard = () => {
         setHasRequiredFields(!!startupProfile.industry);
         setLookingForFunding(startupProfile.looking_for_funding || false);
         setLookingForDesignPartner(startupProfile.looking_for_design_partner || false);
+        setStealthMode(startupProfile.stealth_mode || false);
         
         // Don't show dialog if we already have a profile with industry
         if (!!startupProfile.industry) {
@@ -369,6 +374,38 @@ const StartupDashboard = () => {
     }
   };
   
+  const handleStealthModeToggle = async (value: boolean) => {
+    if (!user) return;
+    
+    setUpdatingStealthMode(true);
+    try {
+      const result = await updateStealthMode(user.id, value);
+      
+      if (result.success) {
+        setStealthMode(value);
+        toast({
+          title: value ? "Stealth mode enabled" : "Stealth mode disabled",
+          description: value 
+            ? "Your startup is now hidden from discovery. Only investors you contact can see your profile." 
+            : "Your startup is now visible in discovery."
+        });
+      } else {
+        throw new Error("Failed to update stealth mode");
+      }
+    } catch (error) {
+      console.error("Error updating stealth mode:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update stealth mode",
+        variant: "destructive"
+      });
+      // Revert state on error
+      setStealthMode(!value);
+    } finally {
+      setUpdatingStealthMode(false);
+    }
+  };
+  
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -439,6 +476,31 @@ const StartupDashboard = () => {
             
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
               <div className="hidden md:flex items-center gap-4">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          id="stealth-mode"
+                          checked={stealthMode}
+                          onCheckedChange={handleStealthModeToggle}
+                          disabled={updatingStealthMode}
+                        />
+                        <Label htmlFor="stealth-mode" className="flex items-center gap-1 text-xs whitespace-nowrap">
+                          <EyeOff size={14} />
+                          Stealth mode
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-[220px] text-xs">
+                        When enabled, your startup is hidden from discovery. 
+                        Only investors you reach out to can see your profile.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
                 <div className="flex items-center gap-2">
                   <Switch 
                     id="looking-for-funding"
@@ -483,7 +545,26 @@ const StartupDashboard = () => {
             </div>
           </div>
           
-          <div className="md:hidden flex justify-end mb-4">
+          <div className="md:hidden flex justify-end mb-4 flex-wrap gap-y-2">
+            <div className="flex w-full justify-between items-center pb-2 mb-2 border-b border-border/30">
+              <div className="flex items-center gap-1.5">
+                <Switch 
+                  id="m-stealth-mode"
+                  checked={stealthMode}
+                  onCheckedChange={handleStealthModeToggle}
+                  disabled={updatingStealthMode}
+                />
+                <Label htmlFor="m-stealth-mode" className="flex items-center gap-1 text-xs">
+                  <EyeOff size={14} />
+                  Stealth mode
+                </Label>
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                {stealthMode ? "Hidden from discovery" : "Visible to all"}
+              </div>
+            </div>
+            
             <div className="flex gap-3 items-center">
               <div className="flex items-center gap-1.5">
                 <Switch 
@@ -533,12 +614,28 @@ const StartupDashboard = () => {
             </div>
           </div>
           
+          {stealthMode && (
+            <div className="mb-6 p-3 rounded-lg border border-amber-400/20 bg-amber-400/10 text-amber-400 flex items-center justify-between">
+              <div className="flex items-center">
+                <EyeOff size={18} className="mr-2" />
+                <span>Stealth mode is active. Your startup is hidden from discovery.</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleStealthModeToggle(false)}
+                className="bg-transparent border-amber-400/30 text-amber-400 hover:bg-amber-400/10 hover:text-amber-400"
+              >
+                Disable
+              </Button>
+            </div>
+          )}
+          
           {renderTabContent()}
         </div>
       </main>
       <MinimalFooter />
 
-      {/* Initial profile setup dialog - only shown once for new users */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -630,12 +727,10 @@ const StartupDashboard = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Account Verification Dialog */}
       <VerificationOnboarding
         open={showVerificationDialog}
         onOpenChange={(open) => {
           setShowVerificationDialog(open);
-          // When closing the dialog, mark verification prompt as shown
           if (!open && !verificationPromptShown) {
             supabase
               .from('profiles')
