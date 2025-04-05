@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -98,7 +97,9 @@ export const useDiscoverStartups = () => {
         lookingForFunding: startup.looking_for_funding || false,
         lookingForDesignPartner: startup.looking_for_design_partner || false,
         websiteUrl: startup.website || '#',
-        demoUrl: startup.demo_url || '#'
+        demoUrl: startup.demo_url || '#',
+        demoVideo: startup.demo_video || undefined,
+        demoVideoPath: startup.demo_video_path || undefined
       }));
       
       let sortedStartups = [...enrichedStartups];

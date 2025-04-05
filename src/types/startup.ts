@@ -13,6 +13,8 @@ export interface Startup {
   website?: string;
   websiteUrl?: string;
   demoUrl?: string;
+  demoVideo?: string;
+  demoVideoPath?: string;
   founding_year?: string;
   team_size?: string;
   lookingForFunding?: boolean;

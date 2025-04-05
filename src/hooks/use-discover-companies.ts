@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -59,7 +58,11 @@ export const useDiscoverCompanies = () => {
           raised_amount,
           created_at,
           looking_for_funding,
-          looking_for_design_partner
+          looking_for_design_partner,
+          demo_url,
+          demo_video,
+          demo_video_path,
+          website
         `);
       
       // Only apply the exclusion if there are IDs to exclude
@@ -103,7 +106,11 @@ export const useDiscoverCompanies = () => {
         ...company,
         score: Math.floor(Math.random() * 40) + 60, // 60-99% match
         lookingForFunding: company.looking_for_funding || false,
-        lookingForDesignPartner: company.looking_for_design_partner || false
+        lookingForDesignPartner: company.looking_for_design_partner || false,
+        websiteUrl: company.website || '#',
+        demoUrl: company.demo_url || '#',
+        demoVideo: company.demo_video || undefined,
+        demoVideoPath: company.demo_video_path || undefined
       }));
       
       // Sort companies
