@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 
 // Placeholder components until we implement the full versions
 const AccountSettings = () => (
-  <Card>
+  <Card className="bg-card-dark">
     <CardHeader>
       <CardTitle>Account Settings</CardTitle>
       <CardDescription>Manage your account information</CardDescription>
@@ -19,7 +19,7 @@ const AccountSettings = () => (
 );
 
 const NotificationSettings = () => (
-  <Card>
+  <Card className="bg-card-dark">
     <CardHeader>
       <CardTitle>Notification Settings</CardTitle>
       <CardDescription>Manage your notification preferences</CardDescription>
@@ -31,7 +31,7 @@ const NotificationSettings = () => (
 );
 
 const InvestmentPreferences = () => (
-  <Card>
+  <Card className="bg-card-dark">
     <CardHeader>
       <CardTitle>Investment Preferences</CardTitle>
       <CardDescription>Manage your investment criteria</CardDescription>
@@ -43,7 +43,7 @@ const InvestmentPreferences = () => (
 );
 
 const SecuritySettings = () => (
-  <Card>
+  <Card className="bg-card-dark">
     <CardHeader>
       <CardTitle>Security Settings</CardTitle>
       <CardDescription>Manage your security preferences</CardDescription>
@@ -60,11 +60,11 @@ export const SettingsTab = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
 
   return (
-    <div className="glass-card rounded-lg p-6">
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="md:w-64">
+    <div className="flex flex-col md:flex-row gap-6">
+      <div className="md:w-64">
+        <div className="space-y-1">
+          <h3 className="text-2xl font-bold mb-6">Settings</h3>
           <div className="space-y-1">
-            <h3 className="text-lg font-medium mb-4">Settings</h3>
             {[
               { id: 'account', label: 'Account', icon: User },
               { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -74,41 +74,41 @@ export const SettingsTab = () => {
             ].map(tab => (
               <button
                 key={tab.id}
-                className={`flex items-center w-full space-x-2 px-3 py-2 rounded-md text-sm ${
+                className={`flex items-center w-full space-x-3 px-4 py-3 rounded-md text-base ${
                   activeTab === tab.id
-                    ? 'bg-accent text-white'
-                    : 'text-muted-foreground hover:bg-secondary'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800'
                 }`}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <tab.icon size={16} />
+                <tab.icon size={20} />
                 <span>{tab.label}</span>
               </button>
             ))}
           </div>
         </div>
+      </div>
+      
+      <div className="flex-1">
+        {activeTab === 'account' && (
+          <AccountSettings />
+        )}
         
-        <div className="flex-1">
-          {activeTab === 'account' && (
-            <AccountSettings />
-          )}
-          
-          {activeTab === 'notifications' && (
-            <NotificationSettings />
-          )}
-          
-          {activeTab === 'preferences' && (
-            <InvestmentPreferences />
-          )}
-          
-          {activeTab === 'ai-persona' && (
-            <AIPersonaErrorHandler />
-          )}
-          
-          {activeTab === 'security' && (
-            <SecuritySettings />
-          )}
-        </div>
+        {activeTab === 'notifications' && (
+          <NotificationSettings />
+        )}
+        
+        {activeTab === 'preferences' && (
+          <InvestmentPreferences />
+        )}
+        
+        {activeTab === 'ai-persona' && (
+          <AIPersonaErrorHandler />
+        )}
+        
+        {activeTab === 'security' && (
+          <SecuritySettings />
+        )}
       </div>
     </div>
   );
