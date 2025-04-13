@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
@@ -53,16 +53,22 @@ export const AIPersonaErrorHandler: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingTable, setCheckingTable] = useState(true);
 
   const initializeTable = async () => {
     setLoading(true);
     setError(null);
     
     try {
+      console.log("Attempting to initialize AI Persona settings table...");
+      
       // Execute the migration SQL
       const result = await executeSQL(migrationSQL);
       
+      console.log("SQL execution result:", result);
+      
       if (!result.success) {
+        console.error("SQL execution error:", result.error);
         throw result.error;
       }
       
@@ -87,29 +93,68 @@ export const AIPersonaErrorHandler: React.FC = () => {
   // Check if the table exists
   const checkTableExists = async () => {
     try {
-      const { data, error } = await supabase.from('investor_ai_persona_settings').select('id').limit(1);
+      console.log("Checking if investor_ai_persona_settings table exists...");
       
-      if (error && error.code === '42P01') { // Table doesn't exist
-        return false;
-      } else if (error) {
-        throw error;
+      // Attempt a simple query to see if the table exists
+      const { data, error } = await supabase
+        .from('investor_ai_persona_settings')
+        .select('id')
+        .limit(1);
+      
+      console.log("Table check result:", { data, error });
+      
+      if (error) {
+        // Check if error is due to table not existing
+        if (error.code === '42P01') { // PostgreSQL code for table not found
+          console.log("Table does not exist");
+          return false;
+        } else {
+          // Some other error occurred
+          console.error("Error checking if table exists:", error);
+          throw error;
+        }
       }
       
+      console.log("Table exists");
       return true;
     } catch (err) {
-      console.error("Error checking if table exists:", err);
+      console.error("Exception while checking if table exists:", err);
       return false;
+    } finally {
+      setCheckingTable(false);
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkAndSetInitialized = async () => {
-      const exists = await checkTableExists();
-      setInitialized(exists);
+      try {
+        const exists = await checkTableExists();
+        console.log("Table exists check result:", exists);
+        setInitialized(exists);
+      } catch (error) {
+        console.error("Error in checkAndSetInitialized:", error);
+        setError("Failed to check if the AI Persona settings table exists");
+      } finally {
+        setCheckingTable(false);
+      }
     };
     
     checkAndSetInitialized();
   }, []);
+
+  if (checkingTable) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Checking AI Persona Setup</CardTitle>
+          <CardDescription>Please wait while we verify the AI Persona settings...</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
