@@ -17,4 +17,6 @@ export interface Investor {
   preferred_stages?: string[];
   preferred_sectors?: string[];
   match_score?: number | null;
+  verified?: boolean;
+  position?: string; // Adding this since it's referenced in the component
 }

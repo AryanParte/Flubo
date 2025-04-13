@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { InvestorAIChat } from './InvestorAIChat';
 import { Button } from "@/components/ui/button";
@@ -12,12 +13,16 @@ interface InvestorCardProps {
   investor: Investor;
   onBack?: () => void;
   showBackButton?: boolean;
+  onShowFollowers?: (userId: string) => void;
+  onShowFollowing?: (userId: string) => void;
 }
 
 export const InvestorCard: React.FC<InvestorCardProps> = ({ 
   investor, 
   onBack,
-  showBackButton = false
+  showBackButton = false,
+  onShowFollowers,
+  onShowFollowing
 }) => {
   const [showChat, setShowChat] = useState(false);
   const [matchScore, setMatchScore] = useState<number | null>(null);
@@ -62,8 +67,8 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           <Avatar className="h-16 w-16">
-            {investor.avatarUrl ? (
-              <AvatarImage src={investor.avatarUrl} alt={investor.name} />
+            {investor.avatar_url ? (
+              <AvatarImage src={investor.avatar_url} alt={investor.name} />
             ) : (
               <AvatarFallback className="bg-accent/10 text-accent">
                 {investor.name?.substring(0, 2).toUpperCase() || "IN"}
@@ -77,19 +82,19 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
               {investor.verified && <AccountVerificationBadge verified />}
             </div>
             
-            <p className="text-muted-foreground mb-3">{investor.position} at {investor.company}</p>
+            <p className="text-muted-foreground mb-3">{investor.role} at {investor.company}</p>
             
             <div className="flex flex-wrap gap-2 mb-4">
-              {investor.preferredSectors?.map((sector, i) => (
+              {investor.preferred_sectors?.map((sector, i) => (
                 <Badge key={i} variant="secondary">{sector}</Badge>
               ))}
             </div>
             
             <div className="space-y-2 mb-4">
-              {investor.preferredStages && investor.preferredStages.length > 0 && (
+              {investor.preferred_stages && investor.preferred_stages.length > 0 && (
                 <div className="flex items-center text-sm">
                   <Briefcase size={16} className="mr-2 text-muted-foreground" />
-                  <span>Invests in: {investor.preferredStages.join(", ")}</span>
+                  <span>Invests in: {investor.preferred_stages.join(", ")}</span>
                 </div>
               )}
               
@@ -100,13 +105,13 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                 </div>
               )}
               
-              {(investor.minInvestment || investor.maxInvestment) && (
+              {(investor.min_investment || investor.max_investment) && (
                 <div className="flex items-center text-sm">
                   <DollarSign size={16} className="mr-2 text-muted-foreground" />
                   <span>
-                    {investor.minInvestment && `$${investor.minInvestment}`}
-                    {investor.minInvestment && investor.maxInvestment && " - "}
-                    {investor.maxInvestment && `$${investor.maxInvestment}`}
+                    {investor.min_investment && `$${investor.min_investment}`}
+                    {investor.min_investment && investor.max_investment && " - "}
+                    {investor.max_investment && `$${investor.max_investment}`}
                   </span>
                 </div>
               )}
