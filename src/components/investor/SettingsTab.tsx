@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { User, Bell, Sliders, Shield, MessageSquare } from "lucide-react";
-import { AIPersonaSettings } from "./AIPersonaSettings";
+import { AIPersonaErrorHandler } from "./AIPersonaErrorHandler";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
@@ -102,7 +102,7 @@ export const SettingsTab = () => {
           )}
           
           {activeTab === 'ai-persona' && (
-            <AIPersonaSettings />
+            <AIPersonaErrorHandler />
           )}
           
           {activeTab === 'security' && (
