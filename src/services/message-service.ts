@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { createStartupInvestorConnection } from "./company-discovery-service";
@@ -150,6 +149,62 @@ export const markMessagesAsRead = async (userId: string, senderId: string) => {
     return { success: true };
   } catch (error) {
     console.error('Error marking messages as read:', error);
+    return { success: false, error };
+  }
+};
+
+// New function to delete AI persona chat history
+export const deleteAIPersonaChatHistory = async (startupId: string, investorId: string) => {
+  try {
+    console.log(`Deleting AI persona chat history between startup ${startupId} and investor ${investorId}`);
+    
+    // First, find all chats between this startup and investor
+    const { data: chats, error: chatsError } = await supabase
+      .from('ai_persona_chats')
+      .select('id')
+      .eq('startup_id', startupId)
+      .eq('investor_id', investorId);
+      
+    if (chatsError) {
+      console.error("Error finding AI persona chats:", chatsError);
+      throw chatsError;
+    }
+    
+    if (!chats || chats.length === 0) {
+      console.log("No existing AI persona chats found to delete");
+      return { success: true, message: "No chats found to delete" };
+    }
+    
+    // Get all chat IDs
+    const chatIds = chats.map(chat => chat.id);
+    console.log(`Found ${chatIds.length} chats to delete`);
+    
+    // Delete all messages for these chats
+    const { error: messagesDeleteError } = await supabase
+      .from('ai_persona_messages')
+      .delete()
+      .in('chat_id', chatIds);
+      
+    if (messagesDeleteError) {
+      console.error("Error deleting AI persona messages:", messagesDeleteError);
+      throw messagesDeleteError;
+    }
+    
+    // Delete the chat records
+    const { error: chatsDeleteError } = await supabase
+      .from('ai_persona_chats')
+      .delete()
+      .in('id', chatIds);
+      
+    if (chatsDeleteError) {
+      console.error("Error deleting AI persona chats:", chatsDeleteError);
+      throw chatsDeleteError;
+    }
+    
+    return { success: true, message: `Deleted ${chatIds.length} chat(s) successfully` };
+    
+  } catch (error) {
+    console.error("Error in deleteAIPersonaChatHistory:", error);
     return { success: false, error };
   }
 };
