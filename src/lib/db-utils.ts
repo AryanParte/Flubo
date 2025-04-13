@@ -4,7 +4,8 @@ import { supabase } from "./supabase";
 export async function ensureSupabaseFunction(functionName: string): Promise<boolean> {
   try {
     // Check if the function exists by trying to call it with a simple query
-    const { error } = await supabase.rpc(functionName, { sql: 'SELECT 1' });
+    // Use the any type to bypass TypeScript's strict checking
+    const { error } = await (supabase.rpc as any)(functionName, { sql: 'SELECT 1' });
     
     if (error && error.message.includes('function') && error.message.includes('does not exist')) {
       // Function doesn't exist, create it
@@ -21,7 +22,8 @@ export async function ensureSupabaseFunction(functionName: string): Promise<bool
       `;
       
       // Execute SQL to create the function
-      const { error: createError } = await supabase.rpc('exec_sql', { sql: createFunctionSQL });
+      // Use the any type to bypass TypeScript's strict checking
+      const { error: createError } = await (supabase.rpc as any)('exec_sql', { sql: createFunctionSQL });
       
       if (createError) {
         console.error(`Error creating ${functionName} function:`, createError);
@@ -56,7 +58,8 @@ export async function executeSQL(sql: string): Promise<{ success: boolean, error
     }
     
     // Execute the SQL
-    const { error } = await supabase.rpc('exec_sql', { sql });
+    // Use the any type to bypass TypeScript's strict checking
+    const { error } = await (supabase.rpc as any)('exec_sql', { sql });
     
     if (error) {
       return {
