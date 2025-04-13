@@ -26,6 +26,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { AIPersonaErrorHandler } from "./AIPersonaErrorHandler";
+import { safeQueryResult } from "@/lib/supabase-helpers";
 
 interface CustomQuestion {
   id: string;
@@ -52,6 +54,7 @@ export const AIPersonaSettings = () => {
   const [settings, setSettings] = useState<PersonaSettings | null>(null);
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [error, setError] = useState<Error | null>(null);
   
   // New question form
   const questionForm = useForm<z.infer<typeof questionFormSchema>>({
@@ -81,22 +84,23 @@ export const AIPersonaSettings = () => {
 
   const fetchSettings = async () => {
     setLoading(true);
+    setError(null);
     
     try {
-      const { data, error } = await supabase
+      const response = await supabase
         .from('investor_ai_persona_settings')
         .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
       
-      if (error) throw error;
+      const data = safeQueryResult(response);
       
       if (data) {
         setSettings(data);
         if (data.system_prompt) {
           setSystemPrompt(data.system_prompt);
         }
-      } else {
+      } else if (user) {
         // Initialize with empty settings if not found
         setSettings({
           user_id: user?.id || "",
@@ -105,6 +109,7 @@ export const AIPersonaSettings = () => {
       }
     } catch (error) {
       console.error("Error fetching AI persona settings:", error);
+      setError(error as Error);
       toast({
         title: "Error",
         description: "Failed to load AI persona settings",
@@ -221,6 +226,10 @@ export const AIPersonaSettings = () => {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (error || !settings) {
+    return <AIPersonaErrorHandler />;
   }
 
   if (!user) {
