@@ -30,6 +30,10 @@ serve(async (req) => {
     console.log(`Processing message from startup ${startupId} to investor persona ${investorId}`);
     console.log(`Investor preferences:`, investorPreferences);
     
+    if (!openAIApiKey) {
+      throw new Error("OpenAI API key is missing. Please set the OPENAI_API_KEY environment variable.");
+    }
+    
     // Construct system prompt based on investor preferences
     let systemPrompt = `You are an AI simulation of the investor ${investorName || "the investor"}. `;
     
