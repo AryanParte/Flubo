@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { User, Bell, Sliders, Shield, MessageSquare, Loader2 } from "lucide-react";
 import { AIPersonaErrorHandler } from "./AIPersonaErrorHandler";
@@ -129,10 +128,9 @@ const AccountSettings = () => {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             <ProfilePictureUpload 
-              uid={user?.id || ""} 
-              url={profile.avatar_url || ""} 
-              onUploadComplete={handleAvatarUpdate}
-              size="lg"
+              currentAvatarUrl={profile.avatar_url} 
+              userName={profile.name} 
+              onAvatarUpdate={handleAvatarUpdate}
             />
             
             <div className="space-y-4 flex-1">
