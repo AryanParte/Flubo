@@ -23,7 +23,7 @@ export const AIPersonaErrorHandler: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Alert variant="warning" className="mb-4">
+        <Alert variant="default" className="mb-4">
           <AlertCircle className="h-4 w-4 mr-2" />
           <AlertDescription>
             Unable to load custom settings. Showing default questions.
