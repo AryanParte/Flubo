@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { User, Bell, Sliders, Shield, MessageSquare, Loader2 } from "lucide-react";
+import { User, Bell, Sliders, Shield, MessageSquare, Loader2, UserCheck, TrendingUp, Award } from "lucide-react";
 import { AIPersonaErrorHandler } from "./AIPersonaErrorHandler";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,175 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { ProfilePictureUpload } from "@/components/shared/ProfilePictureUpload";
 import { Investor } from "@/types/investor";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
+
+const VerificationTab = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [isVerified, setIsVerified] = useState(false);
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+  const [verifiedType, setVerifiedType] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (user) {
+      checkVerificationStatus();
+    }
+  }, [user]);
+  
+  const checkVerificationStatus = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('verified, verified_at, verified_type')
+        .eq('id', user?.id)
+        .single();
+        
+      if (error) throw error;
+      
+      setIsVerified(!!data?.verified);
+      setVerifiedAt(data?.verified_at);
+      setVerifiedType(data?.verified_type);
+    } catch (error) {
+      console.error("Error checking verification status:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleGetVerified = () => {
+    navigate("/verification");
+  };
+  
+  if (loading) {
+    return (
+      <Card className="bg-card-dark">
+        <CardContent className="pt-6 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (isVerified) {
+    return (
+      <Card className="bg-card-dark">
+        <CardHeader>
+          <CardTitle>Account Verification</CardTitle>
+          <CardDescription>
+            Your account is verified on Flubo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center p-4 bg-accent/10 rounded-lg">
+              <div className="mr-4 bg-accent/20 w-12 h-12 rounded-full flex items-center justify-center">
+                <UserCheck className="h-6 w-6 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-medium text-lg flex items-center">
+                  Verified Account
+                  <AccountVerificationBadge verified size="md" />
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Your account was verified on {verifiedAt && new Date(verifiedAt).toLocaleDateString()} as an {verifiedType}
+                </p>
+              </div>
+            </div>
+            
+            <h4 className="font-medium mt-6">Benefits you're enjoying:</h4>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <svg className="h-5 w-5 text-primary mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Higher visibility in search results</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <svg className="h-5 w-5 text-primary mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Verification badge on your profile</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <svg className="h-5 w-5 text-primary mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Priority matching with startups</span>
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="bg-card-dark">
+      <CardHeader>
+        <CardTitle>Account Verification</CardTitle>
+        <CardDescription>
+          Verify your account to build trust and get prioritized in search results.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="rounded-lg border border-white/10 bg-black/20 p-6">
+            <div className="flex justify-center items-center mb-3">
+              <UserCheck className="h-6 w-6 text-green-500 mr-2" />
+              <h3 className="text-xl font-medium">Get Verified on Flubo</h3>
+            </div>
+            <p className="text-center text-muted-foreground mb-6">
+              Build trust and get discovered faster with a verified account badge.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-black/30 p-4 rounded-lg">
+                <Shield className="h-8 w-8 mb-2 text-green-500" />
+                <h4 className="font-medium mb-1">Build Trust</h4>
+                <p className="text-sm text-muted-foreground">
+                  Show other users that your identity and business are legitimate
+                </p>
+              </div>
+              
+              <div className="bg-black/30 p-4 rounded-lg">
+                <TrendingUp className="h-8 w-8 mb-2 text-green-500" />
+                <h4 className="font-medium mb-1">Rank Higher</h4>
+                <p className="text-sm text-muted-foreground">
+                  Get prioritized in search results, feed, and match rankings
+                </p>
+              </div>
+              
+              <div className="bg-black/30 p-4 rounded-lg">
+                <Award className="h-8 w-8 mb-2 text-green-500" />
+                <h4 className="font-medium mb-1">Stand Out</h4>
+                <p className="text-sm text-muted-foreground">
+                  Display your verified badge across all platform interactions
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-center py-4 mb-6">
+              <div className="text-3xl font-bold mb-2">$20</div>
+              <div className="text-sm text-muted-foreground">One-time verification fee</div>
+            </div>
+            
+            <div className="flex justify-center">
+              <Button 
+                onClick={handleGetVerified} 
+                size="lg"
+                className="px-8"
+              >
+                Get Verified
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const AccountSettings = () => {
   const { user } = useAuth();
@@ -778,7 +947,7 @@ const SecuritySettings = () => {
 
 export const SettingsTab = () => {
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'ai-persona' ? 'ai-persona' : 'account';
+  const initialTab = searchParams.get('tab') === 'ai-persona' ? 'ai-persona' : 'verification';
   const [activeTab, setActiveTab] = useState(initialTab);
 
   return (
@@ -788,7 +957,7 @@ export const SettingsTab = () => {
           <h3 className="text-2xl font-bold mb-6">Settings</h3>
           <div className="space-y-1">
             {[
-              { id: 'account', label: 'Account', icon: User },
+              { id: 'verification', label: 'Verification', icon: UserCheck },
               { id: 'notifications', label: 'Notifications', icon: Bell },
               { id: 'preferences', label: 'Investment Preferences', icon: Sliders },
               { id: 'ai-persona', label: 'AI Persona', icon: MessageSquare },
@@ -812,8 +981,8 @@ export const SettingsTab = () => {
       </div>
       
       <div className="flex-1">
-        {activeTab === 'account' && (
-          <AccountSettings />
+        {activeTab === 'verification' && (
+          <VerificationTab />
         )}
         
         {activeTab === 'notifications' && (
