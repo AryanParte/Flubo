@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       setIsSending(true);
       
       // Add the user message to the chat
-      const userMessage = {
+      const userMessage: Message = {
         id: crypto.randomUUID(),
         sender_type: "startup",
         content: messageText,
@@ -144,7 +145,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       const data = await response.json();
       
       // Add the AI response to the chat
-      const aiResponse = {
+      const aiResponse: Message = {
         id: crypto.randomUUID(),
         sender_type: "ai",
         content: data.response,

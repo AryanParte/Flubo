@@ -1,11 +1,58 @@
+
 import React, { useState } from "react";
 import { User, Bell, Sliders, Shield, MessageSquare } from "lucide-react";
-import { AccountSettings } from "./settings/AccountSettings";
-import { NotificationSettings } from "./settings/NotificationSettings";
-import { InvestmentPreferences } from "./settings/InvestmentPreferences";
-import { SecuritySettings } from "./settings/SecuritySettings";
 import { AIPersonaSettings } from "./AIPersonaSettings";
 import { useSearchParams } from "react-router-dom";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+
+// Placeholder components until we implement the full versions
+const AccountSettings = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Account Settings</CardTitle>
+      <CardDescription>Manage your account information</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <p>Account settings will be implemented soon.</p>
+    </CardContent>
+  </Card>
+);
+
+const NotificationSettings = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Notification Settings</CardTitle>
+      <CardDescription>Manage your notification preferences</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <p>Notification settings will be implemented soon.</p>
+    </CardContent>
+  </Card>
+);
+
+const InvestmentPreferences = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Investment Preferences</CardTitle>
+      <CardDescription>Manage your investment criteria</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <p>Investment preferences will be implemented soon.</p>
+    </CardContent>
+  </Card>
+);
+
+const SecuritySettings = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Security Settings</CardTitle>
+      <CardDescription>Manage your security preferences</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <p>Security settings will be implemented soon.</p>
+    </CardContent>
+  </Card>
+);
 
 export const SettingsTab = () => {
   const [searchParams] = useSearchParams();

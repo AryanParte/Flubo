@@ -1,130 +1,142 @@
-
-import { useState, useEffect } from "react";
-import { Briefcase, Building, MapPin, Tags, DollarSign, Bot, Users } from "lucide-react";
+import React, { useState } from 'react';
+import { InvestorAIChat } from './InvestorAIChat';
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Card,
-  CardContent,
-  CardFooter
-} from "@/components/ui/card";
-import { Investor } from "../../../types/investor";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { InvestorAIChat } from "./InvestorAIChat";
-import { InvestorProfilePopup } from "./InvestorProfilePopup";
-import { useFollowUser } from "@/hooks/useFollowUser";
+import { MessageSquare, User, Building, MapPin, DollarSign, Briefcase, ArrowLeft } from "lucide-react";
+import { type Investor } from "@/types/investor";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
 interface InvestorCardProps {
   investor: Investor;
-  onShowFollowers?: (userId: string) => void;
-  onShowFollowing?: (userId: string) => void;
+  onBack?: () => void;
+  showBackButton?: boolean;
 }
 
-export const InvestorCard = ({ investor, onShowFollowers, onShowFollowing }: InvestorCardProps) => {
-  const { followersCount, followingCount, loadFollowData } = useFollowUser();
+export const InvestorCard: React.FC<InvestorCardProps> = ({ 
+  investor, 
+  onBack,
+  showBackButton = false
+}) => {
+  const [showChat, setShowChat] = useState(false);
+  const [matchScore, setMatchScore] = useState<number | null>(null);
+  const [matchSummary, setMatchSummary] = useState<string | null>(null);
   
-  useEffect(() => {
-    if (investor?.id) {
-      loadFollowData(investor.id);
-    }
-  }, [investor?.id]);
+  const handleStartChat = () => {
+    setShowChat(true);
+  };
+  
+  const handleBackFromChat = () => {
+    setShowChat(false);
+  };
+  
+  const handleChatComplete = (score: number, summary: string) => {
+    setMatchScore(score);
+    setMatchSummary(summary);
+    setShowChat(false);
+  };
+  
+  if (showChat) {
+    return (
+      <InvestorAIChat 
+        investorId={investor.id} 
+        investorName={investor.name}
+        onBack={handleBackFromChat}
+        onComplete={handleChatComplete}
+      />
+    );
+  }
   
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+    <Card className="overflow-hidden">
+      {showBackButton && onBack && (
+        <div className="p-4 border-b border-border">
+          <Button variant="ghost" size="sm" onClick={onBack} className="flex items-center gap-1">
+            <ArrowLeft size={16} />
+            <span>Back to results</span>
+          </Button>
+        </div>
+      )}
+      
       <CardContent className="p-6">
-        <div className="flex items-start space-x-3">
-          <Avatar className="h-12 w-12 rounded-full">
-            {investor.avatar_url ? (
-              <AvatarImage src={investor.avatar_url} alt={investor.name} />
+        <div className="flex items-start gap-4">
+          <Avatar className="h-16 w-16">
+            {investor.avatarUrl ? (
+              <AvatarImage src={investor.avatarUrl} alt={investor.name} />
             ) : (
               <AvatarFallback className="bg-accent/10 text-accent">
-                {investor.name?.charAt(0) || 'I'}
+                {investor.name?.substring(0, 2).toUpperCase() || "IN"}
               </AvatarFallback>
             )}
           </Avatar>
+          
           <div className="flex-1">
-            <h3 className="font-medium text-base">
-              <InvestorProfilePopup investor={investor} />
-            </h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-lg font-semibold">{investor.name}</h3>
+              {investor.verified && <AccountVerificationBadge verified />}
+            </div>
             
-            <div className="space-y-1 mt-2">
-              <p className="text-xs text-muted-foreground flex items-center">
-                <Briefcase size={12} className="mr-1 flex-shrink-0" />
-                <span>{investor.role || "Investor"} at {investor.company || "Independent"}</span>
-              </p>
-              
-              {investor.industry && (
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <Building size={12} className="mr-1 flex-shrink-0" />
-                  <span>{investor.industry}</span>
-                </p>
+            <p className="text-muted-foreground mb-3">{investor.position} at {investor.company}</p>
+            
+            <div className="flex flex-wrap gap-2 mb-4">
+              {investor.preferredSectors?.map((sector, i) => (
+                <Badge key={i} variant="secondary">{sector}</Badge>
+              ))}
+            </div>
+            
+            <div className="space-y-2 mb-4">
+              {investor.preferredStages && investor.preferredStages.length > 0 && (
+                <div className="flex items-center text-sm">
+                  <Briefcase size={16} className="mr-2 text-muted-foreground" />
+                  <span>Invests in: {investor.preferredStages.join(", ")}</span>
+                </div>
               )}
               
               {investor.location && (
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <MapPin size={12} className="mr-1 flex-shrink-0" />
+                <div className="flex items-center text-sm">
+                  <MapPin size={16} className="mr-2 text-muted-foreground" />
                   <span>{investor.location}</span>
-                </p>
+                </div>
               )}
               
-              {investor.preferred_stages && investor.preferred_stages.length > 0 && (
-                <p className="text-xs text-muted-foreground flex items-start">
-                  <Tags size={12} className="mr-1 mt-1 flex-shrink-0" />
-                  <span>{investor.preferred_stages.join(", ")}</span>
-                </p>
+              {(investor.minInvestment || investor.maxInvestment) && (
+                <div className="flex items-center text-sm">
+                  <DollarSign size={16} className="mr-2 text-muted-foreground" />
+                  <span>
+                    {investor.minInvestment && `$${investor.minInvestment}`}
+                    {investor.minInvestment && investor.maxInvestment && " - "}
+                    {investor.maxInvestment && `$${investor.maxInvestment}`}
+                  </span>
+                </div>
               )}
-              
-              {investor.investment_size && (
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <DollarSign size={12} className="mr-1 flex-shrink-0" />
-                  <span>{investor.investment_size}</span>
-                </p>
-              )}
-              
-              <div className="flex items-center text-xs text-muted-foreground mt-2">
-                <Users size={12} className="mr-1 flex-shrink-0" />
-                <button 
-                  onClick={() => onShowFollowers?.(investor.id)}
-                  className="hover:underline cursor-pointer"
-                  type="button"
-                >
-                  <span>{followersCount} followers</span>
-                </button>
-                <span className="mx-1">·</span>
-                <button 
-                  onClick={() => onShowFollowing?.(investor.id)}
-                  className="hover:underline cursor-pointer"
-                  type="button"
-                >
-                  <span>{followingCount} following</span>
-                </button>
+            </div>
+            
+            {matchScore !== null && matchSummary && (
+              <div className="mb-4 p-3 bg-accent/10 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Match Analysis</h4>
+                  <Badge variant="outline" className="bg-accent/20">
+                    {matchScore}% Match
+                  </Badge>
+                </div>
+                <p className="text-sm">{matchSummary}</p>
               </div>
+            )}
+            
+            <div className="flex gap-2 mt-4">
+              <Button 
+                variant="accent" 
+                className="flex-1 flex items-center justify-center gap-1"
+                onClick={handleStartChat}
+              >
+                <MessageSquare size={16} />
+                <span>Simulate Pitch</span>
+              </Button>
             </div>
           </div>
         </div>
-        
-        {investor.bio && (
-          <p className="text-sm mt-3 line-clamp-2">{investor.bio}</p>
-        )}
-        
-        {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {investor.preferred_sectors.map((sector, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {sector}
-              </Badge>
-            ))}
-          </div>
-        )}
       </CardContent>
-      
-      <CardFooter className="px-6 pb-6 pt-0">
-        <div className="w-full">
-          <div id={`ai-chat-${investor.id}`} className="mt-1">
-            <InvestorAIChat investor={investor} />
-          </div>
-        </div>
-      </CardFooter>
     </Card>
   );
 };
