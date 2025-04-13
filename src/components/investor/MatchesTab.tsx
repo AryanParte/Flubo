@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageSquare, ThumbsUp, ThumbsDown, Eye, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { MessageSquare, ThumbsUp, ThumbsDown, Eye, ChevronLeft, ChevronRight, Users, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -359,6 +359,10 @@ export const MatchesTab = () => {
     }
   };
 
+  const handleCustomizeAIPersona = () => {
+    navigate("/settings/investor?tab=ai-persona");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -388,7 +392,18 @@ export const MatchesTab = () => {
     <div>
       {aiMatches.length > 0 && !viewingChat && (
         <>
-          <h2 className="text-xl font-semibold mb-6">AI Match Feed</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">AI Match Feed</h2>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={handleCustomizeAIPersona}
+            >
+              <Settings size={16} />
+              <span>Customize AI Persona</span>
+            </Button>
+          </div>
           <div className="flex items-center justify-center mb-8">
             <div className="glass-card rounded-xl overflow-hidden w-full max-w-2xl">
               <div className="bg-gradient-to-r from-accent/20 to-accent/5 p-5">

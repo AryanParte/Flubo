@@ -24,11 +24,13 @@ serve(async (req) => {
       investorPreferences, 
       investorName,
       startupInfo,
-      chatId
+      chatId,
+      personaSettings
     } = await req.json();
 
     console.log(`Processing message from startup ${startupId} to investor persona ${investorId}`);
     console.log(`Investor preferences:`, investorPreferences);
+    console.log(`Persona settings:`, personaSettings);
     
     if (!openAIApiKey) {
       throw new Error("OpenAI API key is missing. Please set the OPENAI_API_KEY environment variable.");
@@ -66,7 +68,35 @@ Your conversation style:
 4. Do not reveal that you are an AI simulation - act as if you are actually the investor.
 5. Keep responses under 150 words.
 
-Your goal is to determine how well this startup aligns with your investment criteria and to gather enough information to make an initial assessment.`;
+`;
+
+    // Add custom questions from persona settings if they exist
+    if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
+      systemPrompt += `\nHere are specific questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):`;
+      
+      personaSettings.custom_questions
+        .filter(q => q.enabled !== false)
+        .forEach(q => {
+          systemPrompt += `\n- ${q.question}`;
+        });
+      
+      systemPrompt += `\n`;
+    } else {
+      systemPrompt += `\nHere are questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):
+- Tell me about your business model?
+- What traction do you have so far?
+- Who are your competitors and how do you differentiate?
+- What's your go-to-market strategy?
+- Tell me about your team background?
+`;
+    }
+    
+    // Add any additional custom system prompt from settings
+    if (personaSettings && personaSettings.system_prompt) {
+      systemPrompt += `\nAdditional instruction for you: ${personaSettings.system_prompt}\n`;
+    }
+    
+    systemPrompt += `\nYour goal is to determine how well this startup aligns with your investment criteria and to gather enough information to make an initial assessment.`;
 
     // Prepare the conversation history for the API call
     const messages = [

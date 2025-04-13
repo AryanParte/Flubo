@@ -1,394 +1,253 @@
-import { useState, useEffect, useRef } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
-import { Investor } from "@/types/investor";
+import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Bot, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
 
 interface InvestorAIChatProps {
-  investor: Investor;
+  investorId: string;
+  investorName: string;
+  onBack: () => void;
+  onComplete: (matchScore: number, matchSummary: string) => void;
 }
 
-export const InvestorAIChat = ({ investor }: InvestorAIChatProps) => {
+interface Message {
+  id: string;
+  sender_type: "startup" | "ai";
+  content: string;
+  timestamp: string;
+}
+
+export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }: InvestorAIChatProps) => {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [initializing, setInitializing] = useState(true);
-  const [message, setMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<Array<{id: string, sender_type: string, content: string}>>([]);
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
-  const [startupInfo, setStartupInfo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isChatCompleted, setIsChatCompleted] = useState(false);
-  const [completingChat, setCompletingChat] = useState(false);
+  const savedChatId = useRef<string | null>(null);
   
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [chatHistory]);
+  }, [messages]);
   
-  useEffect(() => {
-    if (open && user) {
-      initializeChat();
+  const sendMessage = async (messageText: string) => {
+    if (!user || !investorId || !messageText.trim() || isSending) {
+      return;
     }
-  }, [open, user, investor.id]);
-  
-  const initializeChat = async () => {
-    if (!user) return;
     
     try {
-      setInitializing(true);
+      setIsSending(true);
       
-      const { data: existingChat, error: chatError } = await supabase
-        .from('ai_persona_chats')
-        .select('*')
-        .eq('startup_id', user.id)
-        .eq('investor_id', investor.id)
-        .maybeSingle();
+      // Add the user message to the chat
+      const userMessage = {
+        id: crypto.randomUUID(),
+        sender_type: "startup",
+        content: messageText,
+        timestamp: new Date().toISOString(),
+      };
       
-      if (chatError) throw chatError;
+      setMessages(prev => [...prev, userMessage]);
+      setCurrentMessage("");
       
-      const { data: startupProfile, error: profileError } = await supabase
+      // Get startup information
+      const { data: startupData } = await supabase
         .from('startup_profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-        
-      if (profileError && profileError.code !== 'PGRST116') {
-        throw profileError;
-      }
       
-      if (startupProfile) {
-        setStartupInfo(startupProfile);
-      }
+      // Get investor preferences
+      const { data: investorPref } = await supabase
+        .from('investor_preferences')
+        .select('*')
+        .eq('user_id', investorId)
+        .single();
+        
+      // Get investor AI persona settings
+      const { data: personaSettings } = await supabase
+        .from('investor_ai_persona_settings')
+        .select('custom_questions, system_prompt')
+        .eq('user_id', investorId)
+        .single();
       
-      if (existingChat) {
-        console.log("Found existing chat:", existingChat);
-        setChatId(existingChat.id);
-        setIsChatCompleted(existingChat.completed || false);
-        
-        const { data: messages, error: messagesError } = await supabase
-          .from('ai_persona_messages')
-          .select('*')
-          .eq('chat_id', existingChat.id)
-          .order('created_at', { ascending: true });
-          
-        if (messagesError) throw messagesError;
-        
-        if (messages && messages.length > 0) {
-          setChatHistory(messages);
-        } else {
-          await sendWelcomeMessage(existingChat.id);
-        }
-      } else {
-        const { data: newChat, error: createError } = await supabase
+      // Create or get chat session
+      if (!chatId) {
+        const { data: newChat, error: chatError } = await supabase
           .from('ai_persona_chats')
           .insert({
+            investor_id: investorId,
             startup_id: user.id,
-            investor_id: investor.id,
-            completed: false
           })
-          .select()
+          .select('id')
           .single();
           
-        if (createError) throw createError;
-        
-        console.log("Created new chat:", newChat);
-        setChatId(newChat.id);
-        
-        await sendWelcomeMessage(newChat.id);
-      }
-    } catch (error) {
-      console.error("Error initializing chat:", error);
-      toast({
-        title: "Error",
-        description: "Failed to start AI chat. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setInitializing(false);
-    }
-  };
-  
-  const sendWelcomeMessage = async (chatId: string) => {
-    if (!chatId) return;
-    
-    try {
-      const welcomeMessage = "Hi there! I'm interested in learning more about your startup. Could you tell me about what you're building and what problem you're solving?";
-      
-      const { data: msgData, error: msgError } = await supabase
-        .from('ai_persona_messages')
-        .insert({
-          chat_id: chatId,
-          content: welcomeMessage,
-          sender_type: 'ai'
-        })
-        .select()
-        .single();
-        
-      if (msgError) throw msgError;
-      
-      setChatHistory([{
-        id: msgData.id,
-        content: welcomeMessage,
-        sender_type: 'ai'
-      }]);
-      
-    } catch (error) {
-      console.error("Error sending welcome message:", error);
-    }
-  };
-  
-  const handleSendMessage = async () => {
-    if (!message.trim() || !chatId || !user) return;
-    
-    try {
-      setLoading(true);
-      
-      const { data: msgData, error: msgError } = await supabase
-        .from('ai_persona_messages')
-        .insert({
-          chat_id: chatId,
-          content: message,
-          sender_type: 'startup'
-        })
-        .select()
-        .single();
-        
-      if (msgError) throw msgError;
-      
-      const updatedHistory = [...chatHistory, {
-        id: msgData.id,
-        sender_type: 'startup',
-        content: message
-      }];
-      
-      setChatHistory(updatedHistory);
-      setMessage("");
-      
-      const response = await supabase.functions.invoke('investor-ai-persona', {
-        body: {
-          message: message,
-          chatHistory: updatedHistory,
-          investorId: investor.id,
-          startupId: user.id,
-          investorPreferences: {
-            preferred_sectors: investor.preferred_sectors,
-            preferred_stages: investor.preferred_stages,
-            min_investment: investor.min_investment,
-            max_investment: investor.max_investment
-          },
-          investorName: investor.name,
-          startupInfo: startupInfo,
-          chatId: chatId
+        if (chatError) {
+          console.error("Error creating chat:", chatError);
+          throw new Error("Failed to create chat session");
         }
+        
+        setChatId(newChat.id);
+        savedChatId.current = newChat.id;
+        
+        // Save the first message to the database
+        await supabase
+          .from('ai_persona_messages')
+          .insert({
+            chat_id: newChat.id,
+            sender_type: "startup",
+            content: messageText,
+          });
+      } else {
+        // Save the message to the database
+        await supabase
+          .from('ai_persona_messages')
+          .insert({
+            chat_id: chatId,
+            sender_type: "startup",
+            content: messageText,
+          });
+      }
+      
+      // Call the Edge Function to get the AI response
+      const functionUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/investor-ai-persona';
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          message: messageText,
+          chatHistory: messages,
+          investorId: investorId,
+          startupId: user.id,
+          investorPreferences: investorPref,
+          investorName: investorName,
+          startupInfo: startupData,
+          chatId: chatId || savedChatId.current,
+          personaSettings: personaSettings || null
+        }),
       });
       
-      if (response.error) {
-        throw new Error(response.error);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("AI persona error:", errorData);
+        throw new Error(errorData.error || "Failed to get AI response");
       }
       
-      const { response: aiResponse, matchScore, matchSummary } = response.data;
+      const data = await response.json();
       
-      const { data: aiMsgData, error: aiMsgError } = await supabase
-        .from('ai_persona_messages')
-        .insert({
-          chat_id: chatId,
-          content: aiResponse,
-          sender_type: 'ai'
-        })
-        .select()
-        .single();
-        
-      if (aiMsgError) throw aiMsgError;
+      // Add the AI response to the chat
+      const aiResponse = {
+        id: crypto.randomUUID(),
+        sender_type: "ai",
+        content: data.response,
+        timestamp: new Date().toISOString(),
+      };
       
-      setChatHistory([...updatedHistory, {
-        id: aiMsgData.id,
-        sender_type: 'ai',
-        content: aiResponse
-      }]);
+      setMessages(prev => [...prev, aiResponse]);
       
-      if (matchScore !== null && matchSummary) {
-        console.log("Updating chat with match score:", matchScore);
-        
-        const { error: updateError } = await supabase
-          .from('ai_persona_chats')
-          .update({
-            match_score: matchScore,
-            summary: matchSummary
-          })
-          .eq('id', chatId);
+      // Save the AI response to the database
+      if (chatId || savedChatId.current) {
+        await supabase
+          .from('ai_persona_messages')
+          .insert({
+            chat_id: chatId || savedChatId.current,
+            sender_type: "ai",
+            content: data.response,
+          });
           
-        if (updateError) throw updateError;
+        // If we have a match score, update the chat
+        if (data.matchScore !== null && typeof data.matchScore !== 'undefined') {
+          await supabase
+            .from('ai_persona_chats')
+            .update({
+              match_score: data.matchScore,
+              summary: data.matchSummary,
+              completed: true
+            })
+            .eq('id', chatId || savedChatId.current);
+            
+          if (onComplete) {
+            onComplete(data.matchScore, data.matchSummary);
+          }
+        }
       }
+      
+      // Scroll to bottom after a short delay to ensure the message is rendered
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
       
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to send message",
+        variant: "destructive",
       });
     } finally {
-      setLoading(false);
-    }
-  };
-  
-  const completeChat = async () => {
-    if (!chatId || !user) return;
-    
-    try {
-      setCompletingChat(true);
-      
-      const { error: updateError } = await supabase
-        .from('ai_persona_chats')
-        .update({
-          completed: true
-        })
-        .eq('id', chatId);
-        
-      if (updateError) throw updateError;
-      
-      setIsChatCompleted(true);
-      
-      toast({
-        title: "Chat Completed",
-        description: "Your conversation has been recorded and the investor will be notified of a potential match.",
-      });
-      
-    } catch (error) {
-      console.error("Error completing chat:", error);
-      toast({
-        title: "Error",
-        description: "Failed to complete the chat. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setCompletingChat(false);
+      setIsSending(false);
     }
   };
   
   return (
-    <>
-      <Button 
-        onClick={() => setOpen(true)} 
-        variant="accent"
-        className="w-full flex items-center justify-center"
-      >
-        <Bot size={16} className="mr-2" />
-        Chat with AI Assistant
-      </Button>
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-border">
+        <Button variant="ghost" onClick={onBack}>
+          Back
+        </Button>
+      </div>
       
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[800px] w-[90vw] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Chat with {investor.name}'s AI Persona</DialogTitle>
-            <DialogDescription>
-              This is a simulated conversation with {investor.name} powered by AI.
-              {investor.preferred_sectors && investor.preferred_sectors.length > 0 && (
-                <span className="block mt-1 text-xs">
-                  Focuses on: {investor.preferred_sectors.join(', ')}
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {initializing ? (
-            <div className="py-10 flex flex-col items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin mb-2" />
-              <p className="text-sm text-muted-foreground">Connecting to AI persona...</p>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.sender_type === "startup" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[70%] p-3 rounded-lg ${msg.sender_type === "startup" ? "bg-accent text-white rounded-br-none" : "bg-secondary rounded-bl-none"}`}
+            >
+              {msg.content}
             </div>
-          ) : (
-            <>
-              <div className="flex-1 overflow-y-auto px-1 py-4 space-y-4 max-h-[500px]">
-                {chatHistory.map((msg, index) => (
-                  <div 
-                    key={msg.id || index} 
-                    className={`flex ${msg.sender_type === 'ai' ? 'justify-start' : 'justify-end'}`}
-                  >
-                    <div 
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        msg.sender_type === 'ai' 
-                          ? 'bg-secondary text-secondary-foreground rounded-tl-none' 
-                          : 'bg-accent text-accent-foreground rounded-tr-none'
-                      }`}
-                    >
-                      <p className="text-sm">{msg.content}</p>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-              
-              <DialogFooter className="flex-col sm:flex-col gap-2">
-                {isChatCompleted ? (
-                  <div className="w-full text-center p-2 bg-secondary/30 rounded-md">
-                    <p className="text-sm">This chat is complete. The investor will be notified of this potential match.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex w-full items-end gap-2">
-                      <Textarea
-                        placeholder="Type your message..."
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="flex-1 resize-none"
-                        disabled={loading || completingChat}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                      />
-                      <Button
-                        size="icon"
-                        onClick={handleSendMessage}
-                        disabled={!message.trim() || loading || completingChat}
-                      >
-                        {loading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    
-                    {chatHistory.length >= 6 && (
-                      <Button
-                        variant="secondary"
-                        className="w-full"
-                        onClick={completeChat}
-                        disabled={completingChat}
-                      >
-                        {completingChat ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Finalizing Chat...
-                          </>
-                        ) : (
-                          "End Chat & Submit to Investor"
-                        )}
-                      </Button>
-                    )}
-                  </>
-                )}
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="p-4 border-t border-border">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await sendMessage(currentMessage);
+          }}
+          className="flex items-center"
+        >
+          <Input
+            type="text"
+            placeholder="Type your message..."
+            className="flex-1 mr-2"
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+          />
+          <Button type="submit" disabled={isSending}>
+            {isSending ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Send"
+            )}
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 };
