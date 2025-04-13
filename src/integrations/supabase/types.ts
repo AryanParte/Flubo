@@ -197,6 +197,33 @@ export type Database = {
         }
         Relationships: []
       }
+      investor_ai_persona_settings: {
+        Row: {
+          created_at: string | null
+          custom_questions: Json | null
+          id: string
+          system_prompt: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          custom_questions?: Json | null
+          id?: string
+          system_prompt?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          custom_questions?: Json | null
+          id?: string
+          system_prompt?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       investor_ai_searches: {
         Row: {
           created_at: string
