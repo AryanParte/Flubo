@@ -70,6 +70,8 @@ Your conversation style:
 6. IMPORTANT: You must ask ALL the questions provided to you below during the conversation.
 7. DO NOT end the conversation with "follow-up" suggestions - your job is to ask the investor's questions.
 8. DO NOT wrap up the conversation until you have asked all the required questions.
+9. NEVER suggest future meetings, calls, or follow-ups - stick strictly to the required questions.
+10. DO NOT make up your own questions - ONLY ask the exact questions provided below.
 `;
 
     // Track which questions have been asked
@@ -83,71 +85,80 @@ Your conversation style:
           const content = msg.content.toLowerCase();
           // Check each required question to see if it's been asked
           requiredQuestions.forEach(q => {
-            if (content.includes(q.question.toLowerCase().substring(0, 30))) {
+            // Check if the question has been asked by looking for a substantial part of it
+            if (content.includes(q.question.toLowerCase().substring(0, Math.min(30, q.question.length)))) {
               askedQuestions.add(q.id);
+              console.log(`Marked question as asked: ${q.id} - ${q.question.substring(0, 30)}...`);
             }
           });
         }
       });
     }
 
-    // Add custom questions from persona settings if they exist
+    // Default questions to use if no custom questions are provided
+    const defaultQuestions = [
+      "Tell me about your business model?",
+      "What traction do you have so far?",
+      "Who are your competitors and how do you differentiate?",
+      "What's your go-to-market strategy?",
+      "Tell me about your team background?"
+    ];
+
+    // Add all questions (default + custom) to the required questions list
+    let allQuestions = [];
+    
+    // First add default questions
+    allQuestions = defaultQuestions.map((q, idx) => ({
+      id: `default-${idx}`,
+      question: q,
+      required: true
+    }));
+    
+    // Then add custom questions if they exist and are enabled
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
-      systemPrompt += `\nHere are specific questions you MUST ask during the conversation (don't ask them all at once):`;
-      
-      requiredQuestions = personaSettings.custom_questions
+      const customQuestions = personaSettings.custom_questions
         .filter(q => q.enabled !== false)
         .map((q, idx) => ({
-          id: q.id || `question-${idx}`,
-          question: q.question
+          id: q.id || `custom-${idx}`,
+          question: q.question,
+          required: true
         }));
       
-      requiredQuestions.forEach(q => {
-        const isAsked = askedQuestions.has(q.id);
-        systemPrompt += `\n- ${q.question} ${isAsked ? "(ALREADY ASKED)" : "(NOT YET ASKED)"}`;
-      });
-      
-      systemPrompt += `\n`;
-    } else {
-      systemPrompt += `\nHere are questions you MUST ask during the conversation (don't ask them all at once):`;
-      
-      const defaultQuestions = [
-        "Tell me about your business model?",
-        "What traction do you have so far?",
-        "Who are your competitors and how do you differentiate?",
-        "What's your go-to-market strategy?",
-        "Tell me about your team background?"
-      ];
-      
-      requiredQuestions = defaultQuestions.map((q, idx) => ({
-        id: `default-${idx}`,
-        question: q
-      }));
-      
-      requiredQuestions.forEach(q => {
-        const isAsked = askedQuestions.has(q.id);
-        systemPrompt += `\n- ${q.question} ${isAsked ? "(ALREADY ASKED)" : "(NOT YET ASKED)"}`;
-      });
+      allQuestions = [...allQuestions, ...customQuestions];
     }
+    
+    // Set the final required questions list
+    requiredQuestions = allQuestions;
+    
+    // Add all questions to the system prompt
+    systemPrompt += `\nHere are the EXACT questions you MUST ask during the conversation (ask only one question at a time):`;
+    
+    requiredQuestions.forEach(q => {
+      const isAsked = askedQuestions.has(q.id);
+      systemPrompt += `\n- ${q.question} ${isAsked ? "(ALREADY ASKED)" : "(NOT YET ASKED)"}`;
+    });
     
     // Find questions that haven't been asked yet
     const remainingQuestions = requiredQuestions.filter(q => !askedQuestions.has(q.id));
     
     // Add a special instruction if there are remaining questions
     if (remainingQuestions.length > 0) {
-      systemPrompt += `\n\nIMPORTANT INSTRUCTION: You still need to ask the following questions:`;
+      systemPrompt += `\n\nCRITICAL INSTRUCTION: You still need to ask the following questions:`;
       remainingQuestions.forEach(q => {
         systemPrompt += `\n- ${q.question}`;
       });
-      systemPrompt += `\n\nIn your next response, ask AT LEAST ONE of these remaining questions. DO NOT END THE CONVERSATION until you've asked all required questions.`;
+      systemPrompt += `\n\nIn your next response, you MUST ask ONE of these remaining questions. DO NOT create your own variations - use the EXACT wording provided. DO NOT END THE CONVERSATION until you've asked all required questions. Do not ask multiple questions at once.`;
+    } else if (chatHistory && chatHistory.length >= 8) {
+      // Only if we've asked all questions and had a decent conversation, we can allow wrapping up
+      systemPrompt += `\n\nYou have asked all required questions. You may now provide a brief summary of the conversation if appropriate, but do not suggest any follow-up actions or meetings.`;
     }
     
     // Add any additional custom system prompt from settings
     if (personaSettings && personaSettings.system_prompt) {
-      systemPrompt += `\nAdditional instruction for you: ${personaSettings.system_prompt}\n`;
+      systemPrompt += `\nAdditional instruction: ${personaSettings.system_prompt}\n`;
     }
     
-    systemPrompt += `\nYour goal is to determine how well this startup aligns with your investment criteria and to gather enough information to make an initial assessment.`;
+    systemPrompt += `\nYour goal is to determine how well this startup aligns with your investment criteria by asking EXACTLY the questions provided above. Do not deviate by creating your own questions or follow-ups.`;
 
     // Prepare the conversation history for the API call
     const messages = [
@@ -196,25 +207,26 @@ Your conversation style:
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    // Determine if there are questions remaining to be asked
-    // We'll check if this response might have asked one of the remaining questions
-    let remainingQuestionsAfterResponse = [...remainingQuestions];
+    // Check if the AI response contains one of the remaining questions
+    let newlyAskedQuestions = new Set();
     remainingQuestions.forEach(q => {
-      if (aiResponse.toLowerCase().includes(q.question.toLowerCase().substring(0, 30))) {
-        // Remove this question from the remaining set
-        remainingQuestionsAfterResponse = remainingQuestionsAfterResponse.filter(rq => rq.id !== q.id);
+      // Check for a substantial part of the question in the response
+      const questionWords = q.question.substring(0, Math.min(30, q.question.length)).toLowerCase();
+      if (aiResponse.toLowerCase().includes(questionWords)) {
+        newlyAskedQuestions.add(q.id);
+        console.log(`AI response asked question: ${q.id} - ${q.question.substring(0, 30)}...`);
       }
     });
     
-    // If there are still questions to ask, don't let the conversation end
-    const hasRemainingQuestions = remainingQuestionsAfterResponse.length > 0;
+    // Update the list of remaining questions
+    const updatedRemainingQuestions = remainingQuestions.filter(q => !newlyAskedQuestions.has(q.id));
+    const hasRemainingQuestions = updatedRemainingQuestions.length > 0;
     
-    // Check if the AI response ends with a question or if there are remaining questions
-    // If it does, we don't want to mark the chat as complete
-    const endsWithQuestion = aiResponse.trim().endsWith('?') || hasRemainingQuestions;
+    // Determine if the conversation should continue based on remaining questions
+    const shouldContinue = hasRemainingQuestions || aiResponse.trim().endsWith('?');
     
-    console.log(`Response has ${remainingQuestionsAfterResponse.length} remaining questions to ask`);
-    console.log(`Is marked as question pending: ${endsWithQuestion}`);
+    console.log(`Response has ${updatedRemainingQuestions.length} remaining questions to ask`);
+    console.log(`Is marked as question pending: ${shouldContinue}`);
     
     // Calculate match score if we have enough context and all questions have been asked
     let matchScore = null;
@@ -222,7 +234,7 @@ Your conversation style:
     
     // If we have enough messages (at least 3 exchanges) and all questions have been asked, we can calculate a match score
     // But only if the AI response doesn't expect more information
-    if (chatHistory && chatHistory.length >= 5 && !hasRemainingQuestions && !endsWithQuestion) {
+    if (chatHistory && chatHistory.length >= 5 && !hasRemainingQuestions && !shouldContinue) {
       console.log("Generating match score and summary based on conversation");
       
       const scoringPrompt = `
@@ -288,8 +300,9 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         matchScore,
         matchSummary,
         chatId,
-        isQuestionPending: endsWithQuestion,
-        remainingQuestions: remainingQuestionsAfterResponse
+        isQuestionPending: shouldContinue,
+        remainingQuestions: updatedRemainingQuestions,
+        askedQuestions: Array.from(askedQuestions).concat(Array.from(newlyAskedQuestions))
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

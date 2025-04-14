@@ -214,3 +214,94 @@ export const syncAndFixAIMatchStatus = async (chatId: string) => {
     return { success: false, error };
   }
 };
+
+/**
+ * Gets custom questions for an investor's AI persona
+ */
+export const getInvestorAIPersonaQuestions = async (investorId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('investor_ai_persona_settings')
+      .select('custom_questions')
+      .eq('user_id', investorId)
+      .single();
+      
+    if (error) {
+      if (error.code === 'PGRST116') { // No rows found
+        return { data: { custom_questions: [] }, success: true };
+      }
+      throw error;
+    }
+    
+    return { data, success: true };
+  } catch (error) {
+    console.error("Error getting AI persona questions:", error);
+    return { data: null, success: false, error };
+  }
+};
+
+/**
+ * Ensures all custom questions are asked during an AI chat
+ */
+export const ensureAllQuestionsAsked = async (chatId: string, investorId: string) => {
+  try {
+    // Get the custom questions
+    const { data: settingsData } = await getInvestorAIPersonaQuestions(investorId);
+    
+    if (!settingsData || !settingsData.custom_questions) {
+      return { success: true, complete: false };
+    }
+    
+    const customQuestions = settingsData.custom_questions.filter(q => q.enabled !== false);
+    
+    // Get all messages for this chat
+    const { data: messages, error: messagesError } = await supabase
+      .from('ai_persona_messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: true });
+      
+    if (messagesError) throw messagesError;
+    
+    if (!messages || messages.length === 0) {
+      return { success: true, complete: false };
+    }
+    
+    // Check if all custom questions have been asked
+    const askedQuestions = new Set();
+    
+    messages.forEach(msg => {
+      if (msg.sender_type === 'ai') {
+        customQuestions.forEach(q => {
+          if (msg.content.toLowerCase().includes(q.question.toLowerCase().substring(0, Math.min(30, q.question.length)))) {
+            askedQuestions.add(q.id);
+          }
+        });
+      }
+    });
+    
+    const allQuestionsAsked = customQuestions.every(q => askedQuestions.has(q.id));
+    
+    // If the chat is marked as complete but not all questions were asked, fix it
+    if (allQuestionsAsked) {
+      const { data: chat, error: chatError } = await supabase
+        .from('ai_persona_chats')
+        .select('completed')
+        .eq('id', chatId)
+        .single();
+        
+      if (chatError) throw chatError;
+      
+      // If the chat is not marked as complete but all questions were asked
+      if (!chat.completed && messages[messages.length - 1].sender_type === 'startup') {
+        // This chat could potentially be completed - the AI should generate a final response
+        return { success: true, complete: true, needsFinalResponse: true };
+      }
+    }
+    
+    return { success: true, complete: allQuestionsAsked };
+  } catch (error) {
+    console.error("Error ensuring all questions asked:", error);
+    return { success: false, error, complete: false };
+  }
+};
