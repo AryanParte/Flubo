@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -194,93 +193,92 @@ export function FeedTab() {
     try {
       console.log("Setting up storage bucket 'posts'...");
       
-      try {
-        // First create the bucket if it doesn't exist
-        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-        
-        if (listError) {
-          console.error("Failed to list buckets:", listError);
-          return false;
-        }
-        
-        const bucketExists = buckets?.some(bucket => bucket.name === 'posts');
-        
-        if (!bucketExists) {
-          console.log("Creating new 'posts' bucket...");
-          const { error: createError } = await supabase.storage.createBucket('posts', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-            return false;
-          }
-          
-          console.log("Successfully created bucket");
-        } else {
-          console.log("Bucket 'posts' already exists");
-        }
-        
-        // Update bucket to ensure it's public
-        console.log("Updating bucket to be public...");
-        const { error: updateError } = await supabase.storage.updateBucket('posts', {
+      // First check if bucket exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error("Failed to list buckets:", listError);
+        return false;
+      }
+      
+      const bucketExists = buckets?.some(bucket => bucket.name === 'posts');
+      
+      if (!bucketExists) {
+        console.log("Creating new 'posts' bucket...");
+        const { error: createError } = await supabase.storage.createBucket('posts', {
           public: true
         });
         
-        if (updateError) {
-          console.error("Failed to update bucket settings:", updateError);
+        if (createError) {
+          console.error("Failed to create bucket:", createError);
           return false;
         }
         
-        // Add policies
-        try {
-          // Add INSERT policy
-          await createStoragePolicy(
-            'posts',
-            'allow_insert',
-            {
-              name: 'Allow Inserts',
-              action: 'INSERT',
-              role: 'authenticated',
-              check: {}
-            }
-          );
-          
-          // Add SELECT policy for public access
-          await createStoragePolicy(
-            'posts',
-            'allow_public_select',
-            {
-              name: 'Public Select',
-              action: 'SELECT',
-              role: '*',
-              check: {}
-            }
-          );
-          
-          // Add UPDATE policy
-          await createStoragePolicy(
-            'posts',
-            'allow_update',
-            {
-              name: 'Allow Updates',
-              action: 'UPDATE',
-              role: 'authenticated',
-              check: {}
-            }
-          );
-          
-          console.log("Storage policies created successfully");
-        } catch (policyError) {
-          console.warn("Error setting storage policies, but continuing:", policyError);
-          // Continue even if policy creation fails
-        }
-        
-        return true;
-      } catch (error) {
-        console.error("Error in setupBucket:", error);
+        console.log("Successfully created bucket");
+      } else {
+        console.log("Bucket 'posts' already exists");
+      }
+      
+      // Update bucket to ensure it's public
+      console.log("Updating bucket to be public...");
+      const { error: updateError } = await supabase.storage.updateBucket('posts', {
+        public: true
+      });
+      
+      if (updateError) {
+        console.error("Failed to update bucket settings:", updateError);
         return false;
       }
+
+      // Create policies directly using SQL for better reliability
+      try {
+        // Insert policy for all authenticated users to upload files
+        const insertPolicySQL = `
+          INSERT INTO storage.policies (id, name, definition, bucket_id)
+          SELECT 
+            gen_random_uuid(), 
+            'allow_uploads',
+            '{"name":"Allow Uploads","action":"INSERT","role":"authenticated","check":{}}',
+            'posts'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM storage.policies 
+            WHERE name = 'allow_uploads' AND bucket_id = 'posts'
+          );
+        `;
+        
+        const { success: insertSuccess, error: insertError } = await executeSQL(insertPolicySQL);
+        
+        if (!insertSuccess) {
+          console.error("Error creating insert policy:", insertError);
+        }
+        
+        // Policy for public access (SELECT)
+        const selectPolicySQL = `
+          INSERT INTO storage.policies (id, name, definition, bucket_id)
+          SELECT 
+            gen_random_uuid(), 
+            'public_select',
+            '{"name":"Public Select","action":"SELECT","role":"*","check":{}}',
+            'posts'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM storage.policies 
+            WHERE name = 'public_select' AND bucket_id = 'posts'
+          );
+        `;
+        
+        const { success: selectSuccess, error: selectError } = await executeSQL(selectPolicySQL);
+        
+        if (!selectSuccess) {
+          console.error("Error creating select policy:", selectError);
+        }
+        
+        console.log("Storage policies created successfully");
+      } catch (policyError) {
+        console.error("Error in policy creation:", policyError);
+        // Continue even if policy creation fails
+      }
+      
+      return true;
     } catch (error) {
       console.error("Unexpected error in setupBucket:", error);
       return false;
@@ -288,7 +286,7 @@ export function FeedTab() {
   };
 
   const uploadImage = async (file: File, userId: string): Promise<string | null> => {
-    console.log("Starting image upload process for", file.name);
+    console.log("Starting image upload process for", file.name, "size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
     
     try {
       // Set up bucket first
@@ -301,41 +299,70 @@ export function FeedTab() {
       // Generate file path with timestamp and random string to avoid collisions
       const fileExt = file.name.split('.').pop() || 'jpg';
       const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 10);
-      const filePath = `${userId}/${timestamp}-${randomString}.${fileExt}`;
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const filePath = `${userId}/${timestamp}_${randomString}.${fileExt}`;
       
       console.log("Generated file path:", filePath);
       
-      // Upload file
-      const { data, error: uploadError } = await supabase.storage
-        .from('posts')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+      // Upload file with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      let lastError = null;
+      
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`Upload attempt ${attempts}/${maxAttempts}`);
         
-      if (uploadError) {
-        console.error("Error uploading image:", uploadError);
-        throw new Error(`Error uploading image: ${uploadError.message}`);
+        try {
+          const { data, error: uploadError } = await supabase.storage
+            .from('posts')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: true
+            });
+            
+          if (uploadError) {
+            console.error(`Attempt ${attempts} failed:`, uploadError);
+            lastError = uploadError;
+            
+            // Wait a bit before retrying
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            } else {
+              throw uploadError;
+            }
+          }
+          
+          console.log("File uploaded successfully:", data?.path || filePath);
+          
+          // Get the public URL
+          const { data: publicUrlData } = supabase.storage
+            .from('posts')
+            .getPublicUrl(filePath);
+          
+          if (!publicUrlData?.publicUrl) {
+            console.error("Failed to get public URL");
+            throw new Error("Failed to get public URL for uploaded file");
+          }
+          
+          console.log("Successfully obtained public URL:", publicUrlData.publicUrl);
+          return publicUrlData.publicUrl;
+        } catch (err) {
+          console.error(`Error in attempt ${attempts}:`, err);
+          lastError = err;
+          
+          if (attempts >= maxAttempts) {
+            break;
+          }
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
       
-      console.log("File uploaded successfully:", data?.path);
-      
-      // Get the public URL
-      const { data: publicUrlData } = supabase.storage
-        .from('posts')
-        .getPublicUrl(filePath);
-      
-      console.log("Public URL response:", publicUrlData);
-      
-      if (!publicUrlData || !publicUrlData.publicUrl) {
-        console.error("Failed to get public URL");
-        throw new Error("Failed to get public URL for uploaded file");
-      }
-      
-      console.log("Successfully obtained public URL:", publicUrlData.publicUrl);
-      return publicUrlData.publicUrl;
-      
+      // If we got here, all attempts failed
+      throw lastError || new Error("All upload attempts failed");
     } catch (error) {
       console.error("Upload process failed:", error);
       throw error;

@@ -20,51 +20,51 @@ export async function createStoragePolicy(
   }
 ) {
   try {
-    // First, check if the policy already exists (using direct query instead of RPC)
-    const { data: existingPolicies, error: checkError } = await supabase
-      .from('storage.policies')
-      .select('*')
-      .eq('name', policyName)
-      .eq('bucket_id', bucketName);
-      
-    if (checkError) {
-      console.warn("Could not check for existing policies:", checkError);
-    }
+    console.log(`Creating storage policy: ${policyName} for bucket: ${bucketName}`);
     
-    // If policy already exists, return success
-    if (existingPolicies && existingPolicies.length > 0) {
-      console.log("Policy already exists:", existingPolicies[0]);
-      return { data: existingPolicies[0], error: null };
-    }
-    
-    // Escape strings for SQL safety
-    const escapedPolicyName = policyName.replace(/'/g, "''");
-    const escapedBucketName = bucketName.replace(/'/g, "''");
-    const escapedDefinition = JSON.stringify(definition).replace(/'/g, "''");
-    
-    // Create policy using raw SQL through executeSQL
-    console.log("Creating storage policy via SQL...");
-    const policySQL = `
-      INSERT INTO storage.policies (name, definition, bucket_id)
-      VALUES (
-        '${escapedPolicyName}',
-        '${escapedDefinition}'::jsonb,
-        '${escapedBucketName}'
-      )
-      RETURNING *;
+    // First, check if the policy already exists using direct SQL
+    const checkSQL = `
+      SELECT * FROM storage.policies 
+      WHERE name = '${policyName.replace(/'/g, "''")}' 
+      AND bucket_id = '${bucketName.replace(/'/g, "''")}'
     `;
     
-    const result = await executeSQL(policySQL);
+    const { success: checkSuccess, error: checkError } = await executeSQL(checkSQL);
     
-    if (!result.success) {
-      console.error("Failed to create storage policy:", result.error);
-      throw result.error;
+    if (!checkSuccess) {
+      console.error("Error checking for existing policy:", checkError);
     }
     
-    console.log("Storage policy created successfully");
-    return { data: { name: policyName, bucket_id: bucketName }, error: null };
+    // Create policy using raw SQL through executeSQL with explicit id generation
+    const policySQL = `
+      INSERT INTO storage.policies (id, name, definition, bucket_id)
+      SELECT 
+        gen_random_uuid(), 
+        '${policyName.replace(/'/g, "''")}',
+        '${JSON.stringify(definition).replace(/'/g, "''")}',
+        '${bucketName.replace(/'/g, "''")}'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM storage.policies 
+        WHERE name = '${policyName.replace(/'/g, "''")}' 
+        AND bucket_id = '${bucketName.replace(/'/g, "''")}'
+      );
+    `;
+    
+    console.log("Executing SQL to create policy:", policySQL.substring(0, 100) + "...");
+    const { success, error } = await executeSQL(policySQL);
+    
+    if (!success) {
+      console.error("Failed to create storage policy:", error);
+      return { data: null, error };
+    }
+    
+    console.log("Storage policy created or already exists:", policyName);
+    return { 
+      data: { name: policyName, bucket_id: bucketName }, 
+      error: null 
+    };
   } catch (error) {
-    console.error("Error creating storage policy:", error);
+    console.error("Exception in createStoragePolicy:", error);
     return { data: null, error };
   }
 }

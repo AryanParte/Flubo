@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Upload, Video, Link, Youtube } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { executeSQL } from "@/lib/db-utils";
 
 interface VideoUploadProps {
   demoUrl: string;
@@ -33,6 +34,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
   useEffect(() => {
     const checkBucket = async () => {
       try {
+        console.log("Checking demo-videos bucket...");
         // First check if bucket exists
         const { data: buckets, error: listError } = await supabase.storage.listBuckets();
         
@@ -54,9 +56,14 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
             console.error("Failed to create bucket:", createError);
             return;
           }
+          
+          console.log("Bucket created successfully");
+        } else {
+          console.log("Bucket already exists");
         }
         
         // Update bucket to be public
+        console.log("Updating bucket to be public...");
         const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
           public: true
         });
@@ -66,8 +73,56 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
           return;
         }
         
+        // Create policies directly using SQL for better reliability
+        try {
+          // Insert policy for all authenticated users to upload files
+          const insertPolicySQL = `
+            INSERT INTO storage.policies (id, name, definition, bucket_id)
+            SELECT 
+              gen_random_uuid(), 
+              'allow_uploads_videos',
+              '{"name":"Allow Video Uploads","action":"INSERT","role":"authenticated","check":{}}',
+              'demo-videos'
+            WHERE NOT EXISTS (
+              SELECT 1 FROM storage.policies 
+              WHERE name = 'allow_uploads_videos' AND bucket_id = 'demo-videos'
+            );
+          `;
+          
+          const { success: insertSuccess, error: insertError } = await executeSQL(insertPolicySQL);
+          
+          if (!insertSuccess) {
+            console.error("Error creating insert policy:", insertError);
+          }
+          
+          // Policy for public access (SELECT)
+          const selectPolicySQL = `
+            INSERT INTO storage.policies (id, name, definition, bucket_id)
+            SELECT 
+              gen_random_uuid(), 
+              'public_select_videos',
+              '{"name":"Public Video Select","action":"SELECT","role":"*","check":{}}',
+              'demo-videos'
+            WHERE NOT EXISTS (
+              SELECT 1 FROM storage.policies 
+              WHERE name = 'public_select_videos' AND bucket_id = 'demo-videos'
+            );
+          `;
+          
+          const { success: selectSuccess, error: selectError } = await executeSQL(selectPolicySQL);
+          
+          if (!selectSuccess) {
+            console.error("Error creating select policy:", selectError);
+          }
+          
+          console.log("Storage policies created successfully for demo-videos");
+        } catch (policyError) {
+          console.error("Error in policy creation:", policyError);
+          // Continue even if policy creation fails
+        }
+        
         setBucketReady(true);
-        console.log("Bucket demo-videos is ready");
+        console.log("Bucket demo-videos is ready for use");
       } catch (error) {
         console.error("Error checking/creating bucket:", error);
       }
@@ -111,10 +166,36 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
       
-      // Wait for bucket to be ready
+      // Wait for bucket to be ready or force setup
       if (!bucketReady) {
         console.log("Waiting for bucket to be ready...");
-        // Try to ensure bucket again
+        toast({
+          title: "Preparing storage",
+          description: "Setting up storage for your video, please wait..."
+        });
+        
+        // Create the bucket if it doesn't exist
+        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+        
+        if (listError) {
+          console.error("Failed to list buckets:", listError);
+          throw new Error("Failed to access storage");
+        }
+        
+        const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
+        
+        if (!bucketExists) {
+          const { error: createError } = await supabase.storage.createBucket('demo-videos', {
+            public: true
+          });
+          
+          if (createError) {
+            console.error("Failed to create bucket:", createError);
+            throw new Error("Failed to create storage bucket");
+          }
+        }
+        
+        // Update bucket to be public
         const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
           public: true
         });
@@ -126,7 +207,9 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
 
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileName = `${user.id}_${timestamp}_${randomString}.${fileExt}`;
       const filePath = fileName;
 
       // Set up a simple progress tracker
@@ -146,21 +229,59 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       simulateProgress();
 
       console.log("Starting file upload to path:", filePath);
-      // Upload the file
-      const { error: uploadError, data } = await supabase.storage
-        .from('demo-videos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+      // Upload the file with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      let lastError = null;
+      let uploadResult = null;
+      
+      while (attempts < maxAttempts && !uploadResult) {
+        attempts++;
+        console.log(`Upload attempt ${attempts}/${maxAttempts}`);
+        
+        try {
+          const { error: uploadError, data } = await supabase.storage
+            .from('demo-videos')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: true
+            });
+            
+          if (uploadError) {
+            console.error(`Attempt ${attempts} failed:`, uploadError);
+            lastError = uploadError;
+            
+            // Wait a bit before retrying
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            } else {
+              throw uploadError;
+            }
+          }
+          
+          uploadResult = data;
+          break;
+        } catch (err) {
+          console.error(`Error in attempt ${attempts}:`, err);
+          lastError = err;
+          
+          if (attempts >= maxAttempts) {
+            break;
+          }
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      // If all attempts failed
+      if (!uploadResult && lastError) {
+        throw lastError;
+      }
 
       // Clear the progress interval
       clearInterval(progressInterval);
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw uploadError;
-      }
 
       // Complete the progress
       setUploadProgress(100);
