@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -5,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Post as PostType } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Plus, X, Upload } from "lucide-react";
+import { Plus, X, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog,
@@ -29,6 +30,7 @@ export function FeedTab() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPosts = async (filter: string) => {
@@ -103,10 +105,14 @@ export function FeedTab() {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      console.log("File selected:", file.name, "Size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
       
       if (file.size > 5 * 1024 * 1024) {
+        setUploadError("Image must be less than 5MB");
         toast({
           title: "File too large",
           description: "Image must be less than 5MB",
@@ -123,15 +129,35 @@ export function FeedTab() {
         }
       };
       
-      reader.readAsDataURL(file);
-      setSelectedImage(file);
-      console.log("Image selected:", file.name, "Size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
+      reader.onerror = (error) => {
+        console.error("FileReader error:", error);
+        setUploadError("Failed to read file");
+        toast({
+          title: "Error",
+          description: "Failed to read image file",
+          variant: "destructive",
+        });
+      };
+      
+      try {
+        reader.readAsDataURL(file);
+        setSelectedImage(file);
+      } catch (error) {
+        console.error("Error reading file:", error);
+        setUploadError("Failed to process image");
+        toast({
+          title: "Error",
+          description: "Failed to process image file",
+          variant: "destructive",
+        });
+      }
     }
   };
   
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
+    setUploadError(null);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -165,23 +191,49 @@ export function FeedTab() {
     
     try {
       setIsSubmitting(true);
+      console.log("Starting post submission...");
       
       const hashtagRegex = /#(\w+)/g;
       const hashtags = [...newPostContent.matchAll(hashtagRegex)].map(match => match[1]);
+      console.log("Extracted hashtags:", hashtags);
       
       let imageUrl = null;
       
       if (selectedImage) {
-        console.log("Uploading image...");
+        console.log("Uploading image...", selectedImage);
         const filePath = `post-images/${user.id}/${Date.now()}-${selectedImage.name.replace(/\s+/g, '-')}`;
+        console.log("File path for upload:", filePath);
+        
+        // Ensure the storage bucket exists
+        try {
+          const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('posts');
+          
+          if (bucketError && bucketError.message.includes('does not exist')) {
+            console.log("Posts bucket doesn't exist, creating...");
+            const { error: createError } = await supabase.storage.createBucket('posts', {
+              public: true,
+              fileSizeLimit: 5 * 1024 * 1024, // 5MB
+            });
+            
+            if (createError) {
+              console.error("Error creating bucket:", createError);
+              throw new Error("Failed to create storage bucket");
+            }
+          }
+        } catch (error) {
+          console.error("Error checking/creating bucket:", error);
+        }
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('posts')
-          .upload(filePath, selectedImage);
+          .upload(filePath, selectedImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
           
         if (uploadError) {
           console.error("Error uploading image:", uploadError);
-          throw uploadError;
+          throw new Error(`Error uploading image: ${uploadError.message}`);
         }
         
         console.log("Image uploaded successfully:", uploadData);
@@ -194,20 +246,23 @@ export function FeedTab() {
         console.log("Image public URL:", imageUrl);
       }
       
+      console.log("Creating post record in database...");
       const { data: post, error: postError } = await supabase
         .from('posts')
         .insert({
           content: newPostContent,
           user_id: user.id,
           hashtags: hashtags,
-          image_url: imageUrl
+          image_url: imageUrl,
+          likes: 0,
+          comments_count: 0
         })
         .select()
         .single();
         
       if (postError) {
         console.error("Error creating post:", postError);
-        throw postError;
+        throw new Error(`Error creating post: ${postError.message}`);
       }
       
       console.log("Post created successfully:", post);
@@ -215,19 +270,22 @@ export function FeedTab() {
       setNewPostContent("");
       setSelectedImage(null);
       setImagePreview(null);
+      setUploadError(null);
       setShowPostDialog(false);
       
+      // Refresh posts to show the new one
       fetchPosts(activeTab);
       
       toast({
         title: "Post created",
         description: "Your post has been published successfully"
       });
-    } catch (error) {
-      console.error("Error creating post:", error);
+    } catch (error: any) {
+      console.error("Error in handleSubmitPost:", error);
+      
       toast({
         title: "Error",
-        description: "Failed to create post. Please try again.",
+        description: error.message || "Failed to create post. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -410,6 +468,7 @@ export function FeedTab() {
               className="min-h-[100px]"
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
+              disabled={isSubmitting}
             />
             
             {imagePreview ? (
@@ -424,6 +483,7 @@ export function FeedTab() {
                   size="sm"
                   className="absolute top-2 right-2"
                   onClick={handleRemoveImage}
+                  disabled={isSubmitting}
                 >
                   <X size={16} />
                   <span className="sr-only">Remove</span>
@@ -440,6 +500,7 @@ export function FeedTab() {
                       size="sm" 
                       type="button"
                       onClick={handleImageButtonClick}
+                      disabled={isSubmitting}
                     >
                       Select Image
                     </Button>
@@ -450,8 +511,15 @@ export function FeedTab() {
                     className="hidden"
                     accept="image/*"
                     onChange={handleImageChange}
+                    disabled={isSubmitting}
                   />
                 </label>
+              </div>
+            )}
+            
+            {uploadError && (
+              <div className="text-sm text-destructive mt-1">
+                {uploadError}
               </div>
             )}
             
@@ -464,8 +532,18 @@ export function FeedTab() {
             <Button variant="outline" onClick={() => setShowPostDialog(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitPost} disabled={!newPostContent.trim() || isSubmitting}>
-              {isSubmitting ? "Posting..." : "Post"}
+            <Button 
+              onClick={handleSubmitPost} 
+              disabled={!newPostContent.trim() || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                "Post"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
