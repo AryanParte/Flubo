@@ -26,9 +26,87 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const [currentMessage, setCurrentMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [chatId, setChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
+  
+  // Fetch existing chat and messages on component mount
+  useEffect(() => {
+    const fetchExistingChat = async () => {
+      if (!user || !investorId) return;
+      
+      try {
+        setIsLoading(true);
+        
+        // First, check if a chat already exists between this startup and investor
+        const { data: existingChat, error: chatError } = await supabase
+          .from('ai_persona_chats')
+          .select('id, match_score, summary, completed')
+          .eq('startup_id', user.id)
+          .eq('investor_id', investorId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (chatError && chatError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error("Error fetching existing chat:", chatError);
+          toast({
+            title: "Error",
+            description: "Failed to load previous conversation",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // If chat exists, fetch its messages
+        if (existingChat) {
+          console.log("Found existing chat:", existingChat.id);
+          setChatId(existingChat.id);
+          savedChatId.current = existingChat.id;
+          
+          // If the chat is marked as completed with a match score, notify parent
+          if (existingChat.completed && existingChat.match_score !== null && onComplete) {
+            onComplete(existingChat.match_score, existingChat.summary || "");
+          }
+          
+          const { data: chatMessages, error: messagesError } = await supabase
+            .from('ai_persona_messages')
+            .select('id, sender_type, content, created_at')
+            .eq('chat_id', existingChat.id)
+            .order('created_at', { ascending: true });
+            
+          if (messagesError) {
+            console.error("Error fetching chat messages:", messagesError);
+            toast({
+              title: "Error",
+              description: "Failed to load previous messages",
+              variant: "destructive",
+            });
+          } else if (chatMessages && chatMessages.length > 0) {
+            console.log(`Loaded ${chatMessages.length} previous messages`);
+            
+            // Transform the messages to match our local format
+            const formattedMessages: Message[] = chatMessages.map(msg => ({
+              id: msg.id,
+              sender_type: msg.sender_type as "startup" | "ai",
+              content: msg.content,
+              timestamp: msg.created_at
+            }));
+            
+            setMessages(formattedMessages);
+          }
+        }
+      } catch (error) {
+        console.error("Error in fetchExistingChat:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchExistingChat();
+  }, [user, investorId, onComplete]);
   
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -212,22 +290,31 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   return (
     <div className="flex flex-col h-[65vh]">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.sender_type === "startup" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[70%] p-3 rounded-lg ${msg.sender_type === "startup" ? "bg-accent text-white rounded-br-none" : "bg-secondary rounded-bl-none"}`}
-            >
-              {msg.content}
-            </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 size={24} className="animate-spin text-muted-foreground mr-2" />
+            <span className="text-muted-foreground">Loading conversation...</span>
           </div>
-        ))}
-        {messages.length === 0 && (
-          <div className="text-center text-muted-foreground py-8">
-            Start the conversation by asking a question or introducing your startup.
-          </div>
+        ) : (
+          <>
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.sender_type === "startup" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[70%] p-3 rounded-lg ${msg.sender_type === "startup" ? "bg-accent text-white rounded-br-none" : "bg-secondary rounded-bl-none"}`}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            {messages.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">
+                Start the conversation by asking a question or introducing your startup.
+              </div>
+            )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -246,8 +333,9 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             className="flex-1 mr-2"
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
+            disabled={isLoading || isSending}
           />
-          <Button type="submit" disabled={isSending || !currentMessage.trim()}>
+          <Button type="submit" disabled={isLoading || isSending || !currentMessage.trim()}>
             {isSending ? (
               <>
                 <Loader2 size={16} className="mr-2 animate-spin" />
