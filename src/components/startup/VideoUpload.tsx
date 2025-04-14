@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,7 @@ import { Loader2, Upload, Video, Link, Youtube } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { executeSQL } from "@/lib/db-utils";
+import { createStoragePolicy } from "@/functions/create_storage_policy";
 
 interface VideoUploadProps {
   demoUrl: string;
