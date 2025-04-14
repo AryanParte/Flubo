@@ -67,29 +67,79 @@ Your conversation style:
 3. You should be curious but also critical - investors need to assess risk.
 4. Do not reveal that you are an AI simulation - act as if you are actually the investor.
 5. Keep responses under 150 words.
-6. Always end your messages with a follow-up question to encourage a response.
-
+6. IMPORTANT: You must ask ALL the questions provided to you below during the conversation.
+7. DO NOT end the conversation with "follow-up" suggestions - your job is to ask the investor's questions.
+8. DO NOT wrap up the conversation until you have asked all the required questions.
 `;
+
+    // Track which questions have been asked
+    let requiredQuestions = [];
+    let askedQuestions = new Set();
+    
+    // Extract questions from chat history
+    if (chatHistory && chatHistory.length > 0) {
+      chatHistory.forEach(msg => {
+        if (msg.sender_type === "ai") {
+          const content = msg.content.toLowerCase();
+          // Check each required question to see if it's been asked
+          requiredQuestions.forEach(q => {
+            if (content.includes(q.question.toLowerCase().substring(0, 30))) {
+              askedQuestions.add(q.id);
+            }
+          });
+        }
+      });
+    }
 
     // Add custom questions from persona settings if they exist
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
-      systemPrompt += `\nHere are specific questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):`;
+      systemPrompt += `\nHere are specific questions you MUST ask during the conversation (don't ask them all at once):`;
       
-      personaSettings.custom_questions
+      requiredQuestions = personaSettings.custom_questions
         .filter(q => q.enabled !== false)
-        .forEach(q => {
-          systemPrompt += `\n- ${q.question}`;
-        });
+        .map((q, idx) => ({
+          id: q.id || `question-${idx}`,
+          question: q.question
+        }));
+      
+      requiredQuestions.forEach(q => {
+        const isAsked = askedQuestions.has(q.id);
+        systemPrompt += `\n- ${q.question} ${isAsked ? "(ALREADY ASKED)" : "(NOT YET ASKED)"}`;
+      });
       
       systemPrompt += `\n`;
     } else {
-      systemPrompt += `\nHere are questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):
-- Tell me about your business model?
-- What traction do you have so far?
-- Who are your competitors and how do you differentiate?
-- What's your go-to-market strategy?
-- Tell me about your team background?
-`;
+      systemPrompt += `\nHere are questions you MUST ask during the conversation (don't ask them all at once):`;
+      
+      const defaultQuestions = [
+        "Tell me about your business model?",
+        "What traction do you have so far?",
+        "Who are your competitors and how do you differentiate?",
+        "What's your go-to-market strategy?",
+        "Tell me about your team background?"
+      ];
+      
+      requiredQuestions = defaultQuestions.map((q, idx) => ({
+        id: `default-${idx}`,
+        question: q
+      }));
+      
+      requiredQuestions.forEach(q => {
+        const isAsked = askedQuestions.has(q.id);
+        systemPrompt += `\n- ${q.question} ${isAsked ? "(ALREADY ASKED)" : "(NOT YET ASKED)"}`;
+      });
+    }
+    
+    // Find questions that haven't been asked yet
+    const remainingQuestions = requiredQuestions.filter(q => !askedQuestions.has(q.id));
+    
+    // Add a special instruction if there are remaining questions
+    if (remainingQuestions.length > 0) {
+      systemPrompt += `\n\nIMPORTANT INSTRUCTION: You still need to ask the following questions:`;
+      remainingQuestions.forEach(q => {
+        systemPrompt += `\n- ${q.question}`;
+      });
+      systemPrompt += `\n\nIn your next response, ask AT LEAST ONE of these remaining questions. DO NOT END THE CONVERSATION until you've asked all required questions.`;
     }
     
     // Add any additional custom system prompt from settings
@@ -146,17 +196,33 @@ Your conversation style:
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    // Check if the AI response ends with a question
-    // If it does, we don't want to mark the chat as complete
-    const endsWithQuestion = aiResponse.trim().endsWith('?');
+    // Determine if there are questions remaining to be asked
+    // We'll check if this response might have asked one of the remaining questions
+    let remainingQuestionsAfterResponse = [...remainingQuestions];
+    remainingQuestions.forEach(q => {
+      if (aiResponse.toLowerCase().includes(q.question.toLowerCase().substring(0, 30))) {
+        // Remove this question from the remaining set
+        remainingQuestionsAfterResponse = remainingQuestionsAfterResponse.filter(rq => rq.id !== q.id);
+      }
+    });
     
-    // Calculate match score if we have enough context and the AI is not asking a question
+    // If there are still questions to ask, don't let the conversation end
+    const hasRemainingQuestions = remainingQuestionsAfterResponse.length > 0;
+    
+    // Check if the AI response ends with a question or if there are remaining questions
+    // If it does, we don't want to mark the chat as complete
+    const endsWithQuestion = aiResponse.trim().endsWith('?') || hasRemainingQuestions;
+    
+    console.log(`Response has ${remainingQuestionsAfterResponse.length} remaining questions to ask`);
+    console.log(`Is marked as question pending: ${endsWithQuestion}`);
+    
+    // Calculate match score if we have enough context and all questions have been asked
     let matchScore = null;
     let matchSummary = null;
     
-    // If we have enough messages (at least 3 exchanges), we can calculate a match score
-    // But only if the AI response doesn't end with a question (which would mean it expects more info)
-    if (chatHistory && chatHistory.length >= 5 && !endsWithQuestion) {
+    // If we have enough messages (at least 3 exchanges) and all questions have been asked, we can calculate a match score
+    // But only if the AI response doesn't expect more information
+    if (chatHistory && chatHistory.length >= 5 && !hasRemainingQuestions && !endsWithQuestion) {
       console.log("Generating match score and summary based on conversation");
       
       const scoringPrompt = `
@@ -222,7 +288,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         matchScore,
         matchSummary,
         chatId,
-        isQuestionPending: endsWithQuestion
+        isQuestionPending: endsWithQuestion,
+        remainingQuestions: remainingQuestionsAfterResponse
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -9,18 +9,25 @@ type MatchCardProps = {
   index: number;
   onRequestDemo: (startup: Startup) => void;
   onIgnore: (startup: Startup) => void;
+  matchScore?: number; // Add optional match score
+  matchSummary?: string; // Add optional match summary
 };
 
 export const MatchCard = ({ 
   startup, 
   index, 
   onRequestDemo, 
-  onIgnore 
+  onIgnore,
+  matchScore,
+  matchSummary
 }: MatchCardProps) => {
   // Get the website URL from any available source
   const websiteUrl = startup.websiteUrl || startup.website || null;
   // Consider any non-empty website value as valid
   const hasWebsite = Boolean(websiteUrl && websiteUrl.trim() !== '' && websiteUrl !== '#');
+  
+  // Use the provided match score or the startup score if available
+  const score = matchScore !== undefined ? matchScore : (startup.score || 0);
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -50,7 +57,7 @@ export const MatchCard = ({
         <div className="flex justify-between items-start mb-3">
           <h3 className="font-semibold text-xl text-white">{startup.name}</h3>
           <div className="bg-[#1F422A] text-[#4BDA7C] text-xs font-medium rounded-full px-3 py-1 flex items-center">
-            {startup.score}% Match
+            {score}% Match
           </div>
         </div>
         
@@ -60,6 +67,13 @@ export const MatchCard = ({
         </div>
         
         <p className="text-sm text-gray-300 mb-4">{startup.tagline || 'No description available'}</p>
+        
+        {/* Match summary if available */}
+        {matchSummary && (
+          <div className="mb-4 p-3 bg-[#1F2A3B] rounded-md">
+            <p className="text-sm text-gray-300">{matchSummary}</p>
+          </div>
+        )}
         
         <div className="flex flex-wrap gap-2 mb-4">
           <div className="inline-block px-3 py-1 rounded-full bg-[#1F2A3B] text-gray-300 text-xs">
