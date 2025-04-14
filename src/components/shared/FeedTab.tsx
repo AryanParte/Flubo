@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -170,37 +171,6 @@ export function FeedTab() {
     }
   };
 
-  const ensurePostsBucketExists = async () => {
-    try {
-      console.log("Checking if posts bucket exists...");
-      const { data, error } = await supabase.storage.getBucket('posts');
-      
-      if (error) {
-        console.log("Bucket doesn't exist or error checking:", error.message);
-        
-        // Create the bucket if it doesn't exist
-        const { error: createError } = await supabase.storage.createBucket('posts', {
-          public: true,
-          fileSizeLimit: 5 * 1024 * 1024,
-        });
-        
-        if (createError) {
-          console.error("Error creating bucket:", createError);
-          return false;
-        }
-        
-        console.log("Posts bucket created successfully");
-        return true;
-      }
-      
-      console.log("Posts bucket already exists");
-      return true;
-    } catch (error) {
-      console.error("Error in ensurePostsBucketExists:", error);
-      return false;
-    }
-  };
-
   const handleSubmitPost = async () => {
     if (!user) {
       toast({
@@ -224,12 +194,6 @@ export function FeedTab() {
       setIsSubmitting(true);
       console.log("Starting post submission...");
       
-      // Make sure the posts bucket exists before uploading
-      const bucketExists = await ensurePostsBucketExists();
-      if (!bucketExists) {
-        throw new Error("Failed to ensure storage bucket exists");
-      }
-      
       const hashtagRegex = /#(\w+)/g;
       const hashtags = [...newPostContent.matchAll(hashtagRegex)].map(match => match[1]);
       console.log("Extracted hashtags:", hashtags);
@@ -237,11 +201,16 @@ export function FeedTab() {
       let imageUrl = null;
       
       if (selectedImage) {
-        console.log("Uploading image...", selectedImage.name);
-        const filePath = `post-images/${user.id}/${Date.now()}-${selectedImage.name.replace(/\s+/g, '-')}`;
+        console.log("Preparing to upload image:", selectedImage.name);
+        
+        // Skip bucket creation check and just directly try to upload
+        // If the bucket doesn't exist, we'll get an error and handle it differently
+        
+        // Create a unique filename
+        const filePath = `${user.id}/${Date.now()}-${selectedImage.name.replace(/\s+/g, '-')}`;
         console.log("File path for upload:", filePath);
         
-        // Upload the image
+        // Try to upload the image
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('posts')
           .upload(filePath, selectedImage, {
@@ -251,18 +220,33 @@ export function FeedTab() {
           
         if (uploadError) {
           console.error("Error uploading image:", uploadError);
-          throw new Error(`Error uploading image: ${uploadError.message}`);
-        }
-        
-        console.log("Image uploaded successfully:", uploadData);
-        
-        // Get the public URL
-        const { data: urlData } = supabase.storage
-          .from('posts')
-          .getPublicUrl(filePath);
           
-        imageUrl = urlData.publicUrl;
-        console.log("Image public URL:", imageUrl);
+          // Check if error is because bucket doesn't exist (would be a 404)
+          if (uploadError.message && uploadError.message.includes("not found")) {
+            toast({
+              title: "Storage not configured",
+              description: "Image upload is not available. Your post will be created without the image.",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Upload failed", 
+              description: "Couldn't upload image. Your post will be created without the image.",
+              variant: "destructive"
+            });
+          }
+          // Continue creating post without the image
+        } else {
+          console.log("Image uploaded successfully:", uploadData);
+          
+          // Get the public URL - this should work if the upload succeeded
+          const { data: urlData } = supabase.storage
+            .from('posts')
+            .getPublicUrl(filePath);
+            
+          imageUrl = urlData.publicUrl;
+          console.log("Image public URL:", imageUrl);
+        }
       }
       
       console.log("Creating post record in database...");
