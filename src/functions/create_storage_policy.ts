@@ -22,26 +22,46 @@ export async function createStoragePolicy(
   try {
     console.log(`Creating storage policy: ${policyName} for bucket: ${bucketName}`);
     
-    // First, check if the policy already exists using direct SQL
-    const checkSQL = `
-      SELECT * FROM storage.policies 
-      WHERE name = '${policyName.replace(/'/g, "''")}' 
-      AND bucket_id = '${bucketName.replace(/'/g, "''")}'
-    `;
+    // First ensure the bucket exists
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
     
-    const { success: checkSuccess, error: checkError } = await executeSQL(checkSQL);
+    if (listError) {
+      console.error("Failed to list buckets:", listError);
+      return { data: null, error: listError };
+    }
     
-    if (!checkSuccess) {
-      console.error("Error checking for existing policy:", checkError);
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+    
+    if (!bucketExists) {
+      console.log(`Bucket ${bucketName} doesn't exist, creating it...`);
+      const { error: createError } = await supabase.storage.createBucket(bucketName, {
+        public: true
+      });
+      
+      if (createError) {
+        console.error("Failed to create bucket:", createError);
+        return { data: null, error: createError };
+      }
+      
+      // Update bucket to be public
+      const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
+        public: true
+      });
+      
+      if (updateError) {
+        console.error("Failed to set bucket to public:", updateError);
+      }
     }
     
     // Create policy using raw SQL through executeSQL with explicit id generation
+    const policyDefinitionString = JSON.stringify(definition).replace(/'/g, "''");
+    
     const policySQL = `
       INSERT INTO storage.policies (id, name, definition, bucket_id)
       SELECT 
         gen_random_uuid(), 
         '${policyName.replace(/'/g, "''")}',
-        '${JSON.stringify(definition).replace(/'/g, "''")}',
+        '${policyDefinitionString}',
         '${bucketName.replace(/'/g, "''")}'
       WHERE NOT EXISTS (
         SELECT 1 FROM storage.policies 

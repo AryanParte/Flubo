@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,66 +59,33 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
           console.log("Bucket created successfully");
         } else {
           console.log("Bucket already exists");
+          
+          // Make sure it's set to public
+          const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
+            public: true
+          });
+          
+          if (updateError) {
+            console.error("Failed to update bucket settings:", updateError);
+          } else {
+            console.log("Updated bucket to be public");
+          }
         }
         
-        // Update bucket to be public
-        console.log("Updating bucket to be public...");
-        const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
-          public: true
+        // Create policies using the createStoragePolicy function
+        await createStoragePolicy('demo-videos', 'allow_uploads_videos', {
+          name: "Allow Video Uploads",
+          action: "INSERT",
+          role: "authenticated",
+          check: {}
         });
         
-        if (updateError) {
-          console.error("Failed to update bucket settings:", updateError);
-          return;
-        }
-        
-        // Create policies directly using SQL for better reliability
-        try {
-          // Insert policy for all authenticated users to upload files
-          const insertPolicySQL = `
-            INSERT INTO storage.policies (id, name, definition, bucket_id)
-            SELECT 
-              gen_random_uuid(), 
-              'allow_uploads_videos',
-              '{"name":"Allow Video Uploads","action":"INSERT","role":"authenticated","check":{}}',
-              'demo-videos'
-            WHERE NOT EXISTS (
-              SELECT 1 FROM storage.policies 
-              WHERE name = 'allow_uploads_videos' AND bucket_id = 'demo-videos'
-            );
-          `;
-          
-          const { success: insertSuccess, error: insertError } = await executeSQL(insertPolicySQL);
-          
-          if (!insertSuccess) {
-            console.error("Error creating insert policy:", insertError);
-          }
-          
-          // Policy for public access (SELECT)
-          const selectPolicySQL = `
-            INSERT INTO storage.policies (id, name, definition, bucket_id)
-            SELECT 
-              gen_random_uuid(), 
-              'public_select_videos',
-              '{"name":"Public Video Select","action":"SELECT","role":"*","check":{}}',
-              'demo-videos'
-            WHERE NOT EXISTS (
-              SELECT 1 FROM storage.policies 
-              WHERE name = 'public_select_videos' AND bucket_id = 'demo-videos'
-            );
-          `;
-          
-          const { success: selectSuccess, error: selectError } = await executeSQL(selectPolicySQL);
-          
-          if (!selectSuccess) {
-            console.error("Error creating select policy:", selectError);
-          }
-          
-          console.log("Storage policies created successfully for demo-videos");
-        } catch (policyError) {
-          console.error("Error in policy creation:", policyError);
-          // Continue even if policy creation fails
-        }
+        await createStoragePolicy('demo-videos', 'public_select_videos', {
+          name: "Public Video Select",
+          action: "SELECT",
+          role: "*",
+          check: {}
+        });
         
         setBucketReady(true);
         console.log("Bucket demo-videos is ready for use");
@@ -174,34 +140,56 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
           description: "Setting up storage for your video, please wait..."
         });
         
-        // Create the bucket if it doesn't exist
-        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-        
-        if (listError) {
-          console.error("Failed to list buckets:", listError);
-          throw new Error("Failed to access storage");
-        }
-        
-        const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
-        
-        if (!bucketExists) {
-          const { error: createError } = await supabase.storage.createBucket('demo-videos', {
+        // Manually ensure the bucket is ready
+        try {
+          // First check if bucket exists
+          const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+          
+          if (listError) {
+            console.error("Failed to list buckets:", listError);
+            throw new Error("Failed to access storage");
+          }
+          
+          const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
+          
+          if (!bucketExists) {
+            // Create the bucket if it doesn't exist
+            const { error: createError } = await supabase.storage.createBucket('demo-videos', {
+              public: true
+            });
+            
+            if (createError) {
+              console.error("Failed to create bucket:", createError);
+              throw new Error("Failed to create storage bucket");
+            }
+          }
+          
+          // Make sure it's set to public
+          const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
             public: true
           });
           
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-            throw new Error("Failed to create storage bucket");
+          if (updateError) {
+            console.error("Failed to update bucket settings:", updateError);
           }
-        }
-        
-        // Update bucket to be public
-        const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
-          public: true
-        });
-        
-        if (updateError) {
-          console.error("Failed to update bucket settings:", updateError);
+          
+          // Create policies using the createStoragePolicy function
+          await createStoragePolicy('demo-videos', 'allow_uploads_videos', {
+            name: "Allow Video Uploads",
+            action: "INSERT",
+            role: "authenticated",
+            check: {}
+          });
+          
+          await createStoragePolicy('demo-videos', 'public_select_videos', {
+            name: "Public Video Select",
+            action: "SELECT",
+            role: "*",
+            check: {}
+          });
+        } catch (setupError) {
+          console.error("Error in bucket setup:", setupError);
+          throw new Error("Failed to set up storage bucket");
         }
       }
 
@@ -249,11 +237,12 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
             
           if (uploadError) {
             console.error(`Attempt ${attempts} failed:`, uploadError);
+            console.error("Error details:", uploadError.message);
             lastError = uploadError;
             
             // Wait a bit before retrying
             if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
               continue;
             } else {
               throw uploadError;
@@ -271,7 +260,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
           }
           
           // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
         }
       }
       

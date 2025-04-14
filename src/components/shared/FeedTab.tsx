@@ -217,66 +217,35 @@ export function FeedTab() {
         console.log("Successfully created bucket");
       } else {
         console.log("Bucket 'posts' already exists");
-      }
-      
-      // Update bucket to ensure it's public
-      console.log("Updating bucket to be public...");
-      const { error: updateError } = await supabase.storage.updateBucket('posts', {
-        public: true
-      });
-      
-      if (updateError) {
-        console.error("Failed to update bucket settings:", updateError);
-        return false;
+        
+        // Update bucket to ensure it's public - this is important
+        const { error: updateError } = await supabase.storage.updateBucket('posts', {
+          public: true
+        });
+        
+        if (updateError) {
+          console.error("Failed to update bucket settings:", updateError);
+          // Continue anyway as this is not critical
+        } else {
+          console.log("Updated bucket to be public");
+        }
       }
 
-      // Create policies directly using SQL for better reliability
-      try {
-        // Insert policy for all authenticated users to upload files
-        const insertPolicySQL = `
-          INSERT INTO storage.policies (id, name, definition, bucket_id)
-          SELECT 
-            gen_random_uuid(), 
-            'allow_uploads',
-            '{"name":"Allow Uploads","action":"INSERT","role":"authenticated","check":{}}',
-            'posts'
-          WHERE NOT EXISTS (
-            SELECT 1 FROM storage.policies 
-            WHERE name = 'allow_uploads' AND bucket_id = 'posts'
-          );
-        `;
-        
-        const { success: insertSuccess, error: insertError } = await executeSQL(insertPolicySQL);
-        
-        if (!insertSuccess) {
-          console.error("Error creating insert policy:", insertError);
-        }
-        
-        // Policy for public access (SELECT)
-        const selectPolicySQL = `
-          INSERT INTO storage.policies (id, name, definition, bucket_id)
-          SELECT 
-            gen_random_uuid(), 
-            'public_select',
-            '{"name":"Public Select","action":"SELECT","role":"*","check":{}}',
-            'posts'
-          WHERE NOT EXISTS (
-            SELECT 1 FROM storage.policies 
-            WHERE name = 'public_select' AND bucket_id = 'posts'
-          );
-        `;
-        
-        const { success: selectSuccess, error: selectError } = await executeSQL(selectPolicySQL);
-        
-        if (!selectSuccess) {
-          console.error("Error creating select policy:", selectError);
-        }
-        
-        console.log("Storage policies created successfully");
-      } catch (policyError) {
-        console.error("Error in policy creation:", policyError);
-        // Continue even if policy creation fails
-      }
+      // Create a standardized upload policy
+      await createStoragePolicy('posts', 'allow_uploads', {
+        name: "Allow Uploads",
+        action: "INSERT",
+        role: "authenticated",
+        check: {}
+      });
+      
+      // Create a standardized read policy
+      await createStoragePolicy('posts', 'public_select', {
+        name: "Public Select",
+        action: "SELECT",
+        role: "*",
+        check: {}
+      });
       
       return true;
     } catch (error) {
@@ -289,7 +258,7 @@ export function FeedTab() {
     console.log("Starting image upload process for", file.name, "size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
     
     try {
-      // Set up bucket first
+      // Set up bucket first and ensure it returns true before continuing
       const bucketSetup = await setupBucket();
       if (!bucketSetup) {
         console.error("Failed to set up storage bucket");
@@ -325,9 +294,15 @@ export function FeedTab() {
             console.error(`Attempt ${attempts} failed:`, uploadError);
             lastError = uploadError;
             
+            // More detailed error logging
+            if (uploadError.message) {
+              console.error("Error message:", uploadError.message);
+            }
+            
             // Wait a bit before retrying
             if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              console.log(`Waiting before retry attempt ${attempts + 1}...`);
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempts)); // Increase wait time with each attempt
               continue;
             } else {
               throw uploadError;
@@ -357,7 +332,7 @@ export function FeedTab() {
           }
           
           // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
         }
       }
       
