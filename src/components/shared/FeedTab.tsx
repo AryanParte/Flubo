@@ -190,11 +190,6 @@ export function FeedTab() {
         }
         
         console.log("Posts bucket created successfully");
-        
-        // Note: The bucket was created with public: true, which should
-        // make all files publicly accessible without needing updateBucketPolicy
-        // which is not available in the JS client
-        
         return true;
       }
       
@@ -261,12 +256,12 @@ export function FeedTab() {
         
         console.log("Image uploaded successfully:", uploadData);
         
-        // Get the public URL correctly
-        const publicUrlResult = supabase.storage
+        // Get the public URL
+        const { data: urlData } = supabase.storage
           .from('posts')
           .getPublicUrl(filePath);
           
-        imageUrl = publicUrlResult.data.publicUrl;
+        imageUrl = urlData.publicUrl;
         console.log("Image public URL:", imageUrl);
       }
       
