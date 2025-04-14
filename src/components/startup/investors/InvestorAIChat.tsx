@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
@@ -199,13 +198,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   };
   
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <Button variant="ghost" onClick={onBack}>
-          Back
-        </Button>
-      </div>
-      
+    <div className="flex flex-col h-[65vh]">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div
@@ -219,10 +212,15 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             </div>
           </div>
         ))}
+        {messages.length === 0 && (
+          <div className="text-center text-muted-foreground py-8">
+            Start the conversation by asking a question or introducing your startup.
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
       
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border mt-auto">
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -237,7 +235,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
           />
-          <Button type="submit" disabled={isSending}>
+          <Button type="submit" disabled={isSending || !currentMessage.trim()}>
             {isSending ? (
               <>
                 <Loader2 size={16} className="mr-2 animate-spin" />
