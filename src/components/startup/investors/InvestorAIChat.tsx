@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Loader2, RefreshCcw } from "lucide-react";
-import { deleteAIPersonaChatHistory } from "@/services/message-service";
+import { Loader2 } from "lucide-react";
 
 interface InvestorAIChatProps {
   investorId: string;
@@ -28,7 +27,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const [currentMessage, setCurrentMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
@@ -38,45 +36,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-  
-  const resetChatHistory = async () => {
-    if (!user || !investorId || isResetting) {
-      return;
-    }
-    
-    try {
-      setIsResetting(true);
-      
-      const result = await deleteAIPersonaChatHistory(user.id, investorId);
-      
-      if (result.success) {
-        // Clear the local state
-        setMessages([]);
-        setChatId(null);
-        savedChatId.current = null;
-        
-        toast({
-          title: "Chat Reset",
-          description: "Chat history has been cleared. You can start a new conversation.",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to reset chat history. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error resetting chat:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  };
   
   const sendMessage = async (messageText: string) => {
     if (!user || !investorId || !messageText.trim() || isSending) {
@@ -241,23 +200,9 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border flex justify-between items-center">
+      <div className="p-4 border-b border-border">
         <Button variant="ghost" onClick={onBack}>
           Back
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={resetChatHistory}
-          disabled={isResetting}
-          className="flex items-center gap-1"
-        >
-          {isResetting ? (
-            <Loader2 size={14} className="mr-1 animate-spin" />
-          ) : (
-            <RefreshCcw size={14} className="mr-1" />
-          )}
-          Reset Chat
         </Button>
       </div>
       
