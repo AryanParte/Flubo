@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -85,7 +85,11 @@ export function Post({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const isPostOwner = user && user.id === author.id;
+  
+  // Add refs to manage dropdown state
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     const fetchCommentCount = async () => {
@@ -120,6 +124,21 @@ export function Post({
     fetchCommentCount();
   }, [id, initialComments]);
   
+  // Add an effect to handle clicks outside the dropdown
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
   const handleCommentToggle = () => {
     setShowComments(!showComments);
   };
@@ -137,6 +156,10 @@ export function Post({
     setShowShareDialog(true);
   };
   
+  const handleDropdownToggle = (isOpen: boolean) => {
+    setIsDropdownOpen(isOpen);
+  };
+
   const handleDeletePost = async () => {
     if (!user || user.id !== author.id) {
       return;
@@ -176,6 +199,7 @@ export function Post({
       }
       
       setIsDeleted(true);
+      setIsDropdownOpen(false);
       
       toast({
         title: "Post deleted",
@@ -221,31 +245,36 @@ export function Post({
             <p className="text-xs text-muted-foreground">{timestamp}</p>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Save Post</DropdownMenuItem>
-            <DropdownMenuItem>Follow {author.name}</DropdownMenuItem>
-            <DropdownMenuItem>Report Post</DropdownMenuItem>
-            
-            {isPostOwner && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Post
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div ref={dropdownRef}>
+          <DropdownMenu open={isDropdownOpen} onOpenChange={handleDropdownToggle}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Save Post</DropdownMenuItem>
+              <DropdownMenuItem>Follow {author.name}</DropdownMenuItem>
+              <DropdownMenuItem>Report Post</DropdownMenuItem>
+              
+              {isPostOwner && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      setShowDeleteDialog(true);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Post
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       <div className="mt-3">
