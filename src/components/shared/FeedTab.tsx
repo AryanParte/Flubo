@@ -218,7 +218,7 @@ export function FeedTab() {
       } else {
         console.log("Bucket 'posts' already exists");
         
-        // Update bucket to ensure it's public - this is important
+        // Make sure bucket is set to public
         const { error: updateError } = await supabase.storage.updateBucket('posts', {
           public: true
         });
@@ -231,21 +231,24 @@ export function FeedTab() {
         }
       }
 
-      // Create a standardized upload policy
-      await createStoragePolicy('posts', 'allow_uploads', {
-        name: "Allow Uploads",
-        action: "INSERT",
-        role: "authenticated",
-        check: {}
-      });
-      
-      // Create a standardized read policy
-      await createStoragePolicy('posts', 'public_select', {
-        name: "Public Select",
-        action: "SELECT",
-        role: "*",
-        check: {}
-      });
+      // Only create policies if the bucket was just created
+      if (!bucketExists) {
+        // Create a standardized upload policy
+        await createStoragePolicy('posts', 'allow_uploads', {
+          name: "Allow Uploads",
+          action: "INSERT",
+          role: "authenticated",
+          check: {}
+        });
+        
+        // Create a standardized read policy
+        await createStoragePolicy('posts', 'public_select', {
+          name: "Public Select",
+          action: "SELECT",
+          role: "*",
+          check: {}
+        });
+      }
       
       return true;
     } catch (error) {
@@ -283,6 +286,16 @@ export function FeedTab() {
         console.log(`Upload attempt ${attempts}/${maxAttempts}`);
         
         try {
+          // Verify bucket exists before upload
+          const { data: buckets } = await supabase.storage.listBuckets();
+          const bucketExists = buckets?.some(bucket => bucket.name === 'posts');
+          
+          if (!bucketExists) {
+            console.error("Bucket 'posts' does not exist before upload attempt");
+            throw new Error("Storage bucket does not exist");
+          }
+          
+          // Attempt upload
           const { data, error: uploadError } = await supabase.storage
             .from('posts')
             .upload(filePath, file, {
@@ -297,12 +310,18 @@ export function FeedTab() {
             // More detailed error logging
             if (uploadError.message) {
               console.error("Error message:", uploadError.message);
+              
+              // Check for RLS errors
+              if (uploadError.message.includes('new row violates row-level security policy')) {
+                console.error("RLS policy violation detected. User might not have permission to upload.");
+              }
             }
             
-            // Wait a bit before retrying
+            // Wait a bit before retrying with exponential backoff
             if (attempts < maxAttempts) {
-              console.log(`Waiting before retry attempt ${attempts + 1}...`);
-              await new Promise(resolve => setTimeout(resolve, 1000 * attempts)); // Increase wait time with each attempt
+              const waitTime = 1000 * Math.pow(2, attempts - 1); // 1s, 2s, 4s...
+              console.log(`Waiting ${waitTime}ms before retry attempt ${attempts + 1}...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
             } else {
               throw uploadError;
@@ -331,8 +350,9 @@ export function FeedTab() {
             break;
           }
           
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          // Wait before retrying with exponential backoff
+          const waitTime = 1000 * Math.pow(2, attempts - 1); // 1s, 2s, 4s...
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
       
