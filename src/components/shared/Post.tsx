@@ -301,7 +301,7 @@ export function Post({
           <img 
             src={image_url} 
             alt="Post attachment" 
-            className="w-full h-auto object-contain" 
+            className="w-full h-auto object-contain max-h-[500px]" 
           />
         </div>
       )}
