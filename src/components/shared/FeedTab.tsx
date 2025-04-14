@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -171,6 +170,75 @@ export function FeedTab() {
     }
   };
 
+  const uploadImage = async (file: File, userId: string): Promise<string | null> => {
+    console.log("Starting image upload process for", file.name);
+    
+    try {
+      const filePath = `${userId}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      console.log("Generated file path:", filePath);
+      
+      try {
+        const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('posts');
+        
+        if (bucketError && bucketError.message.includes("not found")) {
+          console.log("Bucket doesn't exist, attempting to create it");
+          const { error: createError } = await supabase.storage.createBucket('posts', {
+            public: true
+          });
+          
+          if (createError) {
+            console.error("Failed to create bucket:", createError);
+            toast({
+              title: "Storage Setup Failed",
+              description: "Could not set up image storage. Your post will be created without the image.",
+              variant: "destructive"
+            });
+            return null;
+          }
+          
+          console.log("Successfully created posts bucket");
+        }
+      } catch (bucketSetupError) {
+        console.error("Error checking/creating bucket:", bucketSetupError);
+      }
+      
+      const { data, error: uploadError } = await supabase.storage
+        .from('posts')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        
+      if (uploadError) {
+        console.error("Error uploading image:", uploadError);
+        toast({
+          title: "Upload Failed",
+          description: "Failed to upload image. Your post will be created without the image.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      console.log("File uploaded successfully:", data);
+      
+      const { data: urlData } = supabase.storage
+        .from('posts')
+        .getPublicUrl(filePath);
+        
+      console.log("Got public URL:", urlData.publicUrl);
+      return urlData.publicUrl;
+      
+    } catch (error) {
+      console.error("Unexpected error in uploadImage:", error);
+      toast({
+        title: "Upload Error",
+        description: "An unexpected error occurred during image upload.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
   const handleSubmitPost = async () => {
     if (!user) {
       toast({
@@ -201,55 +269,11 @@ export function FeedTab() {
       let imageUrl = null;
       
       if (selectedImage) {
-        console.log("Preparing to upload image:", selectedImage.name);
-        
-        // Skip bucket creation check and just directly try to upload
-        // If the bucket doesn't exist, we'll get an error and handle it differently
-        
-        // Create a unique filename
-        const filePath = `${user.id}/${Date.now()}-${selectedImage.name.replace(/\s+/g, '-')}`;
-        console.log("File path for upload:", filePath);
-        
-        // Try to upload the image
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('posts')
-          .upload(filePath, selectedImage, {
-            cacheControl: '3600',
-            upsert: false
-          });
-          
-        if (uploadError) {
-          console.error("Error uploading image:", uploadError);
-          
-          // Check if error is because bucket doesn't exist (would be a 404)
-          if (uploadError.message && uploadError.message.includes("not found")) {
-            toast({
-              title: "Storage not configured",
-              description: "Image upload is not available. Your post will be created without the image.",
-              variant: "destructive"
-            });
-          } else {
-            toast({
-              title: "Upload failed", 
-              description: "Couldn't upload image. Your post will be created without the image.",
-              variant: "destructive"
-            });
-          }
-          // Continue creating post without the image
-        } else {
-          console.log("Image uploaded successfully:", uploadData);
-          
-          // Get the public URL - this should work if the upload succeeded
-          const { data: urlData } = supabase.storage
-            .from('posts')
-            .getPublicUrl(filePath);
-            
-          imageUrl = urlData.publicUrl;
-          console.log("Image public URL:", imageUrl);
-        }
+        console.log("Image selected for upload:", selectedImage.name);
+        imageUrl = await uploadImage(selectedImage, user.id);
       }
       
-      console.log("Creating post record in database...");
+      console.log("Creating post record in database with image URL:", imageUrl);
       const { data: post, error: postError } = await supabase
         .from('posts')
         .insert({
@@ -269,14 +293,12 @@ export function FeedTab() {
       
       console.log("Post created successfully:", post);
       
-      // Reset the form
       setNewPostContent("");
       setSelectedImage(null);
       setImagePreview(null);
       setUploadError(null);
       setShowPostDialog(false);
       
-      // Refresh posts to show the new one
       fetchPosts(activeTab);
       
       toast({
