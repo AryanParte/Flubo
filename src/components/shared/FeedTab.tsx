@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Post as PostType } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Plus } from "lucide-react";
+import { Plus, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog,
@@ -104,14 +104,27 @@ export function FeedTab() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Image must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const reader = new FileReader();
       
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
+        if (e.target && e.target.result) {
+          setImagePreview(e.target.result as string);
+        }
       };
       
       reader.readAsDataURL(file);
       setSelectedImage(file);
+      console.log("Image selected:", file.name, "Size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
     }
   };
   
@@ -148,20 +161,26 @@ export function FeedTab() {
       let imageUrl = null;
       
       if (selectedImage) {
+        console.log("Uploading image...");
         const filePath = `post-images/${user.id}/${Date.now()}-${selectedImage.name.replace(/\s+/g, '-')}`;
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('posts')
           .upload(filePath, selectedImage);
           
         if (uploadError) {
+          console.error("Error uploading image:", uploadError);
           throw uploadError;
         }
+        
+        console.log("Image uploaded successfully:", uploadData);
         
         const { data: publicURL } = supabase.storage
           .from('posts')
           .getPublicUrl(filePath);
           
         imageUrl = publicURL.publicUrl;
+        console.log("Image public URL:", imageUrl);
       }
       
       const { data: post, error: postError } = await supabase
@@ -176,8 +195,11 @@ export function FeedTab() {
         .single();
         
       if (postError) {
+        console.error("Error creating post:", postError);
         throw postError;
       }
+      
+      console.log("Post created successfully:", post);
       
       setNewPostContent("");
       setSelectedImage(null);
@@ -392,16 +414,20 @@ export function FeedTab() {
                   className="absolute top-2 right-2"
                   onClick={handleRemoveImage}
                 >
-                  Remove
+                  <X size={16} />
+                  <span className="sr-only">Remove</span>
                 </Button>
               </div>
             ) : (
               <div className="flex items-center justify-center p-4 border-2 border-dashed border-border rounded-md">
                 <label className="cursor-pointer text-center">
-                  <span className="text-sm text-muted-foreground block mb-2">Add an image to your post</span>
-                  <Button variant="outline" size="sm" type="button">
-                    Select Image
-                  </Button>
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload size={24} className="text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground block">Add an image to your post</span>
+                    <Button variant="outline" size="sm" type="button">
+                      Select Image
+                    </Button>
+                  </div>
                   <input
                     type="file"
                     className="hidden"
