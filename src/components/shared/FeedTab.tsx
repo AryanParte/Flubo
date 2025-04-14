@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -179,7 +180,7 @@ export function FeedTab() {
       if (getBucketError && getBucketError.message.includes("not found")) {
         console.log("Bucket 'posts' doesn't exist, creating it...");
         
-        // Create the bucket with public access
+        // Create the bucket
         const { error: createBucketError } = await supabase.storage.createBucket('posts', {
           public: true
         });
@@ -201,7 +202,6 @@ export function FeedTab() {
       
       if (updateError) {
         console.error("Warning: Failed to set bucket to public:", updateError);
-        // Continue anyway as we can still try the upload
       } else {
         console.log("Successfully ensured 'posts' bucket is public");
       }
@@ -224,11 +224,12 @@ export function FeedTab() {
       }
       
       // Generate a unique file path
-      const filePath = `${userId}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const filePath = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       console.log("Generated file path:", filePath);
       
       // Upload the file
-      console.log("Uploading file to path:", filePath);
+      console.log("Uploading file to storage/posts path:", filePath);
       const { data, error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, file, {
@@ -247,6 +248,8 @@ export function FeedTab() {
       const { data: publicUrlData } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
+      
+      console.log("Public URL data:", publicUrlData);
       
       if (!publicUrlData || !publicUrlData.publicUrl) {
         console.error("Failed to get public URL for uploaded file");
