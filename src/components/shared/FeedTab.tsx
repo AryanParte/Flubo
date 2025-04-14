@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -193,7 +194,15 @@ export function FeedTab() {
     try {
       console.log("Setting up storage bucket 'posts'...");
       
-      const { data: bucketExists } = await supabase.storage.getBucket('posts');
+      // Check if bucket exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error("Failed to list buckets:", listError);
+        return false;
+      }
+      
+      const bucketExists = buckets?.some(bucket => bucket.name === 'posts');
       
       if (!bucketExists) {
         console.log("Bucket not found, creating new 'posts' bucket with public access...");
@@ -269,6 +278,7 @@ export function FeedTab() {
       
       console.log("Generated file path:", filePath);
       
+      // First explicitly upload the file
       const { data, error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, file, {
@@ -281,8 +291,9 @@ export function FeedTab() {
         throw new Error(`Error uploading image: ${uploadError.message}`);
       }
       
-      console.log("File uploaded successfully:", data);
+      console.log("File uploaded successfully:", data?.path);
       
+      // Then get the public URL
       const { data: publicUrlData } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
@@ -338,13 +349,17 @@ export function FeedTab() {
         try {
           imageUrl = await uploadImage(selectedImage, user.id);
           console.log("Image uploaded successfully with URL:", imageUrl);
-        } catch (uploadError) {
+        } catch (uploadError: any) {
           console.error("Failed to upload image:", uploadError);
           toast({
             title: "Image upload failed",
-            description: "Your post will be created without the image.",
+            description: uploadError?.message || "Failed to upload image. Please try again.",
             variant: "destructive"
           });
+          
+          // Return early without creating the post if image upload fails
+          setIsSubmitting(false);
+          return;
         }
       } else {
         console.log("No image selected for upload");
