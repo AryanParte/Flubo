@@ -21,20 +21,20 @@ export async function createStoragePolicy(
 ) {
   try {
     // First, check if the policy already exists
-    const { data: policies, error: policiesError } = await supabase
+    const { data: existingPolicies, error: checkError } = await supabase
       .from('storage.policies')
       .select('*')
       .eq('name', policyName)
       .eq('bucket_id', bucketName);
       
-    if (policiesError) {
-      console.warn("Could not check for existing policies:", policiesError);
+    if (checkError) {
+      console.warn("Could not check for existing policies:", checkError);
     }
     
     // If policy already exists, return success
-    if (policies && policies.length > 0) {
-      console.log("Policy already exists:", policies[0]);
-      return { data: policies[0], error: null };
+    if (existingPolicies && existingPolicies.length > 0) {
+      console.log("Policy already exists:", existingPolicies[0]);
+      return { data: existingPolicies[0], error: null };
     }
     
     // Create policy using raw SQL through the exec_sql function
