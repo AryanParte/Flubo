@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +23,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { InvestorAIChat } from './InvestorAIChat';
+import { useAuth } from "@/context/AuthContext";
 
 interface InvestorCardProps {
   investor: Investor;
@@ -40,6 +40,7 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
   onShowFollowers,
   onShowFollowing
 }) => {
+  const { user } = useAuth();
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [matchSummary, setMatchSummary] = useState<string | null>(null);
@@ -49,14 +50,23 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
   };
   
   const handleCloseChat = () => {
+    // Only close if user is an investor or if explicitly confirmed
     setChatDialogOpen(false);
   };
   
   const handleChatComplete = (score: number, summary: string) => {
-    setMatchScore(score);
-    setMatchSummary(summary);
-    setChatDialogOpen(false);
+    // Only set match score and summary for investors
+    if (user?.id === investor.id) {
+      setMatchScore(score);
+      setMatchSummary(summary);
+      setChatDialogOpen(false);
+    }
+    // For startups, we'll keep the dialog open and show a message within the chat component
   };
+  
+  // Determine if we should show match information (only for investors)
+  const isInvestor = user?.id === investor.id;
+  const showMatchInfo = isInvestor && matchScore !== null && matchSummary;
   
   return (
     <>
@@ -123,7 +133,7 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                 )}
               </div>
               
-              {matchScore !== null && matchSummary && (
+              {showMatchInfo && (
                 <div className="mb-4 p-3 bg-accent/10 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium">Match Analysis</h4>

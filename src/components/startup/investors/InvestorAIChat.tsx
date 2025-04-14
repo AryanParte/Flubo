@@ -11,7 +11,7 @@ interface InvestorAIChatProps {
   investorId: string;
   investorName: string;
   onBack: () => void;
-  onComplete: (matchScore: number, matchSummary: string) => void;
+  onComplete?: (matchScore: number, matchSummary: string) => void;
 }
 
 interface Message {
@@ -28,6 +28,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [chatId, setChatId] = useState<string | null>(null);
+  const [chatCompleted, setChatCompleted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
   
@@ -65,9 +66,11 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           console.log("Found existing chat:", existingChat.id);
           setChatId(existingChat.id);
           savedChatId.current = existingChat.id;
+          setChatCompleted(existingChat.completed || false);
           
-          // If the chat is marked as completed with a match score, notify parent
-          if (existingChat.completed && existingChat.match_score !== null && onComplete) {
+          // Only notify parent if this is an investor viewing the chat
+          // Startups should not be notified about match scores
+          if (existingChat.completed && existingChat.match_score !== null && onComplete && user.id === investorId) {
             onComplete(existingChat.match_score, existingChat.summary || "");
           }
           
@@ -191,7 +194,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         chatHistoryLength: messages.length
       });
 
-      // Use direct URL construction with the project ID instead of accessing protected properties
+      // Using direct project URL for the edge function
       const functionUrl = "https://vsxnjnvwtgehagxbhdzh.supabase.co/functions/v1/investor-ai-persona";
       console.log('Calling edge function at URL:', functionUrl);
       
@@ -265,7 +268,10 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             })
             .eq('id', chatId || savedChatId.current);
             
-          if (onComplete) {
+          setChatCompleted(true);
+          
+          // Only notify the investor about matches, not the startup
+          if (onComplete && user.id === investorId) {
             onComplete(data.matchScore, data.matchSummary);
           }
         }
@@ -314,6 +320,12 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
                 Start the conversation by asking a question or introducing your startup.
               </div>
             )}
+            
+            {chatCompleted && !isLoading && user?.id !== investorId && (
+              <div className="mt-6 p-4 border border-accent/20 bg-accent/10 rounded-lg text-center">
+                <p className="font-medium">This chat is complete. The investor will be notified of this potential match.</p>
+              </div>
+            )}
           </>
         )}
         <div ref={messagesEndRef} />
@@ -333,9 +345,9 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             className="flex-1 mr-2"
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
-            disabled={isLoading || isSending}
+            disabled={isLoading || isSending || chatCompleted}
           />
-          <Button type="submit" disabled={isLoading || isSending || !currentMessage.trim()}>
+          <Button type="submit" disabled={isLoading || isSending || !currentMessage.trim() || chatCompleted}>
             {isSending ? (
               <>
                 <Loader2 size={16} className="mr-2 animate-spin" />
