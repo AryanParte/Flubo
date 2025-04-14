@@ -217,6 +217,7 @@ export const syncAndFixAIMatchStatus = async (chatId: string) => {
 
 /**
  * Gets custom questions for an investor's AI persona
+ * Enhanced with better logging and validation
  */
 export const getInvestorAIPersonaQuestions = async (investorId: string) => {
   try {
@@ -226,7 +227,7 @@ export const getInvestorAIPersonaQuestions = async (investorId: string) => {
       .from('investor_ai_persona_settings')
       .select('*') // Select all fields for debugging
       .eq('user_id', investorId)
-      .single();
+      .maybeSingle();
       
     if (error) {
       if (error.code === 'PGRST116') { // No rows found
@@ -237,14 +238,37 @@ export const getInvestorAIPersonaQuestions = async (investorId: string) => {
       throw error;
     }
     
-    console.log(`Successfully fetched AI persona settings for investor ${investorId}`);
-    console.log(`Custom questions: ${JSON.stringify(data.custom_questions, null, 2)}`);
-    console.log(`Custom questions count: ${data.custom_questions?.length || 0}`);
+    // Validate that custom_questions is properly structured
+    if (data && Array.isArray(data.custom_questions)) {
+      console.log(`Successfully fetched AI persona settings for investor ${investorId}`);
+      console.log(`Custom questions: ${JSON.stringify(data.custom_questions, null, 2)}`);
+      console.log(`Custom questions count: ${data.custom_questions?.length || 0}`);
+      
+      // Log each question individually to verify structure
+      if (data.custom_questions && data.custom_questions.length > 0) {
+        data.custom_questions.forEach((q, i) => {
+          console.log(`Question ${i}: ${JSON.stringify(q)}`);
+          if (typeof q.question !== 'string') {
+            console.error(`Question ${i} has invalid structure:`, q);
+          }
+        });
+      }
+    } else {
+      console.error(`Invalid custom_questions format: ${typeof data?.custom_questions}`);
+      // Return empty array to prevent errors
+      return { 
+        data: { 
+          ...data, 
+          custom_questions: [] 
+        }, 
+        success: true 
+      };
+    }
     
     return { data, success: true };
   } catch (error) {
     console.error("Error getting AI persona questions:", error);
-    return { data: null, success: false, error };
+    return { data: { custom_questions: [] }, success: false, error };
   }
 };
 

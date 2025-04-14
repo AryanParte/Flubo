@@ -46,7 +46,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           .eq('investor_id', investorId)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
           
         if (chatError && chatError.code !== 'PGRST116') {
           console.error("Error fetching existing chat:", chatError);
@@ -151,18 +151,19 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         .from('investor_preferences')
         .select('*')
         .eq('user_id', investorId)
-        .single();
+        .maybeSingle();
       
-      // Explicitly fetch persona settings to verify we're getting the data correctly
+      // Explicitly fetch persona settings with better error handling
+      console.log(`Fetching persona settings for investor ${investorId}`);
       const { data: personaSettings, error: settingsError } = await supabase
         .from('investor_ai_persona_settings')
-        .select('*')  // Select all columns for debugging
+        .select('*')
         .eq('user_id', investorId)
-        .single();
+        .maybeSingle();
         
       if (settingsError) {
-        console.log("No custom settings found:", settingsError.message);
-      } else {
+        console.log("Error fetching persona settings:", settingsError.message);
+      } else if (personaSettings) {
         console.log("Found persona settings:", JSON.stringify(personaSettings, null, 2));
         console.log("Custom questions count:", 
           personaSettings?.custom_questions ? 
@@ -170,9 +171,13 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           "none");
         
         if (personaSettings?.custom_questions?.length > 0) {
-          console.log("First custom question:", 
-            personaSettings.custom_questions[0]?.question || "undefined question");
+          console.log("Custom questions:");
+          personaSettings.custom_questions.forEach((q, i) => {
+            console.log(`  ${i+1}. ${q.question} (enabled: ${q.enabled !== false})`);
+          });
         }
+      } else {
+        console.log("No persona settings found for investor", investorId);
       }
       
       if (!chatId) {
@@ -217,6 +222,13 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         hasPersonaSettings: !!personaSettings,
         customQuestionsCount: personaSettings?.custom_questions?.length || 0
       });
+      
+      if (personaSettings?.custom_questions?.length > 0) {
+        console.log("Sending custom questions to edge function:");
+        personaSettings.custom_questions.forEach((q, i) => {
+          console.log(`  ${i+1}. ${q.question} (enabled: ${q.enabled !== false})`);
+        });
+      }
 
       const functionUrl = "https://vsxnjnvwtgehagxbhdzh.supabase.co/functions/v1/investor-ai-persona";
       console.log('Calling edge function at URL:', functionUrl);

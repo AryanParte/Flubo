@@ -96,11 +96,8 @@ serve(async (req) => {
             const msgLower = msg.content.toLowerCase();
             
             // More precise matching to avoid partial matches
-            // Use exact matching for custom questions to ensure we're asking precisely what was requested
-            const isMatch = q.isCustom 
-              ? msgLower.includes(questionLower) 
-              : (msgLower.includes(questionLower) || 
-                 msgLower.includes(questionLower.substring(0, Math.floor(questionLower.length * 0.75))));
+            // We want exact matching for custom questions to ensure we're asking precisely what was requested
+            const isMatch = msgLower.includes(questionLower);
             
             if (isMatch) {
               console.log(`Message matches question "${q.question}" - marking as asked`);
@@ -118,11 +115,9 @@ serve(async (req) => {
       });
     }
     
-    // Determine the next question to ask - strictly use the first unanswered custom question,
-    // or if all custom questions are answered, move to default questions
-    const nextCustomQuestion = requiredQuestions.find(q => !q.asked && q.isCustom);
-    const nextDefaultQuestion = requiredQuestions.find(q => !q.asked && !q.isCustom);
-    const nextQuestionToAsk = nextCustomQuestion || nextDefaultQuestion;
+    // Determine the next question to ask - ALWAYS use the first unanswered question in the list
+    // This preserves the order of questions as defined in the settings
+    const nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
     
     if (nextQuestionToAsk) {
       console.log(`Next question to ask: "${nextQuestionToAsk.question}" (isCustom: ${nextQuestionToAsk.isCustom})`);
@@ -164,9 +159,12 @@ serve(async (req) => {
       systemPrompt += `\n\nCRITICAL INSTRUCTION: You MUST ask the following specific question EXACTLY as written. Do not modify or rephrase the question:\n"${nextQuestionToAsk.question}"\n`;
       systemPrompt += `\nYour ONLY task is to ask this specific question. Do not create additional context or follow-ups.`;
       systemPrompt += `\nDo not ask how you can help. Do not introduce yourself. Do not give a generic greeting. Just ask the question directly.`;
+      systemPrompt += `\nDo not ask any other questions that were not explicitly specified by the investor.`;
     } else {
-      // If all questions have been asked, allow a summary
+      // If all questions have been asked, prevent the AI from asking new questions
       systemPrompt += `\nAll required questions have been asked. You may now provide a brief summary of the conversation.`;
+      systemPrompt += `\nDo not ask any questions that were not explicitly specified by the investor.`;
+      systemPrompt += `\nDo not make up or generate any new questions on your own.`;
     }
     
     console.log("Using system prompt:", systemPrompt);
@@ -203,7 +201,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: messages,
-        temperature: 0.7,
+        temperature: 0.2, // Lower temperature to make it more likely to follow instructions exactly
         max_tokens: 500,
       }),
     });
@@ -220,11 +218,17 @@ serve(async (req) => {
     
     // If this is a follow-up response and there's a next question to ask,
     // ensure it's asking exactly the question we want
-    if (chatHistory && chatHistory.length > 0 && nextQuestionToAsk) {
+    if (nextQuestionToAsk) {
       // If the AI didn't actually ask the question properly, force it
       if (!aiResponse.includes(nextQuestionToAsk.question)) {
         console.log("AI didn't ask the exact question, forcing it");
         aiResponse = nextQuestionToAsk.question;
+      }
+    } else if (allQuestionsAsked(requiredQuestions)) {
+      // If all questions have been asked, verify the response doesn't contain a new question
+      if (aiResponse.includes("?")) {
+        console.log("AI is trying to ask a new question, stopping it");
+        aiResponse = "Thank you for all your responses. I'll review this information.";
       }
     }
     
@@ -234,14 +238,11 @@ serve(async (req) => {
       askedQuestions.add(nextQuestionToAsk.id);
     }
     
-    // Determine if all questions have been asked
-    const allQuestionsAsked = requiredQuestions.every(q => q.asked);
-    
     // Calculate match score if all questions are asked and it's the last exchange
     let matchScore = null;
     let matchSummary = null;
     
-    if (allQuestionsAsked && chatHistory && chatHistory.length >= requiredQuestions.length) {
+    if (allQuestionsAsked(requiredQuestions) && chatHistory && chatHistory.length >= requiredQuestions.length * 2 - 1) {
       const scoringPrompt = `
 Based on the conversation between the startup and investor, evaluate how well the startup matches the investor's preferences.
 Here is the investor's profile:
@@ -298,7 +299,7 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         matchScore,
         matchSummary,
         chatId,
-        isQuestionPending: !allQuestionsAsked,
+        isQuestionPending: !allQuestionsAsked(requiredQuestions),
         remainingQuestions: requiredQuestions.filter(q => !q.asked),
         askedQuestions: Array.from(askedQuestions)
       }),
@@ -317,3 +318,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
     );
   }
 });
+
+// Helper function to check if all questions have been asked
+function allQuestionsAsked(questions) {
+  return questions.every(q => q.asked);
+}
