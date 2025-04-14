@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Post as PostType } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Plus, X, Upload, Loader2 } from "lucide-react";
+import { Plus, X, Upload, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog,
@@ -165,7 +165,6 @@ export function FeedTab() {
   };
   
   const handleImageButtonClick = () => {
-    console.log("Image button clicked");
     if (fileInputRef.current) {
       fileInputRef.current.click();
       console.log("File input clicked");
@@ -193,8 +192,12 @@ export function FeedTab() {
         
         console.log("Posts bucket created successfully");
         
-        // Set bucket policy to public
-        const { error: policyError } = await supabase.storage.from('posts').getPublicUrl('test');
+        // Set public access policy for the bucket
+        const { error: policyError } = await supabase.storage.from('posts').updateBucketPolicy({
+          allowedOperations: ['select'],
+          publicAccess: true
+        });
+        
         if (policyError) {
           console.error("Error setting public policy:", policyError);
           return false;
@@ -266,12 +269,12 @@ export function FeedTab() {
         
         console.log("Image uploaded successfully:", uploadData);
         
-        // Get the public URL - Fix: The getPublicUrl method doesn't return an error property
-        const publicUrlData = supabase.storage
+        // Get the public URL correctly
+        const publicUrlResult = supabase.storage
           .from('posts')
           .getPublicUrl(filePath);
           
-        imageUrl = publicUrlData.data.publicUrl;
+        imageUrl = publicUrlResult.data.publicUrl;
         console.log("Image public URL:", imageUrl);
       }
       
@@ -547,7 +550,8 @@ export function FeedTab() {
             )}
             
             {uploadError && (
-              <div className="text-sm text-destructive mt-1">
+              <div className="flex items-center gap-2 text-sm text-destructive mt-1">
+                <AlertCircle size={16} />
                 {uploadError}
               </div>
             )}
