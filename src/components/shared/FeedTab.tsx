@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -171,38 +170,67 @@ export function FeedTab() {
     }
   };
 
+  const setupBucket = async () => {
+    try {
+      // First check if the bucket exists
+      const { error: getBucketError } = await supabase.storage.getBucket('posts');
+      
+      // If bucket doesn't exist, create it
+      if (getBucketError && getBucketError.message.includes("not found")) {
+        console.log("Bucket 'posts' doesn't exist, creating it...");
+        
+        // Create the bucket with public access
+        const { error: createBucketError } = await supabase.storage.createBucket('posts', {
+          public: true
+        });
+        
+        if (createBucketError) {
+          console.error("Failed to create 'posts' bucket:", createBucketError);
+          return false;
+        }
+        
+        // Add a bucket policy to make objects public
+        const { error: policyError } = await supabase
+          .rpc('create_storage_policy', {
+            bucket_name: 'posts',
+            definition: 'true',
+            name: 'allow_public_access'
+          });
+        
+        if (policyError) {
+          console.error("Warning: Failed to set bucket policy:", policyError);
+          // Continue anyway as we can still try the upload
+        }
+        
+        console.log("Successfully created 'posts' bucket with public access");
+      } else {
+        console.log("Bucket 'posts' already exists");
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error in setupBucket:", error);
+      return false;
+    }
+  };
+
   const uploadImage = async (file: File, userId: string): Promise<string | null> => {
     console.log("Starting image upload process for", file.name);
     
     try {
+      // Ensure the bucket exists
+      const bucketSetup = await setupBucket();
+      if (!bucketSetup) {
+        console.warn("Bucket setup failed, but will attempt upload anyway");
+      }
+      
       // Generate a unique file path
       const filePath = `${userId}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
       console.log("Generated file path:", filePath);
       
-      // Check if bucket exists and create it if needed
-      try {
-        const { error: bucketError } = await supabase.storage.getBucket('posts');
-        
-        if (bucketError && bucketError.message.includes("not found")) {
-          console.log("Bucket doesn't exist, creating it");
-          const { error: createError } = await supabase.storage.createBucket('posts', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-            throw new Error(`Failed to create bucket: ${createError.message}`);
-          }
-          console.log("Successfully created posts bucket");
-        }
-      } catch (bucketError) {
-        console.error("Error with bucket setup:", bucketError);
-        // Continue with upload attempt anyway
-      }
-      
       // Upload the file
       console.log("Uploading file to path:", filePath);
-      const { error: uploadError } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -220,6 +248,11 @@ export function FeedTab() {
       const { data: publicUrlData } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
+      
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        console.error("Failed to get public URL for uploaded file");
+        throw new Error("Failed to get public URL for uploaded file");
+      }
         
       console.log("Got public URL:", publicUrlData.publicUrl);
       return publicUrlData.publicUrl;
