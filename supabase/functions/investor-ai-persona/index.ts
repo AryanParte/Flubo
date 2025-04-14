@@ -63,11 +63,13 @@ ${startupInfo ? JSON.stringify(startupInfo) : "You will learn about them during 
 
 Your conversation style:
 1. Be concise but friendly and professional.
-2. Ask pointed questions about their business model, traction, team, and how they fit with your investment focus.
+2. Ask exactly the questions provided in your list and don't make up your own questions.
 3. You should be curious but also critical - investors need to assess risk.
 4. Do not reveal that you are an AI simulation - act as if you are actually the investor.
 5. Keep responses under 150 words.
-6. Always end your messages with a follow-up question to encourage a response.
+6. Always end your messages with exactly one of the questions from your list that hasn't been asked yet.
+7. Never suggest follow-up meetings or ask if the startup wants to continue the conversation outside of this chat.
+8. Your job is to collect information, not to decide on investment - don't indicate investment decisions.
 
 `;
 
@@ -92,10 +94,8 @@ Your conversation style:
               .filter(q => q.enabled !== false)
               .forEach(q => {
                 // Check if this question or something similar was asked
-                const questionLower = q.question.toLowerCase();
-                const mainTopic = questionLower.split(" ").slice(0, 3).join(" "); // Use first few words as topic
-                if (text.includes(mainTopic)) {
-                  askedQuestions.add(q.question);
+                if (text.includes(q.question.toLowerCase().substring(0, 15))) {
+                  askedQuestions.add(q.id);
                 }
               });
           }
@@ -104,25 +104,24 @@ Your conversation style:
     }
     
     // Add custom questions from persona settings if they exist
-    let remainingQuestions = [];
+    let questionsToAsk = [];
     
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
-      systemPrompt += `\nHere are specific questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):`;
+      systemPrompt += `\nIMPORTANT: You MUST ask these specific questions exactly as written during the conversation (one at a time):`;
       
       const customQuestions = personaSettings.custom_questions
-        .filter(q => q.enabled !== false)
-        .map(q => q.question);
+        .filter(q => q.enabled !== false);
         
       customQuestions.forEach(q => {
-        systemPrompt += `\n- ${q}`;
-        if (!askedQuestions.has(q)) {
-          remainingQuestions.push(q);
+        systemPrompt += `\n- ${q.question}`;
+        if (!askedQuestions.has(q.id)) {
+          questionsToAsk.push(q.question);
         }
       });
       
       systemPrompt += `\n`;
     } else {
-      systemPrompt += `\nHere are questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):`;
+      systemPrompt += `\nIMPORTANT: You MUST ask these specific questions exactly as written during the conversation (one at a time):`;
       const standardQuestions = [
         "Tell me about your business model?",
         "What traction do you have so far?",
@@ -135,34 +134,37 @@ Your conversation style:
         systemPrompt += `\n- ${q}`;
         const key = ["business_model", "traction", "competitors", "gtm", "team"][i];
         if (!askedQuestions.has(key)) {
-          remainingQuestions.push(q);
+          questionsToAsk.push(q);
         }
       });
       
       systemPrompt += `\n`;
     }
     
-    // If we have remaining questions and this isn't the first few messages,
-    // explicitly instruct the AI to ask one of the remaining questions
-    if (remainingQuestions.length > 0 && chatHistory && chatHistory.length >= 4) {
-      // Calculate how many messages are left before we finish
-      const messagesLeft = Math.max(10 - chatHistory.length, 2);
+    // If we have questions to ask and this isn't the first few messages,
+    // explicitly instruct the AI to ask one of them
+    if (questionsToAsk.length > 0) {
+      // Calculate how many messages are left in a typical conversation
+      const messagesLeft = Math.max(10 - (chatHistory?.length || 0), 2);
       
-      // If we're nearing the end of the conversation, be more aggressive about asking remaining questions
-      if (messagesLeft <= remainingQuestions.length + 1) {
-        const nextQuestion = remainingQuestions[0];
-        systemPrompt += `\nIMPORTANT: You MUST ask about "${nextQuestion}" in your next response, as this is crucial information you need before making an investment decision. Try to naturally incorporate this question.`;
+      // If we're nearing the end of the conversation or have a large number of questions left
+      if (messagesLeft <= questionsToAsk.length + 1 || questionsToAsk.length > 2) {
+        const nextQuestion = questionsToAsk[0];
+        systemPrompt += `\nIMPORTANT: You MUST ask "${nextQuestion}" in your next response, word for word. This is crucial information you need before making an investment decision.`;
       } else {
-        systemPrompt += `\nIMPORTANT: You still need to ask about these topics before the conversation ends: ${remainingQuestions.join(", ")}. Try to incorporate one of these in your next response.`;
+        systemPrompt += `\nIMPORTANT: You still need to ask about these topics before the conversation ends: ${questionsToAsk.join(", ")}. Ask one of these EXACT questions in your next response.`;
       }
+    } else if (chatHistory && chatHistory.length >= 8) {
+      // If we've asked all questions and have had enough exchanges, we can wrap up
+      systemPrompt += `\nYou have asked all the required questions. In your next response, thank them for their time and avoid asking new questions or suggesting follow-up meetings.`;
     }
     
     // Add any additional custom system prompt from settings
     if (personaSettings && personaSettings.system_prompt) {
-      systemPrompt += `\nAdditional instruction for you: ${personaSettings.system_prompt}\n`;
+      systemPrompt += `\nAdditional instructions for you (but remember to prioritize asking the specific questions above): ${personaSettings.system_prompt}\n`;
     }
     
-    systemPrompt += `\nYour goal is to determine how well this startup aligns with your investment criteria and to gather enough information to make an initial assessment.`;
+    systemPrompt += `\nYour goal is to collect information by asking exactly the questions provided, not to make investment decisions or schedule follow-ups.`;
 
     // Prepare the conversation history for the API call
     const messages = [
@@ -215,13 +217,15 @@ Your conversation style:
     // If it does, we don't want to mark the chat as complete
     const endsWithQuestion = aiResponse.trim().endsWith('?');
     
-    // Calculate match score if we have enough context and the AI is not asking a question
+    // Also check if all questions have been asked
+    const allQuestionsAsked = questionsToAsk.length === 0;
+    
+    // Calculate match score if we have enough context and all questions have been asked
     let matchScore = null;
     let matchSummary = null;
     
-    // If we have enough messages (at least 3 exchanges), we can calculate a match score
-    // But only if the AI response doesn't end with a question (which would mean it expects more info)
-    if (chatHistory && chatHistory.length >= 5 && !endsWithQuestion) {
+    // If we have enough messages (at least 3 exchanges) and all questions asked, we can calculate a match score
+    if (chatHistory && chatHistory.length >= 5 && allQuestionsAsked && !endsWithQuestion) {
       console.log("Generating match score and summary based on conversation");
       
       const scoringPrompt = `
@@ -287,8 +291,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         matchScore,
         matchSummary,
         chatId,
-        isQuestionPending: endsWithQuestion,
-        remainingQuestions: remainingQuestions
+        isQuestionPending: endsWithQuestion || !allQuestionsAsked,
+        remainingQuestions: questionsToAsk
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

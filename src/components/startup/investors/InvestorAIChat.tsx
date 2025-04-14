@@ -106,9 +106,10 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             // even if it's marked as completed in the database
             if (formattedMessages.length > 0 && 
                 formattedMessages[formattedMessages.length - 1].sender_type === "ai" &&
+                formattedMessages[formattedMessages.length - 1].content.trim().endsWith('?') &&
                 existingChat.completed) {
               // Fix the incorrectly marked completed chat
-              console.log("Last message is from AI, chat should not be completed");
+              console.log("Last message is from AI and ends with a question, chat should not be completed");
               await supabase
                 .from('ai_persona_chats')
                 .update({ completed: false })
@@ -387,7 +388,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             {remainingQuestions.length > 0 && !chatCompleted && messages.length > 0 && (
               <div className="mt-6 p-4 border border-border bg-background/50 rounded-lg">
                 <p className="text-sm text-muted-foreground">
-                  The investor still wants to know about: {remainingQuestions.slice(0, 2).join(", ")}
+                  The investor wants to know about: {remainingQuestions.slice(0, 2).join(", ")}
                   {remainingQuestions.length > 2 ? ` and ${remainingQuestions.length - 2} more topics` : ""}
                 </p>
               </div>

@@ -208,3 +208,47 @@ export const syncAIPersonaMatchesToInvestorMatches = async (investorId: string) 
     return { success: false, error };
   }
 };
+
+/**
+ * Fix incorrectly completed chats
+ * This ensures chats that end with a question are not marked as completed
+ */
+export const fixIncorrectlyCompletedChats = async (userId: string) => {
+  try {
+    // Get all completed AI chats for this user (either as startup or investor)
+    const { data: completedChats, error: chatsError } = await supabase
+      .from('ai_persona_chats')
+      .select('id')
+      .or(`startup_id.eq.${userId},investor_id.eq.${userId}`)
+      .eq('completed', true);
+      
+    if (chatsError) throw chatsError;
+    if (!completedChats || completedChats.length === 0) return { success: true, message: "No completed chats found" };
+    
+    // For each completed chat, check if the last message is from AI and ends with a question
+    for (const chat of completedChats) {
+      const { data: lastMessage, error: messageError } = await supabase
+        .from('ai_persona_messages')
+        .select('content, sender_type')
+        .eq('chat_id', chat.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (messageError) continue;
+      
+      // If the last message is from AI and ends with a question, update the chat to not completed
+      if (lastMessage && lastMessage.sender_type === 'ai' && lastMessage.content.trim().endsWith('?')) {
+        await supabase
+          .from('ai_persona_chats')
+          .update({ completed: false })
+          .eq('id', chat.id);
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error fixing incorrectly completed chats:", error);
+    return { success: false, error };
+  }
+};
