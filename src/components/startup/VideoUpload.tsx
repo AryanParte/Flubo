@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,54 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [bucketReady, setBucketReady] = useState(false);
+
+  // Check if the bucket exists
+  useEffect(() => {
+    const checkBucket = async () => {
+      try {
+        // First check if bucket exists
+        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+        
+        if (listError) {
+          console.error("Failed to list buckets:", listError);
+          return;
+        }
+        
+        const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
+        
+        if (!bucketExists) {
+          // Create the bucket if it doesn't exist
+          console.log("Creating demo-videos bucket...");
+          const { error: createError } = await supabase.storage.createBucket('demo-videos', {
+            public: true
+          });
+          
+          if (createError) {
+            console.error("Failed to create bucket:", createError);
+            return;
+          }
+        }
+        
+        // Update bucket to be public
+        const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
+          public: true
+        });
+        
+        if (updateError) {
+          console.error("Failed to update bucket settings:", updateError);
+          return;
+        }
+        
+        setBucketReady(true);
+        console.log("Bucket demo-videos is ready");
+      } catch (error) {
+        console.error("Error checking/creating bucket:", error);
+      }
+    };
+    
+    checkBucket();
+  }, []);
 
   // Handle file upload to Supabase storage
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,11 +110,24 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       // Get the authenticated user's ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+      
+      // Wait for bucket to be ready
+      if (!bucketReady) {
+        console.log("Waiting for bucket to be ready...");
+        // Try to ensure bucket again
+        const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
+          public: true
+        });
+        
+        if (updateError) {
+          console.error("Failed to update bucket settings:", updateError);
+        }
+      }
 
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+      const filePath = fileName;
 
       // Set up a simple progress tracker
       let progressInterval: number;
@@ -84,6 +145,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       
       simulateProgress();
 
+      console.log("Starting file upload to path:", filePath);
       // Upload the file
       const { error: uploadError, data } = await supabase.storage
         .from('demo-videos')
@@ -95,7 +157,10 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       // Clear the progress interval
       clearInterval(progressInterval);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
 
       // Complete the progress
       setUploadProgress(100);
@@ -105,6 +170,8 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
         .from('demo-videos')
         .getPublicUrl(filePath);
 
+      console.log("Upload completed, public URL:", urlData);
+      
       // Update the video path
       onPathChange(filePath);
 

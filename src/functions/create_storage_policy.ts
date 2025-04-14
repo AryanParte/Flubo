@@ -20,7 +20,7 @@ export async function createStoragePolicy(
   }
 ) {
   try {
-    // First, check if the policy already exists
+    // First, check if the policy already exists (using direct query instead of RPC)
     const { data: existingPolicies, error: checkError } = await supabase
       .from('storage.policies')
       .select('*')
@@ -37,14 +37,19 @@ export async function createStoragePolicy(
       return { data: existingPolicies[0], error: null };
     }
     
-    // Create policy using raw SQL through the exec_sql function
+    // Escape strings for SQL safety
+    const escapedPolicyName = policyName.replace(/'/g, "''");
+    const escapedBucketName = bucketName.replace(/'/g, "''");
+    const escapedDefinition = JSON.stringify(definition).replace(/'/g, "''");
+    
+    // Create policy using raw SQL through executeSQL
     console.log("Creating storage policy via SQL...");
     const policySQL = `
       INSERT INTO storage.policies (name, definition, bucket_id)
       VALUES (
-        '${policyName}',
-        '${JSON.stringify(definition)}'::jsonb,
-        '${bucketName}'
+        '${escapedPolicyName}',
+        '${escapedDefinition}'::jsonb,
+        '${escapedBucketName}'
       )
       RETURNING *;
     `;
@@ -52,6 +57,7 @@ export async function createStoragePolicy(
     const result = await executeSQL(policySQL);
     
     if (!result.success) {
+      console.error("Failed to create storage policy:", result.error);
       throw result.error;
     }
     
