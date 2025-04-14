@@ -266,12 +266,12 @@ export function FeedTab() {
         
         console.log("Image uploaded successfully:", uploadData);
         
-        // Get the public URL
-        const { data: publicURL } = supabase.storage
+        // Get the public URL - Fix: The getPublicUrl method doesn't return an error property
+        const publicUrlData = supabase.storage
           .from('posts')
           .getPublicUrl(filePath);
           
-        imageUrl = publicURL.publicUrl;
+        imageUrl = publicUrlData.data.publicUrl;
         console.log("Image public URL:", imageUrl);
       }
       
