@@ -1,5 +1,6 @@
 
 import { supabase } from "@/lib/supabase";
+import { executeSQL } from "@/lib/db-utils";
 
 /**
  * Create a storage bucket policy
@@ -32,21 +33,30 @@ export async function createStoragePolicy(
     
     // If policy already exists, return success
     if (policies && policies.length > 0) {
+      console.log("Policy already exists:", policies[0]);
       return { data: policies[0], error: null };
     }
     
-    // Create the policy since it doesn't exist
-    const { data, error } = await supabase.rpc('create_storage_policy', {
-      bucket_name: bucketName,
-      policy_name: policyName,
-      definition: definition
-    });
+    // Create policy using raw SQL through the exec_sql function
+    console.log("Creating storage policy via SQL...");
+    const policySQL = `
+      INSERT INTO storage.policies (name, definition, bucket_id)
+      VALUES (
+        '${policyName}',
+        '${JSON.stringify(definition)}'::jsonb,
+        '${bucketName}'
+      )
+      RETURNING *;
+    `;
     
-    if (error) {
-      throw error;
+    const result = await executeSQL(policySQL);
+    
+    if (!result.success) {
+      throw result.error;
     }
     
-    return { data, error: null };
+    console.log("Storage policy created successfully");
+    return { data: { name: policyName, bucket_id: bucketName }, error: null };
   } catch (error) {
     console.error("Error creating storage policy:", error);
     return { data: null, error };

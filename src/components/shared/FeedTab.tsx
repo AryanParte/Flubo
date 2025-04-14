@@ -19,6 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { useState as useHookState } from "react";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { createStoragePolicy } from "@/functions/create_storage_policy";
+import { executeSQL } from "@/lib/db-utils";
 
 export function FeedTab() {
   const { user } = useAuth();
@@ -221,23 +223,26 @@ export function FeedTab() {
       }
       
       // Add public policy to the bucket
-      const { error: policyError } = await supabase.rpc('create_storage_policy', {
-        bucket_name: 'posts',
-        policy_name: 'public_select',
-        definition: {
-          name: 'Public Select',
-          action: 'SELECT',
-          role: '*',
-          check: {}
+      try {
+        const policyResult = await createStoragePolicy(
+          'posts',
+          'public_select',
+          {
+            name: 'Public Select',
+            action: 'SELECT',
+            role: '*',
+            check: {}
+          }
+        );
+        
+        if (policyResult.error) {
+          console.warn("Note: Could not set policy, but continuing:", policyResult.error);
+        } else {
+          console.log("Storage policy created or already exists:", policyResult.data);
         }
-      }).catch(err => {
-        // If the policy already exists, this is not a critical error
-        console.log("Policy might already exist, continuing:", err);
-        return { error: null };
-      });
-      
-      if (policyError) {
-        console.warn("Note: Could not set policy, but continuing:", policyError);
+      } catch (err) {
+        // If the policy creation fails, log but continue
+        console.warn("Error setting storage policy:", err);
       }
       
       return true;
