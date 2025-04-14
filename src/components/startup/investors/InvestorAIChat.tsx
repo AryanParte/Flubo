@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
     try {
       setIsSending(true);
       
-      // Add the user message to the chat
       const userMessage: Message = {
         id: crypto.randomUUID(),
         sender_type: "startup",
@@ -55,28 +53,24 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       setMessages(prev => [...prev, userMessage]);
       setCurrentMessage("");
       
-      // Get startup information
       const { data: startupData } = await supabase
         .from('startup_profiles')
         .select('*')
         .eq('id', user.id)
         .single();
       
-      // Get investor preferences
       const { data: investorPref } = await supabase
         .from('investor_preferences')
         .select('*')
         .eq('user_id', investorId)
         .single();
         
-      // Get investor AI persona settings
       const { data: personaSettings } = await supabase
         .from('investor_ai_persona_settings')
         .select('custom_questions, system_prompt')
         .eq('user_id', investorId)
         .single();
       
-      // Create or get chat session
       if (!chatId) {
         const { data: newChat, error: chatError } = await supabase
           .from('ai_persona_chats')
@@ -95,7 +89,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         setChatId(newChat.id);
         savedChatId.current = newChat.id;
         
-        // Save the first message to the database
         await supabase
           .from('ai_persona_messages')
           .insert({
@@ -104,7 +97,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             content: messageText,
           });
       } else {
-        // Save the message to the database
         await supabase
           .from('ai_persona_messages')
           .insert({
@@ -114,7 +106,12 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           });
       }
       
-      // Call the Edge Function to get the AI response
+      console.log('Sending message to investor AI persona', {
+        investorId, 
+        messageLength: messageText.length,
+        chatHistoryLength: messages.length
+      });
+
       const functionUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/investor-ai-persona';
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -136,14 +133,28 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("AI persona error:", errorData);
-        throw new Error(errorData.error || "Failed to get AI response");
+        const errorText = await response.text();
+        console.error('AI persona response error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        });
+        
+        throw new Error(`API call failed: ${response.status} - ${errorText}`);
+      }
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('Received AI response:', data);
+      } catch (parseError) {
+        console.error('JSON parsing error:', {
+          error: parseError,
+          responseText: await response.text()
+        });
+        throw new Error('Failed to parse API response');
       }
       
-      const data = await response.json();
-      
-      // Add the AI response to the chat
       const aiResponse: Message = {
         id: crypto.randomUUID(),
         sender_type: "ai",
@@ -153,7 +164,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       
       setMessages(prev => [...prev, aiResponse]);
       
-      // Save the AI response to the database
       if (chatId || savedChatId.current) {
         await supabase
           .from('ai_persona_messages')
@@ -163,7 +173,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             content: data.response,
           });
           
-        // If we have a match score, update the chat
         if (data.matchScore !== null && typeof data.matchScore !== 'undefined') {
           await supabase
             .from('ai_persona_chats')
@@ -180,13 +189,12 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         }
       }
       
-      // Scroll to bottom after a short delay to ensure the message is rendered
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
       
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Detailed error in sending message:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send message",
