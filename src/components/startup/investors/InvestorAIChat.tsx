@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
   
-  // Fetch existing chat and messages on component mount
   useEffect(() => {
     const fetchExistingChat = async () => {
       if (!user || !investorId) return;
@@ -40,7 +38,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       try {
         setIsLoading(true);
         
-        // First, check if a chat already exists between this startup and investor
         const { data: existingChat, error: chatError } = await supabase
           .from('ai_persona_chats')
           .select('id, match_score, summary, completed')
@@ -50,7 +47,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           .limit(1)
           .single();
           
-        if (chatError && chatError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        if (chatError && chatError.code !== 'PGRST116') {
           console.error("Error fetching existing chat:", chatError);
           toast({
             title: "Error",
@@ -61,15 +58,12 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           return;
         }
         
-        // If chat exists, fetch its messages
         if (existingChat) {
           console.log("Found existing chat:", existingChat.id);
           setChatId(existingChat.id);
           savedChatId.current = existingChat.id;
           setChatCompleted(existingChat.completed || false);
           
-          // Only notify parent if this is an investor viewing the chat
-          // Startups should not be notified about match scores
           if (existingChat.completed && existingChat.match_score !== null && onComplete && user.id === investorId) {
             onComplete(existingChat.match_score, existingChat.summary || "");
           }
@@ -90,7 +84,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           } else if (chatMessages && chatMessages.length > 0) {
             console.log(`Loaded ${chatMessages.length} previous messages`);
             
-            // Transform the messages to match our local format
             const formattedMessages: Message[] = chatMessages.map(msg => ({
               id: msg.id,
               sender_type: msg.sender_type as "startup" | "ai",
@@ -100,13 +93,9 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             
             setMessages(formattedMessages);
             
-            // Check if the last message is from AI and needs a response
-            // If the last message is from AI, this means the conversation is not truly complete
-            // even if it's marked as completed in the database
             if (formattedMessages.length > 0 && 
                 formattedMessages[formattedMessages.length - 1].sender_type === "ai" &&
                 existingChat.completed) {
-              // Fix the incorrectly marked completed chat
               console.log("Last message is from AI, chat should not be completed");
               await supabase
                 .from('ai_persona_chats')
@@ -163,11 +152,17 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         .eq('user_id', investorId)
         .single();
         
-      const { data: personaSettings } = await supabase
+      const { data: personaSettings, error: settingsError } = await supabase
         .from('investor_ai_persona_settings')
         .select('custom_questions, system_prompt')
         .eq('user_id', investorId)
         .single();
+        
+      if (settingsError) {
+        console.log("No custom settings found:", settingsError.message);
+      } else {
+        console.log("Found persona settings:", personaSettings);
+      }
       
       if (!chatId) {
         const { data: newChat, error: chatError } = await supabase
@@ -207,10 +202,11 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       console.log('Sending message to investor AI persona', {
         investorId, 
         messageLength: messageText.length,
-        chatHistoryLength: messages.length
+        chatHistoryLength: messages.length,
+        hasPersonaSettings: !!personaSettings,
+        customQuestionsCount: personaSettings?.custom_questions?.length || 0
       });
 
-      // Using direct project URL for the edge function
       const functionUrl = "https://vsxnjnvwtgehagxbhdzh.supabase.co/functions/v1/investor-ai-persona";
       console.log('Calling edge function at URL:', functionUrl);
       
@@ -274,8 +270,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             content: data.response,
           });
           
-        // Only mark the chat as completed if there's a match score AND the AI isn't asking a question
-        // We assume that if the AI message ends with a question mark, it's expecting a response
         const shouldMarkComplete = data.matchScore !== null && 
           typeof data.matchScore !== 'undefined' && 
           !data.response.trim().endsWith('?');
@@ -292,7 +286,6 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             
           setChatCompleted(true);
           
-          // Only notify the investor about matches, not the startup
           if (onComplete && user.id === investorId) {
             onComplete(data.matchScore, data.matchSummary);
           }

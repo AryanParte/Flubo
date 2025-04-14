@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -42,7 +41,6 @@ interface PersonaSettings {
   system_prompt?: string;
 }
 
-// Form schema for validating new questions
 const questionFormSchema = z.object({
   question: z.string().min(10, "Question must be at least 10 characters long")
 });
@@ -56,7 +54,6 @@ export const AIPersonaSettings = () => {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [error, setError] = useState<Error | null>(null);
   
-  // New question form
   const questionForm = useForm<z.infer<typeof questionFormSchema>>({
     resolver: zodResolver(questionFormSchema),
     defaultValues: {
@@ -64,7 +61,6 @@ export const AIPersonaSettings = () => {
     }
   });
 
-  // Default questions that cannot be removed
   const defaultQuestions = [
     "Tell me about your business model?",
     "What traction do you have so far?",
@@ -73,7 +69,6 @@ export const AIPersonaSettings = () => {
     "Tell me about your team background?"
   ];
 
-  // Initialize by fetching existing settings from the database
   useEffect(() => {
     if (user) {
       fetchSettings();
@@ -96,12 +91,13 @@ export const AIPersonaSettings = () => {
       const data = safeQueryResult(response);
       
       if (data) {
+        console.log("Loaded AI persona settings:", data);
         setSettings(data);
         if (data.system_prompt) {
           setSystemPrompt(data.system_prompt);
         }
       } else if (user) {
-        // Initialize with empty settings if not found
+        console.log("No existing settings found, initializing with empty");
         setSettings({
           user_id: user?.id || "",
           custom_questions: []
@@ -126,16 +122,21 @@ export const AIPersonaSettings = () => {
     setSaving(true);
     
     try {
-      // Prepare the data to save
+      const customQuestionsWithIds = settings.custom_questions.map(q => ({
+        ...q,
+        id: q.id || crypto.randomUUID()
+      }));
+      
       const dataToSave = {
         user_id: user.id,
-        custom_questions: settings.custom_questions,
+        custom_questions: customQuestionsWithIds,
         system_prompt: systemPrompt || null,
         updated_at: new Date().toISOString()
       };
       
+      console.log("Saving AI persona settings:", dataToSave);
+      
       if (settings.id) {
-        // Update existing settings
         const { error } = await supabase
           .from('investor_ai_persona_settings')
           .update(dataToSave)
@@ -143,7 +144,6 @@ export const AIPersonaSettings = () => {
           
         if (error) throw error;
       } else {
-        // Insert new settings
         const { data, error } = await supabase
           .from('investor_ai_persona_settings')
           .insert(dataToSave)
@@ -152,8 +152,7 @@ export const AIPersonaSettings = () => {
           
         if (error) throw error;
         
-        // Update local state with the new ID
-        setSettings(prev => prev ? { ...prev, id: data.id } : null);
+        setSettings(prev => prev ? { ...prev, id: data.id, custom_questions: customQuestionsWithIds } : null);
       }
       
       toast({
@@ -175,7 +174,6 @@ export const AIPersonaSettings = () => {
   const addQuestion = (data: z.infer<typeof questionFormSchema>) => {
     if (!settings) return;
     
-    // Add new question with a unique ID
     const newQuestion: CustomQuestion = {
       id: crypto.randomUUID(),
       question: data.question,
@@ -190,7 +188,6 @@ export const AIPersonaSettings = () => {
       };
     });
     
-    // Reset form
     questionForm.reset();
   };
 
@@ -254,7 +251,6 @@ export const AIPersonaSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Default questions section */}
           <div>
             <h3 className="font-medium mb-2">Default Questions</h3>
             <p className="text-sm text-muted-foreground mb-4">
@@ -269,7 +265,6 @@ export const AIPersonaSettings = () => {
             </div>
           </div>
 
-          {/* Custom questions section */}
           <div>
             <h3 className="font-medium mb-2">Custom Questions</h3>
             <p className="text-sm text-muted-foreground mb-4">
@@ -310,7 +305,6 @@ export const AIPersonaSettings = () => {
               </p>
             )}
 
-            {/* Add new question form */}
             <Form {...questionForm}>
               <form onSubmit={questionForm.handleSubmit(addQuestion)} className="space-y-4">
                 <FormField
@@ -339,7 +333,6 @@ export const AIPersonaSettings = () => {
             </Form>
           </div>
 
-          {/* System prompt section */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium">AI Persona Behavior</h3>
@@ -358,7 +351,6 @@ export const AIPersonaSettings = () => {
                   size="sm" 
                   onClick={() => {
                     setEditingPrompt(false);
-                    // Revert to saved value if canceled
                     setSystemPrompt(settings?.system_prompt || "");
                   }}
                 >

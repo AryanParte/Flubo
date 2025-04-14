@@ -29,6 +29,7 @@ serve(async (req) => {
     } = await req.json();
 
     console.log(`Processing message from startup ${startupId} to investor persona ${investorId}`);
+    console.log(`Persona settings received:`, personaSettings ? 'yes' : 'no');
     
     if (!openAIApiKey) {
       throw new Error("OpenAI API key is missing. Please set the OPENAI_API_KEY environment variable.");
@@ -41,6 +42,12 @@ serve(async (req) => {
     // Get custom questions if available, otherwise use default questions
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
       console.log("Using custom questions:", personaSettings.custom_questions.length);
+      
+      // Log all custom questions for debugging
+      personaSettings.custom_questions.forEach((q, idx) => {
+        console.log(`Custom question ${idx}: "${q.question}" (enabled: ${q.enabled !== false})`);
+      });
+      
       // Only use the enabled custom questions
       requiredQuestions = personaSettings.custom_questions
         .filter(q => q.enabled !== false)
@@ -50,7 +57,7 @@ serve(async (req) => {
           asked: false
         }));
       
-      console.log(`Found ${requiredQuestions.length} enabled custom questions`);
+      console.log(`Found ${requiredQuestions.length} enabled custom questions to ask`);
     }
     
     // If no custom questions are set or all custom questions are disabled, use default questions
@@ -73,7 +80,9 @@ serve(async (req) => {
     
     // Check chat history to see which questions have been asked
     if (chatHistory && chatHistory.length > 0) {
-      chatHistory.forEach(msg => {
+      console.log(`Analyzing ${chatHistory.length} messages to determine asked questions`);
+      
+      chatHistory.forEach((msg, idx) => {
         if (msg.sender_type === "ai") {
           requiredQuestions.forEach(q => {
             // Check if the question has been substantially asked
@@ -82,19 +91,33 @@ serve(async (req) => {
             const msgLower = msg.content.toLowerCase();
             
             // More precise matching to avoid partial matches
-            if (msgLower.includes(questionLower) || 
-                // Check for close enough match (at least 75% of the question)
-                msgLower.includes(questionLower.substring(0, Math.floor(questionLower.length * 0.75)))) {
+            const isMatch = msgLower.includes(questionLower) || 
+                       // Check for close enough match (at least 75% of the question)
+                       msgLower.includes(questionLower.substring(0, Math.floor(questionLower.length * 0.75)));
+            
+            if (isMatch && !q.asked) {
+              console.log(`Message ${idx} matches question "${q.question}" - marking as asked`);
               q.asked = true;
               askedQuestions.add(q.id);
             }
           });
         }
       });
+      
+      // Log current question status
+      requiredQuestions.forEach(q => {
+        console.log(`Question status: "${q.question}" - ${q.asked ? 'already asked' : 'not asked yet'}`);
+      });
     }
     
     // Determine the next question to ask - strictly use the first unanswered question
     const nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
+    
+    if (nextQuestionToAsk) {
+      console.log(`Next question to ask: "${nextQuestionToAsk.question}"`);
+    } else {
+      console.log("All questions have been asked");
+    }
     
     // For empty or just starting conversations, immediately ask the first question
     // instead of a generic greeting
@@ -130,6 +153,8 @@ serve(async (req) => {
       systemPrompt += `\nAll required questions have been asked. You may now provide a brief summary of the conversation.`;
     }
     
+    console.log("Using system prompt:", systemPrompt);
+    
     // Prepare messages for OpenAI API
     const messages = [
       { role: "system", content: systemPrompt }
@@ -152,6 +177,7 @@ serve(async (req) => {
     });
     
     // Call OpenAI API
+    console.log(`Calling OpenAI API with ${messages.length} messages`);
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -174,6 +200,7 @@ serve(async (req) => {
 
     const data = await response.json();
     let aiResponse = data.choices[0].message.content;
+    console.log("AI response:", aiResponse);
     
     // If this is a follow-up response and there's a next question to ask,
     // ensure it's asking exactly the question we want
@@ -246,6 +273,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
       }
     }
 
+    console.log(`Returning response. Questions remaining: ${requiredQuestions.filter(q => !q.asked).length}`);
+    
     return new Response(
       JSON.stringify({
         response: aiResponse,
