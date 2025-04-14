@@ -34,14 +34,11 @@ serve(async (req) => {
       throw new Error("OpenAI API key is missing. Please set the OPENAI_API_KEY environment variable.");
     }
     
-    // Construct system prompt based on investor preferences
-    let systemPrompt = `You are an AI simulation of the investor ${investorName || "the investor"}. `;
-    
-    // Track which questions have been asked
+    // Extract questions from persona settings
     let requiredQuestions = [];
     let askedQuestions = new Set();
     
-    // Extract questions from persona settings
+    // Get custom questions if available, otherwise use default questions
     if (personaSettings && personaSettings.custom_questions) {
       requiredQuestions = personaSettings.custom_questions
         .filter(q => q.enabled !== false)
@@ -52,6 +49,23 @@ serve(async (req) => {
         }));
     }
     
+    // If no custom questions are set, use default questions
+    if (requiredQuestions.length === 0) {
+      const defaultQuestions = [
+        "Tell me about your business model?",
+        "What traction do you have so far?",
+        "Who are your competitors and how do you differentiate?",
+        "What's your go-to-market strategy?",
+        "Tell me about your team background?"
+      ];
+      
+      requiredQuestions = defaultQuestions.map((q, idx) => ({
+        id: `default-${idx}`,
+        question: q,
+        asked: false
+      }));
+    }
+    
     // Check chat history to see which questions have been asked
     if (chatHistory && chatHistory.length > 0) {
       chatHistory.forEach(msg => {
@@ -60,6 +74,7 @@ serve(async (req) => {
             // Check if the question has been substantially asked
             if (msg.content.toLowerCase().includes(q.question.toLowerCase().substring(0, Math.min(30, q.question.length)))) {
               q.asked = true;
+              askedQuestions.add(q.id);
             }
           });
         }
@@ -69,10 +84,34 @@ serve(async (req) => {
     // Determine the next question to ask
     const nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
     
+    // For empty or just starting conversations, immediately ask the first question
+    // instead of a generic greeting
+    if ((!chatHistory || chatHistory.length === 0) && nextQuestionToAsk) {
+      // Return the first question directly without calling OpenAI
+      return new Response(
+        JSON.stringify({
+          response: nextQuestionToAsk.question,
+          matchScore: null,
+          matchSummary: null,
+          chatId,
+          isQuestionPending: true,
+          remainingQuestions: requiredQuestions.filter(q => !q.asked && q.id !== nextQuestionToAsk.id),
+          askedQuestions: [nextQuestionToAsk.id]
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Construct system prompt based on investor preferences and next question
+    let systemPrompt = `You are an AI simulation of the investor ${investorName || "the investor"}. `;
+    
     // Update system prompt to focus on asking the next unasked question
     if (nextQuestionToAsk) {
       systemPrompt += `\n\nCRITICAL INSTRUCTION: You MUST ask the following specific question EXACTLY as written. Do not modify or rephrase the question:\n"${nextQuestionToAsk.question}"\n`;
       systemPrompt += `\nYour ONLY task is to ask this specific question. Do not create additional context or follow-ups.`;
+      systemPrompt += `\nDo not ask how you can help. Do not introduce yourself. Do not give a generic greeting. Just ask the question directly.`;
     } else {
       // If all questions have been asked, allow a summary
       systemPrompt += `\nAll required questions have been asked. You may now provide a brief summary of the conversation.`;
@@ -121,7 +160,22 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    let aiResponse = data.choices[0].message.content;
+    
+    // If this is a follow-up response and there's a next question to ask,
+    // ensure it's asking exactly the question we want
+    if (chatHistory && chatHistory.length > 0 && nextQuestionToAsk) {
+      // If the AI didn't actually ask the question properly, force it
+      if (!aiResponse.includes(nextQuestionToAsk.question)) {
+        aiResponse = nextQuestionToAsk.question;
+      }
+    }
+    
+    // Mark the next question as asked if we're returning it
+    if (nextQuestionToAsk) {
+      nextQuestionToAsk.asked = true;
+      askedQuestions.add(nextQuestionToAsk.id);
+    }
     
     // Determine if all questions have been asked
     const allQuestionsAsked = requiredQuestions.every(q => q.asked);
@@ -130,7 +184,7 @@ serve(async (req) => {
     let matchScore = null;
     let matchSummary = null;
     
-    if (allQuestionsAsked && chatHistory && chatHistory.length >= 5) {
+    if (allQuestionsAsked && chatHistory && chatHistory.length >= requiredQuestions.length) {
       const scoringPrompt = `
 Based on the conversation between the startup and investor, evaluate how well the startup matches the investor's preferences.
 Here is the investor's profile:
@@ -186,7 +240,7 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         chatId,
         isQuestionPending: !allQuestionsAsked,
         remainingQuestions: requiredQuestions.filter(q => !q.asked),
-        askedQuestions: requiredQuestions.filter(q => q.asked).map(q => q.id)
+        askedQuestions: Array.from(askedQuestions)
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
