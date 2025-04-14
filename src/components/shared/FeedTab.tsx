@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -175,10 +174,8 @@ export function FeedTab() {
     try {
       console.log("Setting up storage bucket 'posts'...");
       
-      // First, try to get bucket info to check if it exists
       const { data: bucketData, error: getBucketError } = await supabase.storage.getBucket('posts');
       
-      // If the bucket doesn't exist, create it
       if (getBucketError) {
         console.log("Bucket error or not found:", getBucketError.message);
         
@@ -203,7 +200,6 @@ export function FeedTab() {
         console.log("Bucket 'posts' already exists:", bucketData);
       }
       
-      // Always try to update the bucket to ensure it's public
       console.log("Updating bucket settings to ensure public access...");
       const { data: updateData, error: updateError } = await supabase.storage.updateBucket('posts', {
         public: true
@@ -226,14 +222,12 @@ export function FeedTab() {
     console.log("Starting image upload process for", file.name);
     
     try {
-      // Ensure bucket exists and is properly configured
       const bucketSetup = await setupBucket();
       if (!bucketSetup) {
         console.error("Failed to set up storage bucket");
         throw new Error("Failed to set up storage bucket");
       }
       
-      // Generate a clean, unique file path
       const fileExt = file.name.split('.').pop() || 'jpg';
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 10);
@@ -241,8 +235,6 @@ export function FeedTab() {
       
       console.log("Generated file path:", filePath);
       
-      // Upload file to Supabase Storage
-      console.log("Uploading file to storage/posts bucket...");
       const { data, error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, file, {
@@ -257,7 +249,6 @@ export function FeedTab() {
       
       console.log("File uploaded successfully:", data);
       
-      // Get public URL for the uploaded file
       const { data: publicUrlData } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
@@ -351,7 +342,6 @@ export function FeedTab() {
       setUploadError(null);
       setShowPostDialog(false);
       
-      // Refresh posts list
       fetchPosts(activeTab);
       
       toast({
@@ -369,6 +359,10 @@ export function FeedTab() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handlePostDeleted = (postId: string) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
   };
 
   return (
@@ -427,6 +421,7 @@ export function FeedTab() {
                 hashtags={post.hashtags}
                 image_url={post.image_url}
                 onHashtagClick={handleHashtagClick}
+                onPostDeleted={handlePostDeleted}
               />
             ))
           ) : (
@@ -471,6 +466,7 @@ export function FeedTab() {
                 hashtags={post.hashtags}
                 image_url={post.image_url}
                 onHashtagClick={handleHashtagClick}
+                onPostDeleted={handlePostDeleted}
               />
             ))
           ) : (
@@ -520,6 +516,7 @@ export function FeedTab() {
                 hashtags={post.hashtags}
                 image_url={post.image_url}
                 onHashtagClick={handleHashtagClick}
+                onPostDeleted={handlePostDeleted}
               />
             ))
           ) : (

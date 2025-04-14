@@ -12,19 +12,31 @@ import {
   ThumbsUp, 
   Share, 
   MoreHorizontal, 
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useLikePost } from "@/hooks/useLikePost";
 import { PostComments } from "./PostComments";
 import { supabase } from "@/lib/supabase";
@@ -50,6 +62,7 @@ export type PostProps = {
   hashtags?: string[];
   image_url?: string | null;
   onHashtagClick?: (tag: string) => void;
+  onPostDeleted?: (postId: string) => void;
 };
 
 export function Post({ 
@@ -61,13 +74,17 @@ export function Post({
   comments: initialComments, 
   hashtags, 
   image_url,
-  onHashtagClick 
+  onHashtagClick,
+  onPostDeleted
 }: PostProps) {
   const { user } = useAuth();
   const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(initialComments);
   const { isLiked, likesCount, toggleLike, isLoading } = useLikePost(id, likes);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isPostOwner = user && user.id === author.id;
   
   useEffect(() => {
     const fetchCommentCount = async () => {
@@ -119,6 +136,62 @@ export function Post({
     setShowShareDialog(true);
   };
   
+  const handleDeletePost = async () => {
+    if (!user || user.id !== author.id) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      // Delete post from Supabase
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id); // Extra safety check to ensure user can only delete their own posts
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Delete post image from storage if it exists
+      if (image_url) {
+        try {
+          // Extract the file path from the URL
+          const filePathMatch = image_url.match(/\/storage\/v1\/object\/public\/posts\/(.*)/);
+          if (filePathMatch && filePathMatch[1]) {
+            const filePath = decodeURIComponent(filePathMatch[1]);
+            await supabase.storage.from('posts').remove([filePath]);
+          }
+        } catch (storageError) {
+          console.error("Error removing post image:", storageError);
+          // Continue with post deletion even if image removal fails
+        }
+      }
+      
+      // Notify parent component about the deletion
+      if (onPostDeleted) {
+        onPostDeleted(id);
+      }
+      
+      toast({
+        title: "Post deleted",
+        description: "Your post has been successfully deleted"
+      });
+      
+      setShowDeleteDialog(false);
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete post. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
   return (
     <Card className="p-4">
       <div className="flex justify-between items-start">
@@ -150,6 +223,19 @@ export function Post({
             <DropdownMenuItem>Save Post</DropdownMenuItem>
             <DropdownMenuItem>Follow {author.name}</DropdownMenuItem>
             <DropdownMenuItem>Report Post</DropdownMenuItem>
+            
+            {isPostOwner && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Post
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -238,6 +324,34 @@ export function Post({
           }}
         />
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeletePost}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
