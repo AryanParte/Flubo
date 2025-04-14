@@ -5,13 +5,17 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { MessagesTab } from "@/components/investor/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { clearAIPersonaChats } from "@/services/ai-persona-service";
 
 const InvestorMessages = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [resettingChats, setResettingChats] = useState(false);
 
   useEffect(() => {
     // Redirect if not authenticated and auth check is complete
@@ -73,6 +77,36 @@ const InvestorMessages = () => {
     }
   }, [user, authLoading, navigate]);
 
+  const handleResetAIChats = async () => {
+    setResettingChats(true);
+    try {
+      const { success, error } = await clearAIPersonaChats();
+      
+      if (success) {
+        toast({
+          title: "AI Chat History Cleared",
+          description: "All AI persona conversations have been reset successfully.",
+        });
+      } else {
+        console.error("Failed to clear AI chats:", error);
+        toast({
+          title: "Error",
+          description: "Failed to clear AI chat history. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error resetting AI chats:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while resetting AI chats.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingChats(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -93,7 +127,23 @@ const InvestorMessages = () => {
       <Navbar />
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
-          <h1 className="text-2xl font-bold mb-8">Messages</h1>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-2xl font-bold">Messages</h1>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleResetAIChats}
+              disabled={resettingChats}
+              className="flex items-center gap-2"
+            >
+              {resettingChats ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Reset AI Chats
+            </Button>
+          </div>
           <MessagesTab />
         </div>
       </main>
