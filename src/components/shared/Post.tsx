@@ -84,6 +84,7 @@ export function Post({
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
   const isPostOwner = user && user.id === author.id;
   
   useEffect(() => {
@@ -174,6 +175,8 @@ export function Post({
         onPostDeleted(id);
       }
       
+      setIsDeleted(true);
+      
       toast({
         title: "Post deleted",
         description: "Your post has been successfully deleted"
@@ -191,6 +194,11 @@ export function Post({
       setIsDeleting(false);
     }
   };
+
+  // If post has been deleted, don't render anything
+  if (isDeleted) {
+    return null;
+  }
   
   return (
     <Card className="p-4">

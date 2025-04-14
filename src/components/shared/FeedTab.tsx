@@ -18,6 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { useState as useHookState } from "react";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 export function FeedTab() {
   const { user } = useAuth();
@@ -31,6 +32,22 @@ export function FeedTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useRealtimeSubscription<PostType>(
+    'posts',
+    ['INSERT', 'DELETE', 'UPDATE'],
+    (payload) => {
+      if (payload.eventType === 'INSERT') {
+        fetchPosts(activeTab);
+      } else if (payload.eventType === 'DELETE') {
+        setPosts((prevPosts) => prevPosts.filter((post) => post.id !== payload.old.id));
+      } else if (payload.eventType === 'UPDATE') {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === payload.new.id ? payload.new : post))
+        );
+      }
+    }
+  );
 
   const fetchPosts = async (filter: string) => {
     setIsLoading(true);
