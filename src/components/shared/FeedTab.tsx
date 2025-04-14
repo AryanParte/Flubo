@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -192,16 +191,9 @@ export function FeedTab() {
         
         console.log("Posts bucket created successfully");
         
-        // Set public access policy for the bucket
-        const { error: policyError } = await supabase.storage.from('posts').updateBucketPolicy({
-          allowedOperations: ['select'],
-          publicAccess: true
-        });
-        
-        if (policyError) {
-          console.error("Error setting public policy:", policyError);
-          return false;
-        }
+        // Note: The bucket was created with public: true, which should
+        // make all files publicly accessible without needing updateBucketPolicy
+        // which is not available in the JS client
         
         return true;
       }
