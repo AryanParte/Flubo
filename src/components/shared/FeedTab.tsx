@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
 import { supabase } from "@/lib/supabase";
@@ -29,6 +29,7 @@ export function FeedTab() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPosts = async (filter: string) => {
     setIsLoading(true);
@@ -131,6 +132,16 @@ export function FeedTab() {
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  const handleImageButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleSubmitPost = async () => {
@@ -420,15 +431,21 @@ export function FeedTab() {
               </div>
             ) : (
               <div className="flex items-center justify-center p-4 border-2 border-dashed border-border rounded-md">
-                <label className="cursor-pointer text-center">
+                <label className="cursor-pointer text-center w-full">
                   <div className="flex flex-col items-center gap-2">
                     <Upload size={24} className="text-muted-foreground" />
                     <span className="text-sm text-muted-foreground block">Add an image to your post</span>
-                    <Button variant="outline" size="sm" type="button">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      type="button"
+                      onClick={handleImageButtonClick}
+                    >
                       Select Image
                     </Button>
                   </div>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     className="hidden"
                     accept="image/*"
