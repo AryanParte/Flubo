@@ -112,12 +112,14 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         chatHistoryLength: messages.length
       });
 
-      const functionUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/investor-ai-persona';
+      const functionUrl = supabase.auth.url + '/functions/v1/investor-ai-persona';
+      console.log('Calling edge function at URL:', functionUrl);
+      
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabase.auth.anon_key}`,
         },
         body: JSON.stringify({
           message: messageText,
