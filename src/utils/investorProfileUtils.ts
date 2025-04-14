@@ -220,18 +220,26 @@ export const syncAndFixAIMatchStatus = async (chatId: string) => {
  */
 export const getInvestorAIPersonaQuestions = async (investorId: string) => {
   try {
+    console.log(`Fetching AI persona questions for investor ${investorId}`);
+    
     const { data, error } = await supabase
       .from('investor_ai_persona_settings')
-      .select('custom_questions')
+      .select('*') // Select all fields for debugging
       .eq('user_id', investorId)
       .single();
       
     if (error) {
       if (error.code === 'PGRST116') { // No rows found
+        console.log(`No AI persona settings found for investor ${investorId}`);
         return { data: { custom_questions: [] }, success: true };
       }
+      console.error(`Error fetching AI persona settings: ${error.message}`);
       throw error;
     }
+    
+    console.log(`Successfully fetched AI persona settings for investor ${investorId}`);
+    console.log(`Custom questions: ${JSON.stringify(data.custom_questions, null, 2)}`);
+    console.log(`Custom questions count: ${data.custom_questions?.length || 0}`);
     
     return { data, success: true };
   } catch (error) {
@@ -249,10 +257,17 @@ export const ensureAllQuestionsAsked = async (chatId: string, investorId: string
     const { data: settingsData } = await getInvestorAIPersonaQuestions(investorId);
     
     if (!settingsData || !settingsData.custom_questions) {
+      console.log(`No custom questions found for investor ${investorId}`);
       return { success: true, complete: false };
     }
     
+    console.log(`Found ${settingsData.custom_questions.length} total custom questions`);
     const customQuestions = settingsData.custom_questions.filter(q => q.enabled !== false);
+    console.log(`${customQuestions.length} questions are enabled`);
+    
+    if (customQuestions.length > 0) {
+      console.log(`Example question: "${customQuestions[0].question}"`);
+    }
     
     // Get all messages for this chat
     const { data: messages, error: messagesError } = await supabase
@@ -273,13 +288,24 @@ export const ensureAllQuestionsAsked = async (chatId: string, investorId: string
     messages.forEach(msg => {
       if (msg.sender_type === 'ai') {
         customQuestions.forEach(q => {
-          if (msg.content.toLowerCase().includes(q.question.toLowerCase().substring(0, Math.min(30, q.question.length)))) {
+          // More precise matching to ensure we're correctly identifying asked questions
+          const questionLower = q.question.toLowerCase();
+          const msgLower = msg.content.toLowerCase();
+          
+          // Check for substantial match
+          const isMatch = msgLower.includes(questionLower) || 
+                      (questionLower.length > 30 && 
+                       msgLower.includes(questionLower.substring(0, 30)));
+                       
+          if (isMatch) {
+            console.log(`Question "${q.question}" has been asked`);
             askedQuestions.add(q.id);
           }
         });
       }
     });
     
+    console.log(`${askedQuestions.size}/${customQuestions.length} questions have been asked`);
     const allQuestionsAsked = customQuestions.every(q => askedQuestions.has(q.id));
     
     // If the chat is marked as complete but not all questions were asked, fix it
@@ -295,6 +321,7 @@ export const ensureAllQuestionsAsked = async (chatId: string, investorId: string
       // If the chat is not marked as complete but all questions were asked
       if (!chat.completed && messages[messages.length - 1].sender_type === 'startup') {
         // This chat could potentially be completed - the AI should generate a final response
+        console.log(`All questions asked and last message is from startup, chat can be completed`);
         return { success: true, complete: true, needsFinalResponse: true };
       }
     }

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -151,17 +152,27 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         .select('*')
         .eq('user_id', investorId)
         .single();
-        
+      
+      // Explicitly fetch persona settings to verify we're getting the data correctly
       const { data: personaSettings, error: settingsError } = await supabase
         .from('investor_ai_persona_settings')
-        .select('custom_questions, system_prompt')
+        .select('*')  // Select all columns for debugging
         .eq('user_id', investorId)
         .single();
         
       if (settingsError) {
         console.log("No custom settings found:", settingsError.message);
       } else {
-        console.log("Found persona settings:", personaSettings);
+        console.log("Found persona settings:", JSON.stringify(personaSettings, null, 2));
+        console.log("Custom questions count:", 
+          personaSettings?.custom_questions ? 
+          personaSettings.custom_questions.length : 
+          "none");
+        
+        if (personaSettings?.custom_questions?.length > 0) {
+          console.log("First custom question:", 
+            personaSettings.custom_questions[0]?.question || "undefined question");
+        }
       }
       
       if (!chatId) {

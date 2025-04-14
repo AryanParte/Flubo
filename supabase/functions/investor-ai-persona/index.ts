@@ -29,7 +29,7 @@ serve(async (req) => {
     } = await req.json();
 
     console.log(`Processing message from startup ${startupId} to investor persona ${investorId}`);
-    console.log(`Persona settings received:`, personaSettings ? 'yes' : 'no');
+    console.log(`Persona settings received:`, personaSettings ? JSON.stringify(personaSettings, null, 2) : 'no');
     
     if (!openAIApiKey) {
       throw new Error("OpenAI API key is missing. Please set the OPENAI_API_KEY environment variable.");
@@ -42,10 +42,11 @@ serve(async (req) => {
     // Get custom questions if available, otherwise use default questions
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
       console.log("Using custom questions:", personaSettings.custom_questions.length);
+      console.log("Raw custom questions:", JSON.stringify(personaSettings.custom_questions, null, 2));
       
       // Log all custom questions for debugging
       personaSettings.custom_questions.forEach((q, idx) => {
-        console.log(`Custom question ${idx}: "${q.question}" (enabled: ${q.enabled !== false})`);
+        console.log(`Custom question ${idx}: "${q.question}" (enabled: ${q.enabled !== false}, id: ${q.id || 'none'})`);
       });
       
       // Only use the enabled custom questions
@@ -54,7 +55,8 @@ serve(async (req) => {
         .map((q, idx) => ({
           id: q.id || `custom-${idx}`,
           question: q.question,
-          asked: false
+          asked: false,
+          isCustom: true
         }));
       
       console.log(`Found ${requiredQuestions.length} enabled custom questions to ask`);
@@ -74,7 +76,8 @@ serve(async (req) => {
       requiredQuestions = defaultQuestions.map((q, idx) => ({
         id: `default-${idx}`,
         question: q,
-        asked: false
+        asked: false,
+        isCustom: false
       }));
     }
     
@@ -82,27 +85,32 @@ serve(async (req) => {
     if (chatHistory && chatHistory.length > 0) {
       console.log(`Analyzing ${chatHistory.length} messages to determine asked questions`);
       
-      chatHistory.forEach((msg, idx) => {
+      for (const msg of chatHistory) {
         if (msg.sender_type === "ai") {
-          requiredQuestions.forEach(q => {
+          for (const q of requiredQuestions) {
+            if (q.asked) continue; // Skip already marked questions
+            
             // Check if the question has been substantially asked
             // Make sure we're matching a significant portion of the question
             const questionLower = q.question.toLowerCase();
             const msgLower = msg.content.toLowerCase();
             
             // More precise matching to avoid partial matches
-            const isMatch = msgLower.includes(questionLower) || 
-                       // Check for close enough match (at least 75% of the question)
-                       msgLower.includes(questionLower.substring(0, Math.floor(questionLower.length * 0.75)));
+            // Use exact matching for custom questions to ensure we're asking precisely what was requested
+            const isMatch = q.isCustom 
+              ? msgLower.includes(questionLower) 
+              : (msgLower.includes(questionLower) || 
+                 msgLower.includes(questionLower.substring(0, Math.floor(questionLower.length * 0.75))));
             
-            if (isMatch && !q.asked) {
-              console.log(`Message ${idx} matches question "${q.question}" - marking as asked`);
+            if (isMatch) {
+              console.log(`Message matches question "${q.question}" - marking as asked`);
               q.asked = true;
               askedQuestions.add(q.id);
+              break; // Move to next message after finding a match
             }
-          });
+          }
         }
-      });
+      }
       
       // Log current question status
       requiredQuestions.forEach(q => {
@@ -110,11 +118,14 @@ serve(async (req) => {
       });
     }
     
-    // Determine the next question to ask - strictly use the first unanswered question
-    const nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
+    // Determine the next question to ask - strictly use the first unanswered custom question,
+    // or if all custom questions are answered, move to default questions
+    const nextCustomQuestion = requiredQuestions.find(q => !q.asked && q.isCustom);
+    const nextDefaultQuestion = requiredQuestions.find(q => !q.asked && !q.isCustom);
+    const nextQuestionToAsk = nextCustomQuestion || nextDefaultQuestion;
     
     if (nextQuestionToAsk) {
-      console.log(`Next question to ask: "${nextQuestionToAsk.question}"`);
+      console.log(`Next question to ask: "${nextQuestionToAsk.question}" (isCustom: ${nextQuestionToAsk.isCustom})`);
     } else {
       console.log("All questions have been asked");
     }
@@ -142,6 +153,11 @@ serve(async (req) => {
 
     // Construct system prompt based on investor preferences and next question
     let systemPrompt = `You are an AI simulation of the investor ${investorName || "the investor"}. `;
+    
+    // Add custom system prompt from persona settings if available
+    if (personaSettings && personaSettings.system_prompt) {
+      systemPrompt += `\n\n${personaSettings.system_prompt}\n\n`;
+    }
     
     // Update system prompt to focus on asking the next unasked question
     if (nextQuestionToAsk) {
@@ -274,6 +290,7 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
     }
 
     console.log(`Returning response. Questions remaining: ${requiredQuestions.filter(q => !q.asked).length}`);
+    console.log(`Asked questions IDs: ${Array.from(askedQuestions).join(', ')}`);
     
     return new Response(
       JSON.stringify({
