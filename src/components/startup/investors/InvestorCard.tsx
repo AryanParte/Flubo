@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -134,7 +133,6 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                 )}
               </div>
               
-              {/* Only show match info for investors, never for startups */}
               {showMatchInfo && (
                 <div className="mb-4 p-3 bg-accent/10 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
