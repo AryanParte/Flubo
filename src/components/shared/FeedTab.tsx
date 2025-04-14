@@ -165,8 +165,49 @@ export function FeedTab() {
   };
   
   const handleImageButtonClick = () => {
+    console.log("Image button clicked");
     if (fileInputRef.current) {
       fileInputRef.current.click();
+      console.log("File input clicked");
+    }
+  };
+
+  const ensurePostsBucketExists = async () => {
+    try {
+      console.log("Checking if posts bucket exists...");
+      const { data, error } = await supabase.storage.getBucket('posts');
+      
+      if (error) {
+        console.log("Bucket doesn't exist or error checking:", error.message);
+        
+        // Create the bucket if it doesn't exist
+        const { error: createError } = await supabase.storage.createBucket('posts', {
+          public: true,
+          fileSizeLimit: 5 * 1024 * 1024,
+        });
+        
+        if (createError) {
+          console.error("Error creating bucket:", createError);
+          return false;
+        }
+        
+        console.log("Posts bucket created successfully");
+        
+        // Set bucket policy to public
+        const { error: policyError } = await supabase.storage.from('posts').getPublicUrl('test');
+        if (policyError) {
+          console.error("Error setting public policy:", policyError);
+          return false;
+        }
+        
+        return true;
+      }
+      
+      console.log("Posts bucket already exists");
+      return true;
+    } catch (error) {
+      console.error("Error in ensurePostsBucketExists:", error);
+      return false;
     }
   };
 
@@ -193,6 +234,12 @@ export function FeedTab() {
       setIsSubmitting(true);
       console.log("Starting post submission...");
       
+      // Make sure the posts bucket exists before uploading
+      const bucketExists = await ensurePostsBucketExists();
+      if (!bucketExists) {
+        throw new Error("Failed to ensure storage bucket exists");
+      }
+      
       const hashtagRegex = /#(\w+)/g;
       const hashtags = [...newPostContent.matchAll(hashtagRegex)].map(match => match[1]);
       console.log("Extracted hashtags:", hashtags);
@@ -200,30 +247,11 @@ export function FeedTab() {
       let imageUrl = null;
       
       if (selectedImage) {
-        console.log("Uploading image...", selectedImage);
+        console.log("Uploading image...", selectedImage.name);
         const filePath = `post-images/${user.id}/${Date.now()}-${selectedImage.name.replace(/\s+/g, '-')}`;
         console.log("File path for upload:", filePath);
         
-        // Ensure the storage bucket exists
-        try {
-          const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('posts');
-          
-          if (bucketError && bucketError.message.includes('does not exist')) {
-            console.log("Posts bucket doesn't exist, creating...");
-            const { error: createError } = await supabase.storage.createBucket('posts', {
-              public: true,
-              fileSizeLimit: 5 * 1024 * 1024, // 5MB
-            });
-            
-            if (createError) {
-              console.error("Error creating bucket:", createError);
-              throw new Error("Failed to create storage bucket");
-            }
-          }
-        } catch (error) {
-          console.error("Error checking/creating bucket:", error);
-        }
-        
+        // Upload the image
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('posts')
           .upload(filePath, selectedImage, {
@@ -238,6 +266,7 @@ export function FeedTab() {
         
         console.log("Image uploaded successfully:", uploadData);
         
+        // Get the public URL
         const { data: publicURL } = supabase.storage
           .from('posts')
           .getPublicUrl(filePath);
@@ -257,8 +286,7 @@ export function FeedTab() {
           likes: 0,
           comments_count: 0
         })
-        .select()
-        .single();
+        .select();
         
       if (postError) {
         console.error("Error creating post:", postError);
@@ -267,6 +295,7 @@ export function FeedTab() {
       
       console.log("Post created successfully:", post);
       
+      // Reset the form
       setNewPostContent("");
       setSelectedImage(null);
       setImagePreview(null);
@@ -491,7 +520,7 @@ export function FeedTab() {
               </div>
             ) : (
               <div className="flex items-center justify-center p-4 border-2 border-dashed border-border rounded-md">
-                <label className="cursor-pointer text-center w-full">
+                <div className="cursor-pointer text-center w-full">
                   <div className="flex flex-col items-center gap-2">
                     <Upload size={24} className="text-muted-foreground" />
                     <span className="text-sm text-muted-foreground block">Add an image to your post</span>
@@ -513,7 +542,7 @@ export function FeedTab() {
                     onChange={handleImageChange}
                     disabled={isSubmitting}
                   />
-                </label>
+                </div>
               </div>
             )}
             
