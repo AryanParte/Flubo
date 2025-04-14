@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -189,22 +190,32 @@ export function FeedTab() {
           return false;
         }
         
-        // Add a bucket policy to make objects public
-        const { error: policyError } = await supabase
-          .rpc('create_storage_policy', {
-            bucket_name: 'posts',
-            definition: 'true',
-            name: 'allow_public_access'
-          });
+        // Instead of using RPC, we'll set policies directly using the updateBucket method
+        const { error: updateError } = await supabase.storage.updateBucket('posts', {
+          public: true
+        });
         
-        if (policyError) {
-          console.error("Warning: Failed to set bucket policy:", policyError);
+        if (updateError) {
+          console.error("Warning: Failed to set bucket to public:", updateError);
           // Continue anyway as we can still try the upload
+        } else {
+          console.log("Successfully updated 'posts' bucket to be public");
         }
         
         console.log("Successfully created 'posts' bucket with public access");
       } else {
         console.log("Bucket 'posts' already exists");
+        
+        // Ensure the bucket is public
+        const { error: updateError } = await supabase.storage.updateBucket('posts', {
+          public: true
+        });
+        
+        if (updateError) {
+          console.error("Warning: Failed to ensure bucket is public:", updateError);
+        } else {
+          console.log("Successfully ensured 'posts' bucket is public");
+        }
       }
       
       return true;
@@ -218,7 +229,7 @@ export function FeedTab() {
     console.log("Starting image upload process for", file.name);
     
     try {
-      // Ensure the bucket exists
+      // Ensure the bucket exists and is public
       const bucketSetup = await setupBucket();
       if (!bucketSetup) {
         console.warn("Bucket setup failed, but will attempt upload anyway");
