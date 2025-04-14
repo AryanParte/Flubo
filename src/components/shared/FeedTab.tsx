@@ -191,34 +191,27 @@ export function FeedTab() {
     try {
       console.log("Setting up storage bucket 'posts'...");
       
-      const { data: bucketData, error: getBucketError } = await supabase.storage.getBucket('posts');
+      const { data: bucketExists } = await supabase.storage.getBucket('posts');
       
-      if (getBucketError) {
-        console.log("Bucket error or not found:", getBucketError.message);
+      if (!bucketExists) {
+        console.log("Bucket not found, creating new 'posts' bucket with public access...");
         
-        if (getBucketError.message.includes("not found")) {
-          console.log("Creating new 'posts' bucket with public access...");
-          
-          const { data, error: createError } = await supabase.storage.createBucket('posts', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-            return false;
-          }
-          
-          console.log("Successfully created bucket:", data);
-        } else {
-          console.error("Error getting bucket:", getBucketError);
+        const { error: createError } = await supabase.storage.createBucket('posts', {
+          public: true
+        });
+        
+        if (createError) {
+          console.error("Failed to create bucket:", createError);
           return false;
         }
+        
+        console.log("Successfully created bucket");
       } else {
-        console.log("Bucket 'posts' already exists:", bucketData);
+        console.log("Bucket 'posts' already exists");
       }
       
       console.log("Updating bucket settings to ensure public access...");
-      const { data: updateData, error: updateError } = await supabase.storage.updateBucket('posts', {
+      const { error: updateError } = await supabase.storage.updateBucket('posts', {
         public: true
       });
       
@@ -227,7 +220,26 @@ export function FeedTab() {
         return false;
       }
       
-      console.log("Bucket settings updated successfully:", updateData);
+      // Add public policy to the bucket
+      const { error: policyError } = await supabase.rpc('create_storage_policy', {
+        bucket_name: 'posts',
+        policy_name: 'public_select',
+        definition: {
+          name: 'Public Select',
+          action: 'SELECT',
+          role: '*',
+          check: {}
+        }
+      }).catch(err => {
+        // If the policy already exists, this is not a critical error
+        console.log("Policy might already exist, continuing:", err);
+        return { error: null };
+      });
+      
+      if (policyError) {
+        console.warn("Note: Could not set policy, but continuing:", policyError);
+      }
+      
       return true;
     } catch (error) {
       console.error("Unexpected error in setupBucket:", error);
