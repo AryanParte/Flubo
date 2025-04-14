@@ -39,7 +39,9 @@ serve(async (req) => {
     let askedQuestions = new Set();
     
     // Get custom questions if available, otherwise use default questions
-    if (personaSettings && personaSettings.custom_questions) {
+    if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
+      console.log("Using custom questions:", personaSettings.custom_questions.length);
+      // Only use the enabled custom questions
       requiredQuestions = personaSettings.custom_questions
         .filter(q => q.enabled !== false)
         .map((q, idx) => ({
@@ -47,10 +49,13 @@ serve(async (req) => {
           question: q.question,
           asked: false
         }));
+      
+      console.log(`Found ${requiredQuestions.length} enabled custom questions`);
     }
     
-    // If no custom questions are set, use default questions
+    // If no custom questions are set or all custom questions are disabled, use default questions
     if (requiredQuestions.length === 0) {
+      console.log("No custom questions found, using default questions");
       const defaultQuestions = [
         "Tell me about your business model?",
         "What traction do you have so far?",
@@ -72,7 +77,14 @@ serve(async (req) => {
         if (msg.sender_type === "ai") {
           requiredQuestions.forEach(q => {
             // Check if the question has been substantially asked
-            if (msg.content.toLowerCase().includes(q.question.toLowerCase().substring(0, Math.min(30, q.question.length)))) {
+            // Make sure we're matching a significant portion of the question
+            const questionLower = q.question.toLowerCase();
+            const msgLower = msg.content.toLowerCase();
+            
+            // More precise matching to avoid partial matches
+            if (msgLower.includes(questionLower) || 
+                // Check for close enough match (at least 75% of the question)
+                msgLower.includes(questionLower.substring(0, Math.floor(questionLower.length * 0.75)))) {
               q.asked = true;
               askedQuestions.add(q.id);
             }
@@ -81,12 +93,13 @@ serve(async (req) => {
       });
     }
     
-    // Determine the next question to ask
+    // Determine the next question to ask - strictly use the first unanswered question
     const nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
     
     // For empty or just starting conversations, immediately ask the first question
     // instead of a generic greeting
     if ((!chatHistory || chatHistory.length === 0) && nextQuestionToAsk) {
+      console.log("New conversation - returning first question directly:", nextQuestionToAsk.question);
       // Return the first question directly without calling OpenAI
       return new Response(
         JSON.stringify({
@@ -167,6 +180,7 @@ serve(async (req) => {
     if (chatHistory && chatHistory.length > 0 && nextQuestionToAsk) {
       // If the AI didn't actually ask the question properly, force it
       if (!aiResponse.includes(nextQuestionToAsk.question)) {
+        console.log("AI didn't ask the exact question, forcing it");
         aiResponse = nextQuestionToAsk.question;
       }
     }
