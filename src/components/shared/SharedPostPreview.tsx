@@ -51,11 +51,11 @@ export const SharedPostPreview = ({
       <div className="flex flex-col">
         {/* Image if available */}
         {imageUrl && (
-          <div className={`${compact ? 'h-24' : 'h-32'} bg-muted relative`}>
+          <div className={`bg-muted relative ${compact ? 'max-h-32' : ''}`}>
             <img 
               src={imageUrl} 
               alt="Post image" 
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-contain"
             />
           </div>
         )}

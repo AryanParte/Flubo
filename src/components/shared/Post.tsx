@@ -31,6 +31,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { ProfilePreview } from "./ProfilePreview";
 import { SharePostDialog } from "./SharePostDialog";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export type PostAuthor = {
   id: string;
@@ -173,11 +174,11 @@ export function Post({
       </div>
       
       {image_url && (
-        <div className="mt-3">
+        <div className="mt-3 overflow-hidden rounded-md border border-border">
           <img 
             src={image_url} 
             alt="Post attachment" 
-            className="rounded-md max-h-96 object-cover w-full" 
+            className="w-full h-auto object-contain" 
           />
         </div>
       )}
