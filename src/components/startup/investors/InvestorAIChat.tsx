@@ -99,6 +99,22 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             }));
             
             setMessages(formattedMessages);
+            
+            // Check if the last message is from AI and needs a response
+            // If the last message is from AI, this means the conversation is not truly complete
+            // even if it's marked as completed in the database
+            if (formattedMessages.length > 0 && 
+                formattedMessages[formattedMessages.length - 1].sender_type === "ai" &&
+                existingChat.completed) {
+              // Fix the incorrectly marked completed chat
+              console.log("Last message is from AI, chat should not be completed");
+              await supabase
+                .from('ai_persona_chats')
+                .update({ completed: false })
+                .eq('id', existingChat.id);
+              
+              setChatCompleted(false);
+            }
           }
         }
       } catch (error) {
@@ -258,7 +274,13 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             content: data.response,
           });
           
-        if (data.matchScore !== null && typeof data.matchScore !== 'undefined') {
+        // Only mark the chat as completed if there's a match score AND the AI isn't asking a question
+        // We assume that if the AI message ends with a question mark, it's expecting a response
+        const shouldMarkComplete = data.matchScore !== null && 
+          typeof data.matchScore !== 'undefined' && 
+          !data.response.trim().endsWith('?');
+          
+        if (shouldMarkComplete) {
           await supabase
             .from('ai_persona_chats')
             .update({

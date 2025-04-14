@@ -67,6 +67,7 @@ Your conversation style:
 3. You should be curious but also critical - investors need to assess risk.
 4. Do not reveal that you are an AI simulation - act as if you are actually the investor.
 5. Keep responses under 150 words.
+6. Always end your messages with a follow-up question to encourage a response.
 
 `;
 
@@ -145,12 +146,17 @@ Your conversation style:
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    // Calculate match score if we have enough context
+    // Check if the AI response ends with a question
+    // If it does, we don't want to mark the chat as complete
+    const endsWithQuestion = aiResponse.trim().endsWith('?');
+    
+    // Calculate match score if we have enough context and the AI is not asking a question
     let matchScore = null;
     let matchSummary = null;
     
     // If we have enough messages (at least 3 exchanges), we can calculate a match score
-    if (chatHistory && chatHistory.length >= 5) {
+    // But only if the AI response doesn't end with a question (which would mean it expects more info)
+    if (chatHistory && chatHistory.length >= 5 && !endsWithQuestion) {
       console.log("Generating match score and summary based on conversation");
       
       const scoringPrompt = `
@@ -163,6 +169,8 @@ ${JSON.stringify(startupInfo || "Information gathered only from conversation")}
 
 Based on this conversation:
 ${JSON.stringify(chatHistory)}
+${JSON.stringify({ sender_type: "startup", content: message })}
+${JSON.stringify({ sender_type: "ai", content: aiResponse })}
 
 Provide:
 1. A match score from 0-100 where 100 is a perfect match
@@ -213,7 +221,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         response: aiResponse,
         matchScore,
         matchSummary,
-        chatId
+        chatId,
+        isQuestionPending: endsWithQuestion
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
