@@ -1,6 +1,6 @@
 
 import React from "react";
-import { ThumbsUp, ThumbsDown, MessageSquare, ExternalLink, Briefcase, Handshake } from "lucide-react";
+import { ThumbsUp, ThumbsDown, MessageSquare, ExternalLink, Briefcase, Handshake, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Startup } from "@/types/startup";
 
@@ -9,13 +9,17 @@ type MatchCardProps = {
   index: number;
   onRequestDemo: (startup: Startup) => void;
   onIgnore: (startup: Startup) => void;
+  onViewChat?: (startup: Startup) => void;
+  hasChat?: boolean;
 };
 
 export const MatchCard = ({ 
   startup, 
   index, 
   onRequestDemo, 
-  onIgnore 
+  onIgnore,
+  onViewChat,
+  hasChat = false
 }: MatchCardProps) => {
   // Get the website URL from any available source
   const websiteUrl = startup.websiteUrl || startup.website || null;
@@ -42,7 +46,9 @@ export const MatchCard = ({
         {startup.logo ? (
           <img src={startup.logo} alt={`${startup.name} logo`} className="max-h-full max-w-full object-contain" />
         ) : (
-          <span className="font-medium text-4xl">{startup.name.charAt(0)}</span>
+          <div className="h-24 w-24 rounded-full bg-[#1F2A3B] flex items-center justify-center">
+            <User size={48} className="text-gray-400" />
+          </div>
         )}
       </div>
       
@@ -79,17 +85,36 @@ export const MatchCard = ({
               Seeking Design Partner
             </div>
           )}
+          
+          {/* AI Chat Badge */}
+          {hasChat && (
+            <div className="inline-block px-3 py-1 rounded-full bg-[#2A1F3A] text-[#A47BFF] text-xs flex items-center">
+              <MessageSquare className="h-3 w-3 mr-1" />
+              AI Chat Available
+            </div>
+          )}
         </div>
         
         <div className="flex space-x-2 mb-4">
-          <button
-            className={`inline-flex items-center px-3 py-1 rounded-full ${hasWebsite ? 'bg-[#1F2A3B] text-gray-300 hover:bg-[#2A3A4F]' : 'bg-[#1F2A3B]/50 text-gray-500 cursor-not-allowed'}`}
-            onClick={(e) => websiteUrl && handleOpenLink(websiteUrl, e)}
-            disabled={!hasWebsite}
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Visit Website
-          </button>
+          {hasWebsite && (
+            <button
+              className="inline-flex items-center px-3 py-1 rounded-full bg-[#1F2A3B] text-gray-300 hover:bg-[#2A3A4F]"
+              onClick={(e) => websiteUrl && handleOpenLink(websiteUrl, e)}
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              Visit Website
+            </button>
+          )}
+          
+          {hasChat && onViewChat && (
+            <button
+              className="inline-flex items-center px-3 py-1 rounded-full bg-[#1F2A3B] text-gray-300 hover:bg-[#2A3A4F]"
+              onClick={() => onViewChat(startup)}
+            >
+              <MessageSquare className="h-3 w-3 mr-1" />
+              View Chat
+            </button>
+          )}
         </div>
         
         <div className="mt-auto flex space-x-2">

@@ -152,3 +152,59 @@ export const updateAIMatchStatus = async (
     return { success: false, error };
   }
 };
+
+/**
+ * Syncs AI persona chat matches to the investor_matches table
+ * This ensures that all completed AI chats have corresponding entries in investor_matches
+ */
+export const syncAIPersonaMatchesToInvestorMatches = async (investorId: string) => {
+  try {
+    // Get all completed AI chats for this investor
+    const { data: completedChats, error: chatsError } = await supabase
+      .from('ai_persona_chats')
+      .select('id, startup_id, match_score, completed')
+      .eq('investor_id', investorId)
+      .eq('completed', true);
+      
+    if (chatsError) throw chatsError;
+    if (!completedChats || completedChats.length === 0) return { success: true, message: "No completed chats found" };
+    
+    // For each completed chat, ensure there's a corresponding investor_match
+    for (const chat of completedChats) {
+      // Check if a match already exists
+      const { data: existingMatch, error: matchCheckError } = await supabase
+        .from('investor_matches')
+        .select('id, match_score')
+        .eq('investor_id', investorId)
+        .eq('startup_id', chat.startup_id)
+        .maybeSingle();
+        
+      if (matchCheckError) continue; // Skip this one if there's an error
+      
+      if (existingMatch) {
+        // Update the existing match if the score is different
+        if (existingMatch.match_score !== chat.match_score) {
+          await supabase
+            .from('investor_matches')
+            .update({ match_score: chat.match_score })
+            .eq('id', existingMatch.id);
+        }
+      } else {
+        // Create a new match
+        await supabase
+          .from('investor_matches')
+          .insert({
+            investor_id: investorId,
+            startup_id: chat.startup_id,
+            match_score: chat.match_score,
+            status: 'pending'
+          });
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error syncing AI matches:", error);
+    return { success: false, error };
+  }
+};

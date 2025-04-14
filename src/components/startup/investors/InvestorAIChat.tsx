@@ -31,6 +31,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const [chatCompleted, setChatCompleted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
+  const [remainingQuestions, setRemainingQuestions] = useState<string[]>([]);
   
   // Fetch existing chat and messages on component mount
   useEffect(() => {
@@ -248,6 +249,11 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       try {
         data = await response.json();
         console.log('Received AI response:', data);
+        
+        // Update remaining questions if provided
+        if (data.remainingQuestions) {
+          setRemainingQuestions(data.remainingQuestions);
+        }
       } catch (parseError) {
         console.error('JSON parsing error:', {
           error: parseError,
@@ -278,7 +284,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         // We assume that if the AI message ends with a question mark, it's expecting a response
         const shouldMarkComplete = data.matchScore !== null && 
           typeof data.matchScore !== 'undefined' && 
-          !data.response.trim().endsWith('?');
+          !data.isQuestionPending;
           
         if (shouldMarkComplete) {
           await supabase
@@ -291,6 +297,35 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             .eq('id', chatId || savedChatId.current);
             
           setChatCompleted(true);
+          
+          // Create or update a match in investor_matches
+          const { data: existingMatch, error: matchCheckError } = await supabase
+            .from('investor_matches')
+            .select('id')
+            .eq('startup_id', user.id)
+            .eq('investor_id', investorId)
+            .maybeSingle();
+            
+          if (!matchCheckError) {
+            if (existingMatch) {
+              await supabase
+                .from('investor_matches')
+                .update({
+                  match_score: data.matchScore,
+                  status: 'pending'
+                })
+                .eq('id', existingMatch.id);
+            } else {
+              await supabase
+                .from('investor_matches')
+                .insert({
+                  startup_id: user.id,
+                  investor_id: investorId,
+                  match_score: data.matchScore,
+                  status: 'pending'
+                });
+            }
+          }
           
           // Only notify the investor about matches, not the startup
           if (onComplete && user.id === investorId) {
@@ -346,6 +381,15 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             {chatCompleted && !isLoading && user?.id !== investorId && (
               <div className="mt-6 p-4 border border-accent/20 bg-accent/10 rounded-lg text-center">
                 <p className="font-medium">This chat is complete. The investor will be notified of this potential match.</p>
+              </div>
+            )}
+            
+            {remainingQuestions.length > 0 && !chatCompleted && messages.length > 0 && (
+              <div className="mt-6 p-4 border border-border bg-background/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  The investor still wants to know about: {remainingQuestions.slice(0, 2).join(", ")}
+                  {remainingQuestions.length > 2 ? ` and ${remainingQuestions.length - 2} more topics` : ""}
+                </p>
               </div>
             )}
           </>

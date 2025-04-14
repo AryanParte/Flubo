@@ -71,25 +71,90 @@ Your conversation style:
 
 `;
 
+    // Track which questions have been asked in the conversation
+    const askedQuestions = new Set();
+    if (chatHistory) {
+      chatHistory.forEach(msg => {
+        if (msg.sender_type === "ai") {
+          // Look for questions in AI messages
+          const text = msg.content.toLowerCase();
+          
+          // Check for standard questions
+          if (text.includes("business model")) askedQuestions.add("business_model");
+          if (text.includes("traction")) askedQuestions.add("traction");
+          if (text.includes("competitor") || text.includes("differentiate")) askedQuestions.add("competitors");
+          if (text.includes("go-to-market") || text.includes("go to market")) askedQuestions.add("gtm");
+          if (text.includes("team")) askedQuestions.add("team");
+          
+          // Check for custom questions if they exist
+          if (personaSettings && personaSettings.custom_questions) {
+            personaSettings.custom_questions
+              .filter(q => q.enabled !== false)
+              .forEach(q => {
+                // Check if this question or something similar was asked
+                const questionLower = q.question.toLowerCase();
+                const mainTopic = questionLower.split(" ").slice(0, 3).join(" "); // Use first few words as topic
+                if (text.includes(mainTopic)) {
+                  askedQuestions.add(q.question);
+                }
+              });
+          }
+        }
+      });
+    }
+    
     // Add custom questions from persona settings if they exist
+    let remainingQuestions = [];
+    
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
       systemPrompt += `\nHere are specific questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):`;
       
-      personaSettings.custom_questions
+      const customQuestions = personaSettings.custom_questions
         .filter(q => q.enabled !== false)
-        .forEach(q => {
-          systemPrompt += `\n- ${q.question}`;
-        });
+        .map(q => q.question);
+        
+      customQuestions.forEach(q => {
+        systemPrompt += `\n- ${q}`;
+        if (!askedQuestions.has(q)) {
+          remainingQuestions.push(q);
+        }
+      });
       
       systemPrompt += `\n`;
     } else {
-      systemPrompt += `\nHere are questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):
-- Tell me about your business model?
-- What traction do you have so far?
-- Who are your competitors and how do you differentiate?
-- What's your go-to-market strategy?
-- Tell me about your team background?
-`;
+      systemPrompt += `\nHere are questions you should try to ask during the conversation (don't ask them all at once, just use them to guide the conversation):`;
+      const standardQuestions = [
+        "Tell me about your business model?",
+        "What traction do you have so far?",
+        "Who are your competitors and how do you differentiate?",
+        "What's your go-to-market strategy?",
+        "Tell me about your team background?"
+      ];
+      
+      standardQuestions.forEach((q, i) => {
+        systemPrompt += `\n- ${q}`;
+        const key = ["business_model", "traction", "competitors", "gtm", "team"][i];
+        if (!askedQuestions.has(key)) {
+          remainingQuestions.push(q);
+        }
+      });
+      
+      systemPrompt += `\n`;
+    }
+    
+    // If we have remaining questions and this isn't the first few messages,
+    // explicitly instruct the AI to ask one of the remaining questions
+    if (remainingQuestions.length > 0 && chatHistory && chatHistory.length >= 4) {
+      // Calculate how many messages are left before we finish
+      const messagesLeft = Math.max(10 - chatHistory.length, 2);
+      
+      // If we're nearing the end of the conversation, be more aggressive about asking remaining questions
+      if (messagesLeft <= remainingQuestions.length + 1) {
+        const nextQuestion = remainingQuestions[0];
+        systemPrompt += `\nIMPORTANT: You MUST ask about "${nextQuestion}" in your next response, as this is crucial information you need before making an investment decision. Try to naturally incorporate this question.`;
+      } else {
+        systemPrompt += `\nIMPORTANT: You still need to ask about these topics before the conversation ends: ${remainingQuestions.join(", ")}. Try to incorporate one of these in your next response.`;
+      }
     }
     
     // Add any additional custom system prompt from settings
@@ -222,7 +287,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         matchScore,
         matchSummary,
         chatId,
-        isQuestionPending: endsWithQuestion
+        isQuestionPending: endsWithQuestion,
+        remainingQuestions: remainingQuestions
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
