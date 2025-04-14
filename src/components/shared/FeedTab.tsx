@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Post } from "@/components/shared/Post";
@@ -190,32 +189,21 @@ export function FeedTab() {
           return false;
         }
         
-        // Instead of using RPC, we'll set policies directly using the updateBucket method
-        const { error: updateError } = await supabase.storage.updateBucket('posts', {
-          public: true
-        });
-        
-        if (updateError) {
-          console.error("Warning: Failed to set bucket to public:", updateError);
-          // Continue anyway as we can still try the upload
-        } else {
-          console.log("Successfully updated 'posts' bucket to be public");
-        }
-        
-        console.log("Successfully created 'posts' bucket with public access");
+        console.log("Successfully created 'posts' bucket");
       } else {
         console.log("Bucket 'posts' already exists");
-        
-        // Ensure the bucket is public
-        const { error: updateError } = await supabase.storage.updateBucket('posts', {
-          public: true
-        });
-        
-        if (updateError) {
-          console.error("Warning: Failed to ensure bucket is public:", updateError);
-        } else {
-          console.log("Successfully ensured 'posts' bucket is public");
-        }
+      }
+      
+      // Ensure the bucket is public by updating it
+      const { error: updateError } = await supabase.storage.updateBucket('posts', {
+        public: true
+      });
+      
+      if (updateError) {
+        console.error("Warning: Failed to set bucket to public:", updateError);
+        // Continue anyway as we can still try the upload
+      } else {
+        console.log("Successfully ensured 'posts' bucket is public");
       }
       
       return true;
