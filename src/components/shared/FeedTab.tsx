@@ -173,42 +173,51 @@ export function FeedTab() {
 
   const setupBucket = async () => {
     try {
-      // First check if the bucket exists
-      const { error: getBucketError } = await supabase.storage.getBucket('posts');
+      console.log("Setting up storage bucket 'posts'...");
       
-      // If bucket doesn't exist, create it
-      if (getBucketError && getBucketError.message.includes("not found")) {
-        console.log("Bucket 'posts' doesn't exist, creating it...");
+      // First, try to get bucket info to check if it exists
+      const { data: bucketData, error: getBucketError } = await supabase.storage.getBucket('posts');
+      
+      // If the bucket doesn't exist, create it
+      if (getBucketError) {
+        console.log("Bucket error or not found:", getBucketError.message);
         
-        // Create the bucket
-        const { error: createBucketError } = await supabase.storage.createBucket('posts', {
-          public: true
-        });
-        
-        if (createBucketError) {
-          console.error("Failed to create 'posts' bucket:", createBucketError);
+        if (getBucketError.message.includes("not found")) {
+          console.log("Creating new 'posts' bucket with public access...");
+          
+          const { data, error: createError } = await supabase.storage.createBucket('posts', {
+            public: true
+          });
+          
+          if (createError) {
+            console.error("Failed to create bucket:", createError);
+            return false;
+          }
+          
+          console.log("Successfully created bucket:", data);
+        } else {
+          console.error("Error getting bucket:", getBucketError);
           return false;
         }
-        
-        console.log("Successfully created 'posts' bucket");
       } else {
-        console.log("Bucket 'posts' already exists");
+        console.log("Bucket 'posts' already exists:", bucketData);
       }
       
-      // Ensure the bucket is public by updating it
-      const { error: updateError } = await supabase.storage.updateBucket('posts', {
+      // Always try to update the bucket to ensure it's public
+      console.log("Updating bucket settings to ensure public access...");
+      const { data: updateData, error: updateError } = await supabase.storage.updateBucket('posts', {
         public: true
       });
       
       if (updateError) {
-        console.error("Warning: Failed to set bucket to public:", updateError);
-      } else {
-        console.log("Successfully ensured 'posts' bucket is public");
+        console.error("Failed to update bucket settings:", updateError);
+        return false;
       }
       
+      console.log("Bucket settings updated successfully:", updateData);
       return true;
     } catch (error) {
-      console.error("Error in setupBucket:", error);
+      console.error("Unexpected error in setupBucket:", error);
       return false;
     }
   };
@@ -217,19 +226,23 @@ export function FeedTab() {
     console.log("Starting image upload process for", file.name);
     
     try {
-      // Ensure the bucket exists and is public
+      // Ensure bucket exists and is properly configured
       const bucketSetup = await setupBucket();
       if (!bucketSetup) {
-        console.warn("Bucket setup failed, but will attempt upload anyway");
+        console.error("Failed to set up storage bucket");
+        throw new Error("Failed to set up storage bucket");
       }
       
-      // Generate a unique file path
+      // Generate a clean, unique file path
       const fileExt = file.name.split('.').pop() || 'jpg';
-      const filePath = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const filePath = `${userId}/${timestamp}-${randomString}.${fileExt}`;
+      
       console.log("Generated file path:", filePath);
       
-      // Upload the file
-      console.log("Uploading file to storage/posts path:", filePath);
+      // Upload file to Supabase Storage
+      console.log("Uploading file to storage/posts bucket...");
       const { data, error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, file, {
@@ -242,25 +255,25 @@ export function FeedTab() {
         throw new Error(`Error uploading image: ${uploadError.message}`);
       }
       
-      console.log("File uploaded successfully, getting public URL");
+      console.log("File uploaded successfully:", data);
       
-      // Get the public URL
+      // Get public URL for the uploaded file
       const { data: publicUrlData } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
       
-      console.log("Public URL data:", publicUrlData);
+      console.log("Public URL response:", publicUrlData);
       
       if (!publicUrlData || !publicUrlData.publicUrl) {
-        console.error("Failed to get public URL for uploaded file");
+        console.error("Failed to get public URL");
         throw new Error("Failed to get public URL for uploaded file");
       }
-        
-      console.log("Got public URL:", publicUrlData.publicUrl);
+      
+      console.log("Successfully obtained public URL:", publicUrlData.publicUrl);
       return publicUrlData.publicUrl;
       
     } catch (error) {
-      console.error("Unexpected error in uploadImage:", error);
+      console.error("Upload process failed:", error);
       throw error;
     }
   };
@@ -286,7 +299,7 @@ export function FeedTab() {
     
     try {
       setIsSubmitting(true);
-      console.log("Starting post submission...");
+      console.log("Starting post submission process...");
       
       const hashtagRegex = /#(\w+)/g;
       const hashtags = [...newPostContent.matchAll(hashtagRegex)].map(match => match[1]);
@@ -295,7 +308,8 @@ export function FeedTab() {
       let imageUrl = null;
       
       if (selectedImage) {
-        console.log("Image selected for upload:", selectedImage.name);
+        console.log("Uploading image:", selectedImage.name, "Size:", (selectedImage.size / 1024 / 1024).toFixed(2) + "MB");
+        
         try {
           imageUrl = await uploadImage(selectedImage, user.id);
           console.log("Image uploaded successfully with URL:", imageUrl);
@@ -307,9 +321,11 @@ export function FeedTab() {
             variant: "destructive"
           });
         }
+      } else {
+        console.log("No image selected for upload");
       }
       
-      console.log("Creating post record in database with image URL:", imageUrl);
+      console.log("Creating post with image URL:", imageUrl);
       const { data: post, error: postError } = await supabase
         .from('posts')
         .insert({
@@ -335,6 +351,7 @@ export function FeedTab() {
       setUploadError(null);
       setShowPostDialog(false);
       
+      // Refresh posts list
       fetchPosts(activeTab);
       
       toast({
