@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { useFollowUser } from "@/hooks/useFollowUser";
 import { useParams } from "react-router-dom";
+import { useProfile } from "@/context/ProfileContext";
 
 interface ProfileTabProps {
   onShowFollowers?: () => void;
@@ -51,6 +52,8 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
       contactPreference: "Prefer warm introductions, but open to cold outreach with a clear and concise pitch."
     }
   });
+
+  const { updateProfile } = useProfile();
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -136,16 +139,11 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
       try {
         if (!user) return;
         
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            name: investor.name,
-            position: investor.title,
-            company: investor.firm
-          })
-          .eq('id', user.id);
-          
-        if (profileError) throw profileError;
+        await updateProfile({
+          name: investor.name,
+          position: investor.title,
+          company: investor.firm
+        });
         
         let minInvestment = null;
         let maxInvestment = null;
@@ -176,16 +174,19 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
           title: "Profile updated",
           description: "Your investor profile has been saved",
         });
+        
+        setEditing(false);
       } catch (error) {
-        console.error("Error saving profile data:", error);
+        console.error("Error updating investor profile:", error);
         toast({
-          variant: "destructive",
-          title: "Failed to save profile",
-          description: "Could not update your investor profile."
+          title: "Error updating profile",
+          description: "There was a problem saving your profile",
+          variant: "destructive"
         });
       }
+    } else {
+      setEditing(true);
     }
-    setEditing(!editing);
   };
 
   const handleInputChange = (field: string, value: string) => {

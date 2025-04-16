@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,6 +48,7 @@ export type PostAuthor = {
   id: string;
   name: string;
   role: string;
+  company?: string | null;
   avatar: string;
 };
 
@@ -241,7 +241,11 @@ export function Post({
                 <ProfilePreview userId={author.id} />
               </HoverCardContent>
             </HoverCard>
-            <p className="text-sm text-muted-foreground">{author.role}</p>
+            <p className="text-sm text-muted-foreground">
+              {author.company 
+                ? `${author.role} at ${author.company}` 
+                : author.role}
+            </p>
             <p className="text-xs text-muted-foreground">{timestamp}</p>
           </div>
         </div>

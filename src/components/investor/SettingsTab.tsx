@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ProfilePictureUpload } from "@/components/shared/ProfilePictureUpload";
 import { Investor } from "@/types/investor";
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
+import { useProfile } from "@/context/ProfileContext";
 
 const VerificationTab = () => {
   const { user } = useAuth();
@@ -186,47 +187,68 @@ const VerificationTab = () => {
 
 const AccountSettings = () => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<Partial<Investor>>({
+  const { profile: contextProfile, updateProfile } = useProfile();
+  const [profile, setProfile] = useState({
+    id: "",
     name: "",
     email: "",
     bio: "",
     company: "",
     position: "",
     location: "",
-    avatar_url: "",
+    avatar_url: ""
   });
-  
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     if (user) {
-      loadProfileData();
+      fetchProfile();
     }
-  }, [user]);
-  
-  const loadProfileData = async () => {
+  }, [user, contextProfile]);
+
+  const fetchProfile = async () => {
+    if (contextProfile) {
+      setProfile({
+        id: contextProfile.id,
+        name: contextProfile.name || "",
+        email: contextProfile.email || "",
+        bio: contextProfile.bio || "",
+        company: contextProfile.company || "",
+        position: contextProfile.position || "",
+        location: contextProfile.location || "",
+        avatar_url: contextProfile.avatar_url || ""
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!user) return;
+    
     try {
       setLoading(true);
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
-        
+      
       if (error) throw error;
       
       setProfile({
+        id: data.id,
         name: data.name || "",
         email: data.email || "",
         bio: data.bio || "",
         company: data.company || "",
         position: data.position || "",
         location: data.location || "",
-        avatar_url: data.avatar_url || "",
+        avatar_url: data.avatar_url || ""
       });
+      
     } catch (error) {
-      console.error("Error loading profile data:", error);
+      console.error("Error fetching profile:", error);
       toast({
         title: "Error",
         description: "Failed to load profile data",
@@ -243,19 +265,14 @@ const AccountSettings = () => {
     try {
       setSaving(true);
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: profile.name,
-          email: profile.email,
-          bio: profile.bio,
-          company: profile.company,
-          position: profile.position,
-          location: profile.location,
-        })
-        .eq('id', user.id);
-      
-      if (error) throw error;
+      await updateProfile({
+        name: profile.name,
+        email: profile.email,
+        bio: profile.bio,
+        company: profile.company,
+        position: profile.position,
+        location: profile.location,
+      });
       
       toast({
         title: "Profile Updated",

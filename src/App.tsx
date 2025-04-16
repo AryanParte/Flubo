@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { ProfileProvider } from "@/context/ProfileContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import StartupDashboard from "./pages/StartupDashboard";
@@ -31,32 +32,34 @@ const App = () => (
       <ThemeProvider>
         <TooltipProvider>
           <AuthProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/business" element={<StartupDashboard />} />
-              <Route path="/investor" element={<InvestorDashboard />} />
-              <Route path="/business/profile" element={<StartupProfile />} />
-              <Route path="/business/profile/:id" element={<StartupProfile />} />
-              <Route path="/investor/profile" element={<InvestorProfile />} />
-              <Route path="/investor/profile/:id" element={<InvestorProfile />} />
-              <Route path="/business/messages" element={<StartupMessages />} />
-              <Route path="/investor/messages" element={<InvestorMessages />} />
-              <Route path="/startups" element={<Startups />} />
-              <Route path="/investors" element={<Investors />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/post/:id" element={<SinglePost />} />
-              <Route path="/verification" element={<Verification />} />
-              <Route path="/verification-success" element={<VerificationSuccess />} />
-              <Route path="/settings/:type" element={<SettingsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/fix-persona-settings" element={<FixPersonaSettings />} />
-              {/* Redirect for legacy routes */}
-              <Route path="/startup/*" element={<Navigate to="/business/*" replace />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <ProfileProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/business" element={<StartupDashboard />} />
+                <Route path="/investor" element={<InvestorDashboard />} />
+                <Route path="/business/profile" element={<StartupProfile />} />
+                <Route path="/business/profile/:id" element={<StartupProfile />} />
+                <Route path="/investor/profile" element={<InvestorProfile />} />
+                <Route path="/investor/profile/:id" element={<InvestorProfile />} />
+                <Route path="/business/messages" element={<StartupMessages />} />
+                <Route path="/investor/messages" element={<InvestorMessages />} />
+                <Route path="/startups" element={<Startups />} />
+                <Route path="/investors" element={<Investors />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/post/:id" element={<SinglePost />} />
+                <Route path="/verification" element={<Verification />} />
+                <Route path="/verification-success" element={<VerificationSuccess />} />
+                <Route path="/settings/:type" element={<SettingsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/fix-persona-settings" element={<FixPersonaSettings />} />
+                {/* Redirect for legacy routes */}
+                <Route path="/startup/*" element={<Navigate to="/business/*" replace />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </ProfileProvider>
           </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>

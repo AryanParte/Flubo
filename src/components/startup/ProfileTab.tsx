@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useFollowUser } from "@/hooks/useFollowUser";
 import { VideoUpload } from "./VideoUpload";
 import { VideoPlayer } from "./VideoPlayer";
+import { useProfile } from "@/context/ProfileContext";
 
 const emptyStartupProfile = {
   name: "",
@@ -67,6 +68,7 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
     followingCount, 
     loadFollowData 
   } = useFollowUser();
+  const { updateProfile } = useProfile();
 
   useEffect(() => {
     if (profileId) {
@@ -280,6 +282,14 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
     if (editing) {
       try {
         setSaving(true);
+        
+        // Update company name in the main profile
+        if (startup.name) {
+          await updateProfile({
+            name: startup.name,
+            company: startup.name // Sync company name with startup name
+          });
+        }
         
         const { error: profileError } = await supabase
           .from('startup_profiles')

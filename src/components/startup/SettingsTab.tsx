@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,11 +29,14 @@ import { AccountVerificationBadge } from "@/components/verification/AccountVerif
 import { VerificationPrompt } from "@/components/verification/VerificationPrompt";
 import { useNavigate } from "react-router-dom";
 import { ProfilePictureUpload } from "@/components/shared/ProfilePictureUpload";
+import { useProfile } from "@/context/ProfileContext";
+import { useToast } from "@/components/ui/use-toast";
 
 export const SettingsTab: React.FC = () => {
   const { user } = useAuth();
+  const { profile: contextProfile, updateProfile } = useProfile();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   
@@ -75,46 +77,57 @@ export const SettingsTab: React.FC = () => {
     pushReminders: true,
   });
   
+  const { toast: useToastToast } = useToast();
+  
   useEffect(() => {
     if (user) {
-      fetchUserData();
+      fetchData();
     }
-  }, [user]);
+  }, [user, contextProfile]);
   
-  const fetchUserData = async () => {
+  const fetchData = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, verified, verified_at, verified_type, avatar_url')
-        .eq('id', user.id)
-        .single();
-      
-      if (profileError) throw profileError;
-      
-      if (profileData) {
+      if (contextProfile) {
+        setProfileData({
+          name: contextProfile.name || "",
+          email: contextProfile.email || "",
+          company: contextProfile.company || "",
+          position: contextProfile.position || "",
+          phone: contextProfile.phone || ""
+        });
+      } else {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileError) throw profileError;
+        
         setProfileData({
           name: profileData.name || "",
-          email: profileData.email || user.email || "",
+          email: profileData.email || "",
           company: profileData.company || "",
           position: profileData.position || "",
           phone: profileData.phone || ""
         });
-        
-        setAvatarUrl(profileData.avatar_url);
-        setIsVerified(!!profileData.verified);
-        setVerifiedType(profileData.verified_type);
-        setVerifiedAt(profileData.verified_at);
       }
       
       const { data: startupData, error: startupError } = await supabase
         .from('startup_profiles')
         .select('*')
         .eq('id', user.id)
-        .maybeSingle();
+        .single();
       
-      if (!startupError && startupData) {
+      if (startupError && startupError.code !== 'PGRST116') {
+        throw startupError;
+      }
+      
+      if (startupData) {
         setStartupProfile({
           bio: startupData.bio || "",
           tagline: startupData.tagline || "",
@@ -123,7 +136,7 @@ export const SettingsTab: React.FC = () => {
           founded: startupData.founded || "",
           employees: startupData.employees || "",
           industry: startupData.industry || "",
-          stage: startupData.stage || "",
+          stage: startupData.stage || ""
         });
       }
       
@@ -148,10 +161,10 @@ export const SettingsTab: React.FC = () => {
       
       setProfileLoaded(true);
     } catch (error) {
-      console.error("Error fetching profile data:", error);
-      toast({
+      console.error("Error fetching startup data:", error);
+      useToastToast({
         title: "Error",
-        description: "Failed to load profile data.",
+        description: "Failed to load profile data",
         variant: "destructive"
       });
     } finally {
@@ -164,21 +177,14 @@ export const SettingsTab: React.FC = () => {
     
     setSaving(true);
     try {
-      // Update basic profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          name: profileData.name,
-          email: profileData.email,
-          company: profileData.company,
-          position: profileData.position,
-          phone: profileData.phone
-        })
-        .eq('id', user.id);
-        
-      if (profileError) throw profileError;
+      await updateProfile({
+        name: profileData.name,
+        email: profileData.email,
+        company: profileData.company,
+        position: profileData.position,
+        phone: profileData.phone
+      });
       
-      // Update startup profile
       const { error: startupError } = await supabase
         .from('startup_profiles')
         .upsert({
@@ -195,13 +201,13 @@ export const SettingsTab: React.FC = () => {
         
       if (startupError) throw startupError;
       
-      toast({
+      useToastToast({
         title: "Profile updated",
         description: "Your profile information has been saved."
       });
     } catch (error) {
       console.error("Error saving profile:", error);
-      toast({
+      useToastToast({
         title: "Error",
         description: "Failed to save profile changes.",
         variant: "destructive"
@@ -232,13 +238,13 @@ export const SettingsTab: React.FC = () => {
         
       if (error) throw error;
       
-      toast({
+      useToastToast({
         title: "Notification settings updated",
         description: "Your notification preferences have been saved."
       });
     } catch (error) {
       console.error("Error saving notification settings:", error);
-      toast({
+      useToastToast({
         title: "Error",
         description: "Failed to save notification settings.",
         variant: "destructive"
