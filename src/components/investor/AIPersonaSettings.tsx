@@ -122,19 +122,42 @@ export const AIPersonaSettings = () => {
     setSaving(true);
     
     try {
-      const customQuestionsWithIds = settings.custom_questions.map(q => ({
-        ...q,
-        id: q.id || crypto.randomUUID()
-      }));
+      // Only keep enabled questions to improve performance
+      const enabledCustomQuestions = settings.custom_questions
+        .filter(q => q.enabled !== false)
+        .map(q => ({
+          id: q.id || crypto.randomUUID(),
+          question: q.question.trim(),
+          enabled: true
+        }));
+      
+      // Keep disabled questions but mark them clearly
+      const disabledCustomQuestions = settings.custom_questions
+        .filter(q => q.enabled === false)
+        .map(q => ({
+          id: q.id || crypto.randomUUID(),
+          question: q.question.trim(),
+          enabled: false
+        }));
+      
+      // Combine both types but make sure enabled ones are at the top for visibility
+      const orderedCustomQuestions = [...enabledCustomQuestions, ...disabledCustomQuestions];
       
       const dataToSave = {
         user_id: user.id,
-        custom_questions: customQuestionsWithIds,
+        custom_questions: orderedCustomQuestions,
         system_prompt: systemPrompt || null,
         updated_at: new Date().toISOString()
       };
       
-      console.log("Saving AI persona settings:", dataToSave);
+      console.log("Saving AI persona settings:", {
+        userId: user.id,
+        enabledQuestions: enabledCustomQuestions.length,
+        disabledQuestions: disabledCustomQuestions.length,
+        hasSystemPrompt: !!systemPrompt
+      });
+      
+      let savedId = settings.id;
       
       if (settings.id) {
         const { error } = await supabase
@@ -151,13 +174,19 @@ export const AIPersonaSettings = () => {
           .single();
           
         if (error) throw error;
-        
-        setSettings(prev => prev ? { ...prev, id: data.id, custom_questions: customQuestionsWithIds } : null);
+        savedId = data.id;
       }
       
+      // Update local state with the saved data to ensure consistency
+      setSettings({
+        ...settings,
+        id: savedId,
+        custom_questions: orderedCustomQuestions
+      });
+      
       toast({
-        title: "Success",
-        description: "AI Persona settings saved successfully",
+        title: "Settings Saved",
+        description: `${enabledCustomQuestions.length} custom questions will be asked before default questions`,
       });
     } catch (error) {
       console.error("Error saving AI persona settings:", error);
@@ -247,46 +276,43 @@ export const AIPersonaSettings = () => {
         <CardHeader>
           <CardTitle>AI Persona Questions</CardTitle>
           <CardDescription>
-            These are the questions your AI persona asks startups during conversations
+            Customize the questions your AI persona asks startups during conversations
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <h3 className="font-medium mb-2">Default Questions</h3>
+            <h3 className="font-medium mb-2">Custom Questions <span className="text-sm font-normal text-primary ml-2">(Asked First)</span></h3>
             <p className="text-sm text-muted-foreground mb-4">
-              These standard questions are always available to your AI persona
-            </p>
-            <div className="space-y-2 pl-4 border-l-2 border-border">
-              {defaultQuestions.map((question, index) => (
-                <div key={index} className="py-2 px-3 bg-secondary/30 rounded-md">
-                  <p className="text-sm">{question}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium mb-2">Custom Questions</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Add your own questions for the AI persona to ask during conversations
+              Add your own questions for the AI persona to ask during conversations. 
+              <strong className="text-primary ml-1">These will be asked first, before default questions.</strong>
             </p>
             
             {settings?.custom_questions && settings.custom_questions.length > 0 ? (
-              <div className="space-y-2 pl-4 border-l-2 border-border mb-6">
-                {settings.custom_questions.map((customQ) => (
+              <div className="space-y-2 pl-4 border-l-2 border-primary mb-6">
+                {settings.custom_questions.map((customQ, index) => (
                   <div 
                     key={customQ.id} 
                     className={`py-2 px-3 rounded-md flex items-start justify-between gap-2 ${
                       customQ.enabled ? 'bg-secondary/30' : 'bg-muted/30 text-muted-foreground'
                     }`}
                   >
-                    <p className="text-sm flex-1">{customQ.question}</p>
+                    <div className="flex-1">
+                      <span className="text-xs font-medium text-muted-foreground inline-block mb-1">
+                        Question {index + 1}
+                      </span>
+                      <p className="text-sm">{customQ.question}</p>
+                    </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Switch 
-                        checked={customQ.enabled} 
-                        onCheckedChange={() => toggleQuestionEnabled(customQ.id)}
-                        aria-label="Enable question"
-                      />
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs text-muted-foreground mb-1">
+                          {customQ.enabled ? "Enabled" : "Disabled"}
+                        </span>
+                        <Switch 
+                          checked={customQ.enabled} 
+                          onCheckedChange={() => toggleQuestionEnabled(customQ.id)}
+                          aria-label="Enable question"
+                        />
+                      </div>
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -300,9 +326,9 @@ export const AIPersonaSettings = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm italic text-muted-foreground mb-6">
-                No custom questions added yet
-              </p>
+              <div className="text-sm italic text-muted-foreground p-4 border border-dashed rounded-md mb-6 text-center">
+                No custom questions added yet. Add questions to personalize your AI persona.
+              </div>
             )}
 
             <Form {...questionForm}>
@@ -321,8 +347,9 @@ export const AIPersonaSettings = () => {
                             className="resize-none"
                           />
                         </FormControl>
-                        <Button type="submit" size="icon" className="shrink-0" disabled={questionForm.formState.isSubmitting}>
-                          <Plus className="h-4 w-4" />
+                        <Button type="submit" className="shrink-0" disabled={questionForm.formState.isSubmitting}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add
                         </Button>
                       </div>
                       <FormMessage />
@@ -331,6 +358,23 @@ export const AIPersonaSettings = () => {
                 />
               </form>
             </Form>
+          </div>
+
+          <div>
+            <h3 className="font-medium mb-2">Default Questions <span className="text-sm font-normal text-muted-foreground ml-2">(Asked Last)</span></h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              These standard questions are asked after your custom questions
+            </p>
+            <div className="space-y-2 pl-4 border-l-2 border-border">
+              {defaultQuestions.map((question, index) => (
+                <div key={index} className="py-2 px-3 bg-secondary/20 rounded-md">
+                  <span className="text-xs font-medium text-muted-foreground inline-block mb-1">
+                    Default {index + 1}
+                  </span>
+                  <p className="text-sm">{question}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -384,15 +428,31 @@ export const AIPersonaSettings = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button 
-            onClick={saveSettings} 
-            disabled={saving} 
-            className="ml-auto"
-          >
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className={`h-4 w-4 ${saving ? '' : 'mr-2'}`} />
-            Save Changes
-          </Button>
+          <div className="flex w-full justify-between items-center">
+            <p className="text-xs text-muted-foreground">
+              {settings.custom_questions.filter(q => q.enabled !== false).length} custom questions configured
+            </p>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.open('/FixPersonaSettings', '_blank')}
+                disabled={saving}
+              >
+                Debug Settings
+              </Button>
+              
+              <Button 
+                onClick={saveSettings} 
+                disabled={saving}
+              >
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Save className={`h-4 w-4 ${saving ? '' : 'mr-2'}`} />
+                {saving ? "Saving..." : `Save ${settings.custom_questions.filter(q => q.enabled !== false).length} Custom Questions`}
+              </Button>
+            </div>
+          </div>
         </CardFooter>
       </Card>
     </div>

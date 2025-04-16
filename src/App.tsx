@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +21,7 @@ import SinglePost from "./pages/SinglePost";
 import Verification from "./pages/Verification";
 import VerificationSuccess from "./pages/VerificationSuccess";
 import SettingsPage from "./pages/SettingsPage";
+import FixPersonaSettings from "./pages/FixPersonaSettings";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +52,7 @@ const App = () => (
               <Route path="/verification-success" element={<VerificationSuccess />} />
               <Route path="/settings/:type" element={<SettingsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/fix-persona-settings" element={<FixPersonaSettings />} />
               {/* Redirect for legacy routes */}
               <Route path="/startup/*" element={<Navigate to="/business/*" replace />} />
               <Route path="*" element={<NotFound />} />

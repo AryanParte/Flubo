@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -37,48 +36,99 @@ serve(async (req) => {
     
     // Extract questions from persona settings
     let requiredQuestions = [];
+    let customQuestions = [];
+    let defaultQuestions = [];
     let askedQuestions = new Set();
-    
-    // Get custom questions if available, otherwise use default questions
+
+    // Performance optimization: Use a flag to track if we have custom questions
+    let hasCustomQuestions = false;
+
+    // Define default questions that should always be asked
+    defaultQuestions = [
+      "Tell me about your business model?",
+      "What traction do you have so far?",
+      "Who are your competitors and how do you differentiate?",
+      "What's your go-to-market strategy?",
+      "Tell me about your team background?"
+    ].map((q, idx) => ({
+      id: `default-${idx}`,
+      question: q,
+      asked: false,
+      isCustom: false
+    }));
+
+    // Get custom questions if available
     if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
-      console.log("Using custom questions:", personaSettings.custom_questions.length);
-      console.log("Raw custom questions:", JSON.stringify(personaSettings.custom_questions, null, 2));
+      console.log(`Processing ${personaSettings.custom_questions.length} custom questions`);
       
-      // Log all custom questions for debugging
-      personaSettings.custom_questions.forEach((q, idx) => {
-        console.log(`Custom question ${idx}: "${q.question}" (enabled: ${q.enabled !== false}, id: ${q.id || 'none'})`);
+      // CRITICAL FIX: Immediately check if there are valid custom questions
+      const validCustomQuestions = personaSettings.custom_questions.filter(q => {
+        // A question is valid if it has text and is enabled
+        const isValid = q && 
+                       typeof q === 'object' && 
+                       typeof q.question === 'string' && 
+                       q.question.trim().length > 0 &&
+                       q.enabled !== false;
+        
+        return isValid;
       });
       
-      // Only use the enabled custom questions
-      requiredQuestions = personaSettings.custom_questions
-        .filter(q => q.enabled !== false)
-        .map((q, idx) => ({
-          id: q.id || `custom-${idx}`,
-          question: q.question,
-          asked: false,
-          isCustom: true
-        }));
-      
-      console.log(`Found ${requiredQuestions.length} enabled custom questions to ask`);
-    }
-    
-    // If no custom questions are set or all custom questions are disabled, use default questions
-    if (requiredQuestions.length === 0) {
-      console.log("No custom questions found, using default questions");
-      const defaultQuestions = [
-        "Tell me about your business model?",
-        "What traction do you have so far?",
-        "Who are your competitors and how do you differentiate?",
-        "What's your go-to-market strategy?",
-        "Tell me about your team background?"
-      ];
-      
-      requiredQuestions = defaultQuestions.map((q, idx) => ({
-        id: `default-${idx}`,
-        question: q,
+      // Create proper question objects
+      customQuestions = validCustomQuestions.map((q, idx) => ({
+        id: q.id || `custom-${idx}`,
+        question: q.question.trim(),
         asked: false,
-        isCustom: false
+        isCustom: true
       }));
+      
+      hasCustomQuestions = customQuestions.length > 0;
+      
+      // Log the questions we'll actually use
+      if (hasCustomQuestions) {
+        console.log("CUSTOM QUESTIONS TO USE:");
+        customQuestions.forEach((q, idx) => {
+          console.log(`  ${idx+1}. "${q.question}"`);
+        });
+      } else {
+        console.log("No valid custom questions found, using default questions only");
+      }
+    }
+
+    // Build the question sequence - CRITICAL: custom questions must come first
+    requiredQuestions = [];
+
+    // First add custom questions (if any)
+    if (hasCustomQuestions) {
+      requiredQuestions = [...customQuestions];
+      console.log(`Added ${customQuestions.length} custom questions to the sequence`);
+    }
+
+    // Then add default questions
+    requiredQuestions = [...requiredQuestions, ...defaultQuestions];
+    console.log(`Final question sequence has ${requiredQuestions.length} questions (${customQuestions.length} custom + ${defaultQuestions.length} default)`);
+
+    // Double check order by logging the final sequence
+    console.log("FINAL QUESTION SEQUENCE:");
+    requiredQuestions.forEach((q, idx) => {
+      console.log(`  ${idx+1}. ${q.isCustom ? "[CUSTOM]" : "[default]"} "${q.question}"`);
+    });
+
+    // CRITICAL FIX: Check if the first few questions are custom as expected (if we have custom questions)
+    if (hasCustomQuestions && requiredQuestions.length >= customQuestions.length) {
+      const firstFewQuestions = requiredQuestions.slice(0, customQuestions.length);
+      const allCustomFirst = firstFewQuestions.every(q => q.isCustom === true);
+      
+      if (!allCustomFirst) {
+        console.error("CRITICAL ERROR: Custom questions are not at the beginning of the sequence!");
+        // Force fix the order - rebuild the sequence
+        requiredQuestions = [...customQuestions, ...defaultQuestions];
+        console.log("FORCE FIXED QUESTION SEQUENCE:");
+        requiredQuestions.forEach((q, idx) => {
+          console.log(`  ${idx+1}. ${q.isCustom ? "[CUSTOM]" : "[default]"} "${q.question}"`);
+        });
+      } else {
+        console.log("Verified custom questions are correctly positioned at the start of the sequence");
+      }
     }
     
     // Check chat history to see which questions have been asked
@@ -90,17 +140,30 @@ serve(async (req) => {
           for (const q of requiredQuestions) {
             if (q.asked) continue; // Skip already marked questions
             
-            // Check if the question has been substantially asked
-            // Make sure we're matching a significant portion of the question
-            const questionLower = q.question.toLowerCase();
-            const msgLower = msg.content.toLowerCase();
+            // More strict question matching - look for exact matches
+            // This makes sure we're properly tracking what has been asked
+            const questionLower = q.question.toLowerCase().trim();
+            const msgLower = msg.content.toLowerCase().trim();
             
-            // More precise matching to avoid partial matches
-            // We want exact matching for custom questions to ensure we're asking precisely what was requested
-            const isMatch = msgLower.includes(questionLower);
+            // Use a more flexible matching criteria that works for both exact matches
+            // and cases where the AI might have slightly modified the question
+            // This is especially important for finding custom questions in the history
             
-            if (isMatch) {
+            // Check for exact match
+            const isExactMatch = msgLower === questionLower;
+            
+            // Check for substantial inclusion (80% of the question)
+            const questionWords = questionLower.split(/\s+/);
+            const matchThreshold = Math.max(3, Math.floor(questionWords.length * 0.8)); // At least 80% of words or 3 words
+            const wordMatches = questionWords.filter(word => msgLower.includes(word)).length;
+            const isSubstantialMatch = wordMatches >= matchThreshold;
+            
+            // Check if message contains the exact question string
+            const isContainedMatch = msgLower.includes(questionLower);
+            
+            if (isExactMatch || isContainedMatch || isSubstantialMatch) {
               console.log(`Message matches question "${q.question}" - marking as asked`);
+              console.log(`Match type: ${isExactMatch ? 'exact' : isContainedMatch ? 'contained' : 'substantial'}`);
               q.asked = true;
               askedQuestions.add(q.id);
               break; // Move to next message after finding a match
@@ -111,7 +174,7 @@ serve(async (req) => {
       
       // Log current question status
       requiredQuestions.forEach(q => {
-        console.log(`Question status: "${q.question}" - ${q.asked ? 'already asked' : 'not asked yet'}`);
+        console.log(`Question status: "${q.question}" - ${q.asked ? 'already asked' : 'not asked yet'} (${q.isCustom ? 'custom' : 'default'})`);
       });
     }
     
@@ -121,6 +184,7 @@ serve(async (req) => {
     
     if (nextQuestionToAsk) {
       console.log(`Next question to ask: "${nextQuestionToAsk.question}" (isCustom: ${nextQuestionToAsk.isCustom})`);
+      console.log(`Question order: ${requiredQuestions.map(q => q.asked ? '✓' : '□').join(' ')}`);
     } else {
       console.log("All questions have been asked");
     }
@@ -129,6 +193,7 @@ serve(async (req) => {
     // instead of a generic greeting
     if ((!chatHistory || chatHistory.length === 0) && nextQuestionToAsk) {
       console.log("New conversation - returning first question directly:", nextQuestionToAsk.question);
+      console.log(`Question is a ${nextQuestionToAsk.isCustom ? 'custom' : 'default'} question`);
       // Return the first question directly without calling OpenAI
       return new Response(
         JSON.stringify({
@@ -138,7 +203,8 @@ serve(async (req) => {
           chatId,
           isQuestionPending: true,
           remainingQuestions: requiredQuestions.filter(q => !q.asked && q.id !== nextQuestionToAsk.id),
-          askedQuestions: [nextQuestionToAsk.id]
+          askedQuestions: [nextQuestionToAsk.id],
+          questionIsCustom: nextQuestionToAsk.isCustom
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -154,17 +220,34 @@ serve(async (req) => {
       systemPrompt += `\n\n${personaSettings.system_prompt}\n\n`;
     }
     
+    // Include all questions in the system prompt to ensure the AI is aware of all it should ask
+    // This helps prevent asking random questions not in the list
+    systemPrompt += `\n\nYou must ONLY ask the following questions exactly as written, in this exact order:`;
+    
+    // Highlight which questions are custom (investor's own questions)
+    requiredQuestions.forEach((q, idx) => {
+      const questionType = q.isCustom ? 'CUSTOM' : 'default';
+      const questionStatus = q.asked ? ' (already asked)' : ' (not asked yet)';
+      systemPrompt += `\n${idx+1}. [${questionType}] "${q.question}"${questionStatus}`;
+    });
+    
     // Update system prompt to focus on asking the next unasked question
     if (nextQuestionToAsk) {
-      systemPrompt += `\n\nCRITICAL INSTRUCTION: You MUST ask the following specific question EXACTLY as written. Do not modify or rephrase the question:\n"${nextQuestionToAsk.question}"\n`;
-      systemPrompt += `\nYour ONLY task is to ask this specific question. Do not create additional context or follow-ups.`;
-      systemPrompt += `\nDo not ask how you can help. Do not introduce yourself. Do not give a generic greeting. Just ask the question directly.`;
-      systemPrompt += `\nDo not ask any other questions that were not explicitly specified by the investor.`;
+      const questionType = nextQuestionToAsk.isCustom ? 'CUSTOM' : 'default';
+      systemPrompt += `\n\nCRITICAL INSTRUCTION: You MUST ask the following specific ${questionType} question VERBATIM. Do not modify, rephrase, or add to it in any way:\n"${nextQuestionToAsk.question}"\n`;
+      systemPrompt += `\nYour ONLY task is to ask this exact question. Do not create additional questions or follow-ups.`;
+      systemPrompt += `\nDo not introduce yourself or give a greeting. Just ask the question directly.`;
+      systemPrompt += `\nDo not ask ANY other questions that were not explicitly specified in the list above.`;
+      systemPrompt += `\nDo not ask questions about funding, financial projections, or any other topic unless it is EXPLICITLY in the list above.`;
+      systemPrompt += `\nDo not provide a summary or conclusion of the conversation at this point.`;
     } else {
       // If all questions have been asked, prevent the AI from asking new questions
-      systemPrompt += `\nAll required questions have been asked. You may now provide a brief summary of the conversation.`;
-      systemPrompt += `\nDo not ask any questions that were not explicitly specified by the investor.`;
-      systemPrompt += `\nDo not make up or generate any new questions on your own.`;
+      systemPrompt += `\n\nALL questions have been asked. You must NOT ask any new questions.`;
+      systemPrompt += `\nDo not ask ANY questions that were not explicitly specified in the list above.`;
+      systemPrompt += `\nDo not ask follow-up questions or generate new questions on your own.`;
+      systemPrompt += `\nYou may respond to the startup's message but ONLY with statements, not questions.`;
+      systemPrompt += `\nIf you're unsure what to say, just thank the startup for their responses.`;
+      systemPrompt += `\nDo NOT generate a summary of the conversation or try to provide conclusions unless explicitly asked.`;
     }
     
     console.log("Using system prompt:", systemPrompt);
@@ -220,15 +303,56 @@ serve(async (req) => {
     // ensure it's asking exactly the question we want
     if (nextQuestionToAsk) {
       // If the AI didn't actually ask the question properly, force it
-      if (!aiResponse.includes(nextQuestionToAsk.question)) {
+      // Use strict matching to ensure the AI is asking exactly the required question
+      const questionText = nextQuestionToAsk.question.trim();
+      
+      console.log(`Checking if AI response contains the next question: "${questionText}"`);
+      
+      // Check if the AI response contains the exact question
+      if (!aiResponse.includes(questionText)) {
         console.log("AI didn't ask the exact question, forcing it");
-        aiResponse = nextQuestionToAsk.question;
+        
+        // For better UX, provide a brief transition if this isn't the first question
+        if (chatHistory && chatHistory.length > 0) {
+          aiResponse = `Thanks for that information. ${questionText}`;
+        } else {
+          aiResponse = questionText;
+        }
+      } else {
+        console.log("AI correctly asked the question");
+      }
+      
+      // Make sure the response doesn't contain other questions by removing anything after the first question mark
+      // This prevents the AI from asking multiple questions in one response
+      const questionEndPos = aiResponse.indexOf('?');
+      if (questionEndPos > -1 && questionEndPos + 1 < aiResponse.length) {
+        const afterQuestionMark = aiResponse.substring(questionEndPos + 1);
+        // If there's content after the question mark that contains another question, trim it
+        if (containsQuestion(afterQuestionMark)) {
+          console.log("AI is trying to ask multiple questions, trimming to just one");
+          aiResponse = aiResponse.substring(0, questionEndPos + 1);
+        }
+      }
+      
+      // Check for unwanted summary text in the response
+      if (aiResponse.toLowerCase().includes("to summarize") || 
+          aiResponse.toLowerCase().includes("in summary") ||
+          aiResponse.toLowerCase().includes("to recap")) {
+        console.log("AI is trying to summarize prematurely, removing summary text");
+        aiResponse = questionText;
       }
     } else if (allQuestionsAsked(requiredQuestions)) {
-      // If all questions have been asked, verify the response doesn't contain a new question
-      if (aiResponse.includes("?")) {
-        console.log("AI is trying to ask a new question, stopping it");
-        aiResponse = "Thank you for all your responses. I'll review this information.";
+      // If all questions have been asked, prevent any new questions
+      if (containsQuestion(aiResponse)) {
+        if (nextQuestionToAsk) {
+          // If we still have a question to ask, don't summarize - make sure we ask the next question
+          console.log("AI is mixing the next question with additional questions, focusing on next question only");
+          aiResponse = questionText;
+        } else if (allQuestionsAsked(requiredQuestions)) {
+          // Only produce a summary when all questions have actually been asked
+          console.log("AI is trying to ask a new question, intercepting it");
+          aiResponse = "Thank you for sharing all this information. I appreciate your detailed responses.";
+        }
       }
     }
     
@@ -242,8 +366,20 @@ serve(async (req) => {
     let matchScore = null;
     let matchSummary = null;
     
-    if (allQuestionsAsked(requiredQuestions) && chatHistory && chatHistory.length >= requiredQuestions.length * 2 - 1) {
-      const scoringPrompt = `
+    // Only calculate match score if ALL questions (default + custom) have been asked
+    // and there's been enough back-and-forth in the conversation
+    if (allQuestionsAsked(requiredQuestions)) {
+      // Count the number of actual exchanges (question-answer pairs)
+      // Each exchange is one AI question followed by one startup response
+      // We need at least one exchange per question to have a complete conversation
+      const minMessagesNeeded = requiredQuestions.length * 2 - 1;
+      
+      console.log(`Checking if conversation is complete: ${chatHistory?.length || 0} messages, need at least ${minMessagesNeeded}`);
+      
+      if (chatHistory && chatHistory.length >= minMessagesNeeded) {
+        console.log("All required questions have been asked, generating match score...");
+        
+        const scoringPrompt = `
 Based on the conversation between the startup and investor, evaluate how well the startup matches the investor's preferences.
 Here is the investor's profile:
 ${JSON.stringify(investorPreferences || "General investor with no specific preferences")}
@@ -256,36 +392,37 @@ Provide:
 2. A 2-3 sentence summary of why the startup might be interesting to this investor
 Output format: {"score": number, "summary": "text explanation"} - JSON format only`;
 
-      const scoringResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openAIApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "You are an AI that evaluates startup-investor fit based on conversations. Output only JSON." },
-            { role: "user", content: scoringPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 500,
-        }),
-      });
+        const scoringResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openAIApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: "You are an AI that evaluates startup-investor fit based on conversations. Output only JSON." },
+              { role: "user", content: scoringPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 500,
+          }),
+        });
 
-      if (scoringResponse.ok) {
-        const scoringData = await scoringResponse.json();
-        try {
-          const scoreContent = scoringData.choices[0].message.content;
-          const jsonMatch = scoreContent.match(/\{.*\}/s);
-          
-          if (jsonMatch) {
-            const scoreObject = JSON.parse(jsonMatch[0]);
-            matchScore = scoreObject.score;
-            matchSummary = scoreObject.summary;
+        if (scoringResponse.ok) {
+          const scoringData = await scoringResponse.json();
+          try {
+            const scoreContent = scoringData.choices[0].message.content;
+            const jsonMatch = scoreContent.match(/\{.*\}/s);
+            
+            if (jsonMatch) {
+              const scoreObject = JSON.parse(jsonMatch[0]);
+              matchScore = scoreObject.score;
+              matchSummary = scoreObject.summary;
+            }
+          } catch (error) {
+            console.error("Error parsing match score:", error);
           }
-        } catch (error) {
-          console.error("Error parsing match score:", error);
         }
       }
     }
@@ -293,15 +430,48 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
     console.log(`Returning response. Questions remaining: ${requiredQuestions.filter(q => !q.asked).length}`);
     console.log(`Asked questions IDs: ${Array.from(askedQuestions).join(', ')}`);
     
+    // Debug log the questions status
+    console.log("Questions status:");
+    requiredQuestions.forEach((q, idx) => {
+      console.log(`  ${idx+1}. ${q.question.substring(0, 40)}... - ${q.asked ? 'ASKED' : 'NOT ASKED YET'} (${q.isCustom ? 'custom' : 'default'})`);
+    });
+    
+    // Calculate remainingQuestions more explicitly for better debugging
+    const remainingQuestions = requiredQuestions.filter(q => !q.asked);
+    const isQuestionPending = remainingQuestions.length > 0;
+    const customQuestionsAsked = requiredQuestions.filter(q => q.isCustom && q.asked).length;
+    const totalCustomQuestions = requiredQuestions.filter(q => q.isCustom).length;
+    const defaultQuestionsAsked = requiredQuestions.filter(q => !q.isCustom && q.asked).length;
+    const totalDefaultQuestions = requiredQuestions.filter(q => !q.isCustom).length;
+
+    console.log(`isQuestionPending: ${isQuestionPending} (${remainingQuestions.length} questions remaining)`);
+    console.log(`Custom questions progress: ${customQuestionsAsked}/${totalCustomQuestions} asked`);
+    console.log(`Default questions progress: ${defaultQuestionsAsked}/${totalDefaultQuestions} asked`);
+
+    if (remainingQuestions.length > 0) {
+      console.log("Next questions to ask:");
+      remainingQuestions.slice(0, 3).forEach((q, idx) => {
+        console.log(`  ${idx+1}. "${q.question}" (${q.isCustom ? 'custom' : 'default'})`);
+      });
+    }
+    
     return new Response(
       JSON.stringify({
         response: aiResponse,
         matchScore,
         matchSummary,
         chatId,
-        isQuestionPending: !allQuestionsAsked(requiredQuestions),
-        remainingQuestions: requiredQuestions.filter(q => !q.asked),
-        askedQuestions: Array.from(askedQuestions)
+        isQuestionPending,
+        remainingQuestions,
+        askedQuestions: Array.from(askedQuestions),
+        totalQuestions: requiredQuestions.length,
+        askedCount: requiredQuestions.filter(q => q.asked).length,
+        defaultQuestionsCount: requiredQuestions.filter(q => !q.isCustom).length,
+        customQuestionsCount: requiredQuestions.filter(q => q.isCustom).length,
+        customQuestionsAsked,
+        totalCustomQuestions,
+        defaultQuestionsAsked,
+        totalDefaultQuestions
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -321,5 +491,45 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
 
 // Helper function to check if all questions have been asked
 function allQuestionsAsked(questions) {
-  return questions.every(q => q.asked);
+  const totalQuestions = questions.length;
+  const askedQuestions = questions.filter(q => q.asked).length;
+  console.log(`${askedQuestions}/${totalQuestions} questions have been asked`);
+  
+  // Separate default and custom questions for more detailed logging
+  const defaultQs = questions.filter(q => !q.isCustom);
+  const customQs = questions.filter(q => q.isCustom);
+  const askedDefaultQs = defaultQs.filter(q => q.asked).length;
+  const askedCustomQs = customQs.filter(q => q.asked).length;
+  
+  console.log(`Default questions: ${askedDefaultQs}/${defaultQs.length} asked`);
+  console.log(`Custom questions: ${askedCustomQs}/${customQs.length} asked`);
+  
+  // List unanswered questions for debugging
+  const unansweredQuestions = questions.filter(q => !q.asked);
+  if (unansweredQuestions.length > 0) {
+    console.log("Unanswered questions:");
+    unansweredQuestions.forEach((q, idx) => {
+      console.log(`  ${idx+1}. "${q.question}" (${q.isCustom ? 'custom' : 'default'})`);
+    });
+  }
+  
+  const allAsked = questions.every(q => q.asked);
+  console.log(`All questions asked: ${allAsked}`);
+  return allAsked;
+}
+
+// Helper function to detect if text contains a question
+function containsQuestion(text) {
+  // Check for question marks
+  if (text.includes('?')) return true;
+  
+  // Check for common question patterns
+  const questionPatterns = [
+    /could you/i, /can you/i, /would you/i, /will you/i,
+    /tell me/i, /explain/i, /describe/i, /elaborate/i,
+    /what is/i, /what are/i, /how do/i, /how does/i,
+    /who is/i, /who are/i, /when will/i, /where is/i
+  ];
+  
+  return questionPatterns.some(pattern => pattern.test(text));
 }

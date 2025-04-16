@@ -1,11 +1,12 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface InvestorAIChatProps {
   investorId: string;
@@ -31,6 +32,15 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const [chatCompleted, setChatCompleted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
+  
+  // Track custom questions progress in the conversation
+  const [questionProgress, setQuestionProgress] = useState<{
+    customQuestionsAsked: number;
+    totalCustomQuestions: number;
+    defaultQuestionsAsked: number;
+    totalDefaultQuestions: number;
+    nextQuestionIsCustom: boolean;
+  } | null>(null);
   
   useEffect(() => {
     const fetchExistingChat = async () => {
@@ -123,6 +133,93 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
     }
   }, [messages]);
   
+  // Debug function to check if custom questions are being asked
+  const checkCustomQuestionsProgress = useCallback((response: any) => {
+    if (response && typeof response === 'object') {
+      const customQuestionsAsked = response.customQuestionsAsked || 0;
+      const totalCustomQuestions = response.totalCustomQuestions || 0;
+      const defaultQuestionsAsked = response.defaultQuestionsAsked || 0;
+      const totalDefaultQuestions = response.totalDefaultQuestions || 0;
+      const nextQuestionIsCustom = response.remainingQuestions?.length > 0 ? 
+        response.remainingQuestions[0]?.isCustom : false;
+        
+      setQuestionProgress({
+        customQuestionsAsked,
+        totalCustomQuestions,
+        defaultQuestionsAsked,
+        totalDefaultQuestions,
+        nextQuestionIsCustom
+      });
+      
+      console.log("Question progress:", {
+        custom: `${customQuestionsAsked}/${totalCustomQuestions}`,
+        default: `${defaultQuestionsAsked}/${totalDefaultQuestions}`,
+        nextIsCustom: nextQuestionIsCustom
+      });
+      
+      return totalCustomQuestions > 0 && customQuestionsAsked > 0;
+    }
+    return false;
+  }, []);
+  
+  // Efficiently prepare persona settings
+  const preparePersonaSettings = useCallback(async (investorId: string) => {
+    console.log(`Fetching persona settings for investor ${investorId}`);
+    const { data: personaSettings, error: settingsError } = await supabase
+      .from('investor_ai_persona_settings')
+      .select('*')
+      .eq('user_id', investorId)
+      .maybeSingle();
+      
+    if (settingsError) {
+      console.log("Error fetching persona settings:", settingsError.message);
+      return null;
+    } 
+    
+    if (!personaSettings) {
+      console.log("No persona settings found for investor", investorId);
+      return null;
+    }
+    
+    console.log("Found persona settings with ID:", personaSettings.id);
+    console.log("Custom questions count:", personaSettings?.custom_questions?.length || 0);
+    
+    // Create a deep clone to avoid modifying the original
+    const settingsCopy = JSON.parse(JSON.stringify(personaSettings));
+    
+    // Process custom questions
+    if (settingsCopy.custom_questions) {
+      if (!Array.isArray(settingsCopy.custom_questions)) {
+        console.warn("Custom questions is not an array, fixing");
+        settingsCopy.custom_questions = [];
+      } else {
+        // CRITICAL FIX: Ensure we only keep valid, enabled questions
+        const validQuestions = settingsCopy.custom_questions
+          .filter(q => (
+            q && 
+            typeof q === 'object' && 
+            typeof q.question === 'string' && 
+            q.question.trim().length > 0 &&
+            q.enabled !== false // Only keep enabled questions
+          ))
+          .map(q => ({
+            id: q.id || crypto.randomUUID(),
+            question: q.question.trim(),
+            enabled: true // Force to true since we already filtered out disabled ones
+          }));
+        
+        settingsCopy.custom_questions = validQuestions;
+        
+        console.log(`Prepared ${validQuestions.length} valid custom questions for use`);
+        if (validQuestions.length > 0) {
+          console.log("First custom question:", validQuestions[0].question);
+        }
+      }
+    }
+    
+    return settingsCopy;
+  }, []);
+  
   const sendMessage = async (messageText: string) => {
     if (!user || !investorId || !messageText.trim() || isSending) {
       return;
@@ -141,46 +238,16 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       setMessages(prev => [...prev, userMessage]);
       setCurrentMessage("");
       
-      const { data: startupData } = await supabase
-        .from('startup_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // Fetch data in parallel for better performance
+      const [startupData, investorPref, personaSettings] = await Promise.all([
+        supabase.from('startup_profiles').select('*').eq('id', user.id).single().then(res => res.data),
+        supabase.from('investor_preferences').select('*').eq('user_id', investorId).maybeSingle().then(res => res.data),
+        preparePersonaSettings(investorId)
+      ]);
       
-      const { data: investorPref } = await supabase
-        .from('investor_preferences')
-        .select('*')
-        .eq('user_id', investorId)
-        .maybeSingle();
-      
-      // Explicitly fetch persona settings with better error handling
-      console.log(`Fetching persona settings for investor ${investorId}`);
-      const { data: personaSettings, error: settingsError } = await supabase
-        .from('investor_ai_persona_settings')
-        .select('*')
-        .eq('user_id', investorId)
-        .maybeSingle();
-        
-      if (settingsError) {
-        console.log("Error fetching persona settings:", settingsError.message);
-      } else if (personaSettings) {
-        console.log("Found persona settings:", JSON.stringify(personaSettings, null, 2));
-        console.log("Custom questions count:", 
-          personaSettings?.custom_questions ? 
-          personaSettings.custom_questions.length : 
-          "none");
-        
-        if (personaSettings?.custom_questions?.length > 0) {
-          console.log("Custom questions:");
-          personaSettings.custom_questions.forEach((q, i) => {
-            console.log(`  ${i+1}. ${q.question} (enabled: ${q.enabled !== false})`);
-          });
-        }
-      } else {
-        console.log("No persona settings found for investor", investorId);
-      }
-      
-      if (!chatId) {
+      // Handle chat ID management
+      let currentChatId = chatId;
+      if (!currentChatId) {
         const { data: newChat, error: chatError } = await supabase
           .from('ai_persona_chats')
           .insert({
@@ -195,44 +262,29 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           throw new Error("Failed to create chat session");
         }
         
-        setChatId(newChat.id);
-        savedChatId.current = newChat.id;
-        
-        await supabase
-          .from('ai_persona_messages')
-          .insert({
-            chat_id: newChat.id,
-            sender_type: "startup",
-            content: messageText,
-          });
-      } else {
-        await supabase
-          .from('ai_persona_messages')
-          .insert({
-            chat_id: chatId,
-            sender_type: "startup",
-            content: messageText,
-          });
+        currentChatId = newChat.id;
+        setChatId(currentChatId);
+        savedChatId.current = currentChatId;
       }
       
-      console.log('Sending message to investor AI persona', {
-        investorId, 
+      // Save user message to database
+      await supabase
+        .from('ai_persona_messages')
+        .insert({
+          chat_id: currentChatId,
+          sender_type: "startup",
+          content: messageText,
+        });
+      
+      console.log('Preparing to call AI persona function', {
         messageLength: messageText.length,
         chatHistoryLength: messages.length,
         hasPersonaSettings: !!personaSettings,
         customQuestionsCount: personaSettings?.custom_questions?.length || 0
       });
       
-      if (personaSettings?.custom_questions?.length > 0) {
-        console.log("Sending custom questions to edge function:");
-        personaSettings.custom_questions.forEach((q, i) => {
-          console.log(`  ${i+1}. ${q.question} (enabled: ${q.enabled !== false})`);
-        });
-      }
-
+      // Call the edge function
       const functionUrl = "https://vsxnjnvwtgehagxbhdzh.supabase.co/functions/v1/investor-ai-persona";
-      console.log('Calling edge function at URL:', functionUrl);
-      
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -247,11 +299,12 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           investorPreferences: investorPref,
           investorName: investorName,
           startupInfo: startupData,
-          chatId: chatId || savedChatId.current,
+          chatId: currentChatId,
           personaSettings: personaSettings || null
         }),
       });
       
+      // Process the response
       if (!response.ok) {
         const errorText = await response.text();
         console.error('AI persona response error:', {
@@ -266,14 +319,17 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       let data;
       try {
         data = await response.json();
-        console.log('Received AI response:', data);
+        console.log('Received AI response');
       } catch (parseError) {
         console.error('JSON parsing error:', {
-          error: parseError,
-          responseText: await response.text()
+          error: parseError
         });
         throw new Error('Failed to parse API response');
       }
+      
+      // Check if custom questions are being asked
+      const customQuestionsWorking = checkCustomQuestionsProgress(data);
+      console.log(`Custom questions working: ${customQuestionsWorking}`);
       
       const aiResponse: Message = {
         id: crypto.randomUUID(),
@@ -284,43 +340,62 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
       
       setMessages(prev => [...prev, aiResponse]);
       
-      if (chatId || savedChatId.current) {
+      // Save AI response to database
+      await supabase
+        .from('ai_persona_messages')
+        .insert({
+          chat_id: currentChatId,
+          sender_type: "ai",
+          content: data.response,
+        });
+      
+      // Check if chat is complete
+      const shouldMarkComplete = data.matchScore !== null && 
+        typeof data.matchScore !== 'undefined' && 
+        !data.response.trim().endsWith('?') &&
+        !data.isQuestionPending;
+        
+      if (shouldMarkComplete) {
+        console.log("All questions have been asked, marking chat as complete");
         await supabase
-          .from('ai_persona_messages')
-          .insert({
-            chat_id: chatId || savedChatId.current,
-            sender_type: "ai",
-            content: data.response,
-          });
+          .from('ai_persona_chats')
+          .update({
+            match_score: data.matchScore,
+            summary: data.matchSummary,
+            completed: true
+          })
+          .eq('id', currentChatId);
           
-        const shouldMarkComplete = data.matchScore !== null && 
-          typeof data.matchScore !== 'undefined' && 
-          !data.response.trim().endsWith('?');
+        setChatCompleted(true);
+        
+        if (onComplete && user.id === investorId) {
+          onComplete(data.matchScore, data.matchSummary);
+        }
+      } else if (data.isQuestionPending) {
+        // Log that there are still questions to be asked
+        console.log("Questions are still pending, chat continues");
+        
+        // If there was a previous completion, revert it
+        if (chatCompleted) {
+          console.log("Reverting previous chat completion - questions still remain");
+          setChatCompleted(false);
           
-        if (shouldMarkComplete) {
           await supabase
             .from('ai_persona_chats')
             .update({
-              match_score: data.matchScore,
-              summary: data.matchSummary,
-              completed: true
+              completed: false
             })
-            .eq('id', chatId || savedChatId.current);
-            
-          setChatCompleted(true);
-          
-          if (onComplete && user.id === investorId) {
-            onComplete(data.matchScore, data.matchSummary);
-          }
+            .eq('id', currentChatId);
         }
       }
       
+      // Scroll to bottom of chat
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
       
     } catch (error) {
-      console.error("Detailed error in sending message:", error);
+      console.error("Error in sending message:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send message",
@@ -332,7 +407,50 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   };
   
   return (
-    <div className="flex flex-col h-[65vh]">
+    <div className="flex flex-col h-[calc(100vh-theme(spacing.16))]">
+      <div className="flex items-center justify-between border-b p-4">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-lg font-semibold">{investorName}</h2>
+            {questionProgress && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {questionProgress.totalCustomQuestions > 0 ? (
+                  <>
+                    <span>
+                      Custom questions: {questionProgress.customQuestionsAsked}/{questionProgress.totalCustomQuestions}
+                    </span>
+                    {questionProgress.customQuestionsAsked > 0 ? (
+                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20">
+                        Custom questions active
+                      </Badge>
+                    ) : questionProgress.nextQuestionIsCustom ? (
+                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 animate-pulse">
+                        Next question is custom
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        Waiting for custom questions
+                      </Badge>
+                    )}
+                  </>
+                ) : (
+                  <Badge variant="outline" className="text-xs">
+                    Using default questions
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -354,8 +472,22 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
               </div>
             ))}
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                Start the conversation by asking a question or introducing your startup.
+              <div className="text-center text-muted-foreground py-8 space-y-4">
+                <p>Start the conversation by asking a question or introducing your startup.</p>
+                {!isLoading && (
+                  <div className="text-xs bg-accent/5 p-4 rounded-md mx-auto max-w-md border border-border">
+                    <p className="font-medium mb-2">How this conversation works:</p>
+                    <ul className="text-left list-disc pl-4 space-y-1">
+                      <li>The AI will ask you specific questions about your startup</li>
+                      {questionProgress?.totalCustomQuestions > 0 ? (
+                        <li>This investor has <strong className="text-primary">{questionProgress.totalCustomQuestions} custom questions</strong> that will be asked first</li>
+                      ) : (
+                        <li>This conversation will use the default standard questions</li>
+                      )}
+                      <li>After answering all questions, you'll get a match score</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
             
