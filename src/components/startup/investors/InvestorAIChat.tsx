@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getSupabaseClient } from "@/lib/supabase-client-helper";
 
 interface InvestorAIChatProps {
   investorId: string;
@@ -636,6 +637,74 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
     }
   };
   
+  // Debug function to check table structure and permissions
+  const handleDiagnostics = async () => {
+    try {
+      // First try to list tables to check if the table exists
+      const client = getSupabaseClient();
+      
+      // Check schema version without running a query (safer)
+      console.log("Attempting to diagnose persona settings table issues");
+      console.log("Database connection info:", {
+        url: client.supabaseUrl,
+        hasAuth: !!client.auth,
+      });
+      
+      // Check if we can access any data from the table
+      const { data: testQuery, error: testError } = await supabase
+        .from('investor_ai_persona_settings')
+        .select('id')
+        .limit(1);
+        
+      if (testError) {
+        console.error("Error accessing persona settings table:", testError);
+        
+        // Try a direct insert to test permissions
+        toast({
+          title: "Table Access Error",
+          description: `Error: ${testError.message}. Will try direct insert.`,
+          variant: "destructive"
+        });
+      } else {
+        console.log("Successfully accessed persona settings table:", testQuery);
+        toast({
+          title: "Table Access Success",
+          description: "Can access the investor_ai_persona_settings table"
+        });
+      }
+      
+      // Check if other investors have settings
+      const { data: otherSettings, error: otherError } = await supabase
+        .from('investor_ai_persona_settings')
+        .select('user_id, id')
+        .neq('user_id', investorId)
+        .limit(5);
+        
+      if (otherError) {
+        console.error("Error checking other investors:", otherError);
+      } else if (otherSettings && otherSettings.length > 0) {
+        console.log(`Found ${otherSettings.length} other investors with settings:`, otherSettings);
+        toast({
+          title: "Other Investors Found",
+          description: `Found ${otherSettings.length} other investors with settings`
+        });
+      } else {
+        console.log("No other investors have settings configured");
+        toast({
+          title: "No Other Investors",
+          description: "No other investors have settings configured"
+        });
+      }
+    } catch (err) {
+      console.error("Error in diagnostic check:", err);
+      toast({
+        title: "Diagnostic Error",
+        description: "Failed to run diagnostics. See console for details.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between border-b p-4">
@@ -739,72 +808,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={async () => {
-                    try {
-                      // First try to list tables to check if the table exists
-                      const client = supabase.getClient();
-                      
-                      // Check schema version without running a query (safer)
-                      console.log("Attempting to diagnose persona settings table issues");
-                      console.log("Database connection info:", {
-                        url: client.supabaseUrl,
-                        hasAuth: !!client.auth,
-                      });
-                      
-                      // Check if we can access any data from the table
-                      const { data: testQuery, error: testError } = await supabase
-                        .from('investor_ai_persona_settings')
-                        .select('id')
-                        .limit(1);
-                        
-                      if (testError) {
-                        console.error("Error accessing persona settings table:", testError);
-                        
-                        // Try a direct insert to test permissions
-                        toast({
-                          title: "Table Access Error",
-                          description: `Error: ${testError.message}. Will try direct insert.`,
-                          variant: "destructive"
-                        });
-                      } else {
-                        console.log("Successfully accessed persona settings table:", testQuery);
-                        toast({
-                          title: "Table Access Success",
-                          description: "Can access the investor_ai_persona_settings table"
-                        });
-                      }
-                      
-                      // Check if other investors have settings
-                      const { data: otherSettings, error: otherError } = await supabase
-                        .from('investor_ai_persona_settings')
-                        .select('user_id, id')
-                        .neq('user_id', investorId)
-                        .limit(5);
-                        
-                      if (otherError) {
-                        console.error("Error checking other investors:", otherError);
-                      } else if (otherSettings && otherSettings.length > 0) {
-                        console.log(`Found ${otherSettings.length} other investors with settings:`, otherSettings);
-                        toast({
-                          title: "Other Investors Found",
-                          description: `Found ${otherSettings.length} other investors with settings`
-                        });
-                      } else {
-                        console.log("No other investors have settings configured");
-                        toast({
-                          title: "No Other Investors",
-                          description: "No other investors have settings configured"
-                        });
-                      }
-                    } catch (err) {
-                      console.error("Error in diagnostic check:", err);
-                      toast({
-                        title: "Diagnostic Error",
-                        description: "Failed to run diagnostics. See console for details.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
+                  onClick={handleDiagnostics}
                   className="w-full text-xs mt-2"
                 >
                   Run Table Diagnostics
