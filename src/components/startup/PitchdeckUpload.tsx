@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,10 +219,8 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
           
           if (uploadError) {
             console.error(`Upload attempt ${attempts} failed:`, uploadError);
-            console.error("Error code:", uploadError.code);
             console.error("Error message:", uploadError.message);
-            console.error("Error details:", uploadError.details);
-            setDebugInfo(`Upload error: ${uploadError.message} (${uploadError.code})`);
+            setDebugInfo(`Upload error: ${uploadError.message}`);
             
             lastError = uploadError;
             if (attempts === maxAttempts) {
@@ -480,7 +479,7 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
           {(pitchdeckPath || pitchdeckUrl) && !disabled && (
             <Button 
               variant="destructive" 
-              size="xs"
+              size="sm"
               className="h-7 px-2 flex items-center space-x-1"
               onClick={handleRemovePitchdeck}
               disabled={uploading}
@@ -609,7 +608,7 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
           </DialogHeader>
           
           <PitchdeckViewer
-            filePath={pitchdeckPath}
+            filePath={pitchdeckPath || ""}
             fileName={fileName}
             fileUrl={pitchdeckUrl}
             onClose={() => setPreviewOpen(false)}
@@ -618,4 +617,4 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
       </Dialog>
     </div>
   );
-}; 
+};
