@@ -1,4 +1,3 @@
-
 // Instead of using environment variables that aren't working, 
 // we'll import the supabase client that was generated automatically
 import { supabase } from "@/integrations/supabase/client";
@@ -65,9 +64,11 @@ export type Post = {
   comments_count: number;
   hashtags: string[];
   created_at: string;
+  updated_at?: string;
   profiles?: {
     id: string;
     name: string | null;
     user_type: string | null;
+    company: string | null;
   } | null;
 };

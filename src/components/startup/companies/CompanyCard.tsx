@@ -1,11 +1,12 @@
-
 import React, { useState } from "react";
-import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake, X } from "lucide-react";
+import { ThumbsUp, ThumbsDown, ExternalLink, PlayCircle, Globe, Briefcase, Handshake, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Startup } from "@/types/startup";
 import { CompanyProfilePopup } from "./CompanyProfilePopup";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "@/components/startup/VideoPlayer";
+import { PitchdeckViewer } from "@/components/startup/PitchdeckViewer";
+import { supabase } from "@/lib/supabase";
 
 type CompanyCardProps = {
   company: Startup;
@@ -22,6 +23,7 @@ export const CompanyCard = ({
 }: CompanyCardProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showPitchdeckModal, setShowPitchdeckModal] = useState(false);
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -45,6 +47,20 @@ export const CompanyCard = ({
     }
   };
 
+  // Add a new handler for pitchdeck clicks
+  const handlePitchdeckClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (company.pitchdeckIsPublic && (company.pitchdeckUrl || company.pitchdeckPath)) {
+      if (company.pitchdeckUrl) {
+        // If it's an external URL, open in a new tab
+        window.open(company.pitchdeckUrl, '_blank', 'noopener,noreferrer');
+      } else if (company.pitchdeckPath) {
+        // If it's an internal file, show modal
+        setShowPitchdeckModal(true);
+      }
+    }
+  };
+
   // Get the website URL from any available source
   const websiteUrl = company.websiteUrl || company.website || null;
   console.log("Company website URL:", websiteUrl, "Original website field:", company.website);
@@ -52,6 +68,8 @@ export const CompanyCard = ({
   const hasDemoContent = company.demoUrl || company.demoVideo || company.demoVideoPath;
   // Consider any non-null website value as valid
   const hasWebsite = Boolean(websiteUrl && websiteUrl !== '#' && websiteUrl.trim() !== '');
+  // Check if public pitchdeck is available
+  const hasPitchdeck = company.pitchdeckIsPublic && (company.pitchdeckUrl || company.pitchdeckPath);
 
   return (
     <>
@@ -111,6 +129,17 @@ export const CompanyCard = ({
         </div>
 
         <div className="px-6 flex space-x-2 mb-4">
+          {hasPitchdeck && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="text-xs flex items-center"
+              onClick={(e) => handlePitchdeckClick(e)}
+            >
+              <FileText size={14} className="mr-1" />
+              Pitch Deck
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
@@ -188,6 +217,34 @@ export const CompanyCard = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Pitchdeck Dialog */}
+      {company.pitchdeckPath && (
+        <Dialog open={showPitchdeckModal} onOpenChange={setShowPitchdeckModal}>
+          <DialogContent className="sm:max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-4 py-2">
+              <DialogTitle className="flex justify-between items-center">
+                <span>{company.name} - Pitch Deck</span>
+                <Button 
+                  variant="ghost" 
+                  className="h-8 w-8 p-0" 
+                  onClick={() => setShowPitchdeckModal(false)}
+                >
+                  <X size={16} />
+                </Button>
+              </DialogTitle>
+            </DialogHeader>
+            
+            {/* Replace iframe with enhanced PitchdeckViewer */}
+            <PitchdeckViewer 
+              filePath={company.pitchdeckPath}
+              fileName={company.name + " Pitch Deck"}
+              fileUrl={company.pitchdeckUrl}
+              onClose={() => setShowPitchdeckModal(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

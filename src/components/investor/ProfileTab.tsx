@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useFollowUser } from "@/hooks/useFollowUser";
 import { useParams } from "react-router-dom";
 import { useProfile } from "@/context/ProfileContext";
+import { PostsList } from "@/components/shared/PostsList";
 
 interface ProfileTabProps {
   onShowFollowers?: () => void;
@@ -568,6 +569,11 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
             )}
           </div>
         </div>
+      </div>
+      
+      <div className="glass-card p-6 rounded-lg">
+        <h2 className="text-lg font-medium mb-4">User Posts</h2>
+        {profileId && <PostsList userId={profileId} />}
       </div>
     </div>
   );

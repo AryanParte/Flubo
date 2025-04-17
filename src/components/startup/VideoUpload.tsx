@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Upload, Video, Link, Youtube } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { executeSQL } from "@/lib/db-utils";
-import { createStoragePolicy } from "@/functions/create_storage_policy";
+import { useAuth } from "@/context/AuthContext";
 
 interface VideoUploadProps {
   demoUrl: string;
@@ -26,82 +24,25 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
   onPathChange,
   disabled = false
 }) => {
+  const { user } = useAuth(); // Get user from auth context
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [bucketReady, setBucketReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Check if the bucket exists
+  // Verify authentication when component loads
   useEffect(() => {
-    const checkBucket = async () => {
-      try {
-        console.log("Checking demo-videos bucket...");
-        // First check if bucket exists
-        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-        
-        if (listError) {
-          console.error("Failed to list buckets:", listError);
-          return;
-        }
-        
-        const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
-        
-        if (!bucketExists) {
-          // Create the bucket if it doesn't exist
-          console.log("Creating demo-videos bucket...");
-          const { error: createError } = await supabase.storage.createBucket('demo-videos', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-            return;
-          }
-          
-          console.log("Bucket created successfully");
-          
-          // Create policies only if the bucket was just created
-          await createStoragePolicy('demo-videos', 'allow_uploads_videos', {
-            name: "Allow Video Uploads",
-            action: "INSERT",
-            role: "authenticated",
-            check: {}
-          });
-          
-          await createStoragePolicy('demo-videos', 'public_select_videos', {
-            name: "Public Video Select",
-            action: "SELECT",
-            role: "*",
-            check: {}
-          });
-        } else {
-          console.log("Bucket already exists");
-          
-          // Make sure it's set to public
-          const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
-            public: true
-          });
-          
-          if (updateError) {
-            console.error("Failed to update bucket settings:", updateError);
-          } else {
-            console.log("Updated bucket to be public");
-          }
-        }
-        
-        setBucketReady(true);
-        console.log("Bucket demo-videos is ready for use");
-      } catch (error) {
-        console.error("Error checking/creating bucket:", error);
-        toast({
-          title: "Storage Setup Error",
-          description: "Failed to set up storage for video uploads. Please try again.",
-          variant: "destructive"
-        });
+    const checkAuth = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        console.error("Authentication check failed:", error);
+        setAuthError("Please log in to upload files");
+      } else {
+        setAuthError(null);
       }
     };
     
-    checkBucket();
+    checkAuth();
   }, []);
 
   // Handle file upload to Supabase storage
@@ -135,48 +76,12 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       setUploading(true);
       setUploadProgress(0);
 
-      // Get the authenticated user's ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-      
-      // Verify bucket is ready or force setup
-      if (!bucketReady) {
-        console.log("Bucket not ready, forcing setup...");
-        
-        // Check if bucket exists
-        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-        
-        if (listError) {
-          console.error("Failed to list buckets:", listError);
-          throw new Error("Failed to access storage");
-        }
-        
-        const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
-        
-        if (!bucketExists) {
-          // Create the bucket if it doesn't exist
-          console.log("Creating demo-videos bucket...");
-          const { error: createError } = await supabase.storage.createBucket('demo-videos', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error("Failed to create bucket:", createError);
-            throw new Error("Failed to create storage bucket");
-          }
-          
-          console.log("Bucket created successfully");
-        }
-        
-        // Make sure it's set to public
-        const { error: updateError } = await supabase.storage.updateBucket('demo-videos', {
-          public: true
-        });
-        
-        if (updateError) {
-          console.error("Failed to update bucket settings:", updateError);
-        } else {
-          console.log("Updated bucket to be public");
+      // Verify user is authenticated
+      if (!user) {
+        // Try to refresh the session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('User not authenticated. Please log in again.');
         }
       }
 
@@ -184,7 +89,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       const fileExt = file.name.split('.').pop();
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
-      const fileName = `${user.id}_${timestamp}_${randomString}.${fileExt}`;
+      const fileName = `${user?.id}_${timestamp}_${randomString}.${fileExt}`;
       const filePath = fileName;
 
       // Set up a simple progress tracker
@@ -204,6 +109,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       simulateProgress();
 
       console.log("Starting file upload to path:", filePath);
+      
       // Upload the file with retry logic
       let attempts = 0;
       const maxAttempts = 3;
@@ -215,20 +121,12 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
         console.log(`Upload attempt ${attempts}/${maxAttempts}`);
         
         try {
-          // Verify bucket exists before upload
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const bucketExists = buckets?.some(bucket => bucket.name === 'demo-videos');
-          
-          if (!bucketExists) {
-            console.error("Bucket 'demo-videos' does not exist before upload attempt");
-            throw new Error("Storage bucket does not exist");
-          }
-          
           const { error: uploadError, data } = await supabase.storage
             .from('demo-videos')
             .upload(filePath, file, {
               cacheControl: '3600',
-              upsert: true
+              upsert: true,
+              contentType: file.type
             });
             
           if (uploadError) {
@@ -250,52 +148,83 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
             } else {
               throw uploadError;
             }
-          }
-          
-          uploadResult = data;
-          break;
-        } catch (err) {
-          console.error(`Error in attempt ${attempts}:`, err);
-          lastError = err;
-          
-          if (attempts >= maxAttempts) {
+          } else {
+            uploadResult = data;
+            console.log("Upload succeeded:", data);
             break;
           }
-          
-          // Wait before retrying with exponential backoff
-          const waitTime = 1000 * Math.pow(2, attempts - 1); // 1s, 2s, 4s...
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } catch (error) {
+          console.error(`Error in upload attempt ${attempts}:`, error);
+          lastError = error;
+          if (attempts === maxAttempts) {
+            throw error;
+          }
         }
       }
       
-      // If all attempts failed
-      if (!uploadResult && lastError) {
-        throw lastError;
-      }
-
       // Clear the progress interval
-      clearInterval(progressInterval);
-
-      // Complete the progress
+      if (progressInterval) clearInterval(progressInterval);
+      
+      // Set to 100% when done
       setUploadProgress(100);
-
-      // Get the public URL for the uploaded video
+      
+      if (!uploadResult) {
+        throw new Error("Failed to upload file after multiple attempts");
+      }
+      
+      // Get the URL to the uploaded file
       const { data: urlData } = supabase.storage
         .from('demo-videos')
         .getPublicUrl(filePath);
-
-      console.log("Upload completed, public URL:", urlData);
       
-      // Update the video path
+      // Update the profile record with the new path
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { error: updateError } = await supabase
+          .from('startup_profiles')
+          .update({
+            demo_video_path: filePath,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.user.id);
+          
+        if (updateError) {
+          console.error("Error updating profile with video path:", updateError);
+        }
+      }
+      
+      // Update the state
       onPathChange(filePath);
-
+      onVideoChange('demoVideo', ''); // Clear YouTube URL since we're using uploaded video
+      
+      // Handle completion of product information task
+      try {
+        const { data: profileTask } = await supabase
+          .from('profile_completion_tasks')
+          .select('*')
+          .eq('startup_id', user?.id)
+          .eq('task_name', 'Add product information')
+          .single();
+          
+        if (profileTask && !profileTask.completed) {
+          await supabase
+            .from('profile_completion_tasks')
+            .update({
+              completed: true,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', profileTask.id);
+        }
+      } catch (error) {
+        console.error("Error updating completion task:", error);
+      }
+      
       toast({
-        title: "Video uploaded successfully",
-        description: "Your demo video has been uploaded",
+        title: "Video uploaded",
+        description: "Your demo video has been uploaded"
       });
-
-      // Reset the form state
-      setUploadProgress(0);
+      
+      // Reset the file input
       if (fileInputRef.current) fileInputRef.current.value = '';
       
     } catch (error) {
@@ -309,74 +238,164 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
       setUploading(false);
     }
   };
+  
+  // Extract video ID from YouTube URL
+  const getYoutubeIdFromUrl = (url: string) => {
+    if (!url) return '';
+    
+    // Match common YouTube URL formats:
+    // https://www.youtube.com/watch?v=VIDEO_ID
+    // https://youtu.be/VIDEO_ID
+    // https://www.youtube.com/embed/VIDEO_ID
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : '';
+  };
+  
+  if (authError) {
+    return (
+      <div className="p-4 border border-destructive/30 bg-destructive/10 rounded-md text-center">
+        <p className="text-sm text-destructive">{authError}</p>
+        <Button
+          variant="outline"
+          className="mt-2"
+          onClick={() => window.location.reload()}
+        >
+          Refresh Page
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div>
-        <Label htmlFor="demoUrl" className="text-sm font-medium text-muted-foreground">Demo URL (Website)</Label>
-        <Input 
-          id="demoUrl"
-          value={demoUrl} 
-          onChange={(e) => onVideoChange('demoUrl', e.target.value)}
-          className="mt-1"
-          placeholder="https://demo.example.com"
-          disabled={disabled}
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="demoVideo" className="text-sm font-medium text-muted-foreground">YouTube Demo Video</Label>
-        <Input 
-          id="demoVideo"
-          value={demoVideo} 
-          onChange={(e) => onVideoChange('demoVideo', e.target.value)}
-          className="mt-1"
-          placeholder="https://youtube.com/watch?v=example"
-          disabled={disabled}
-        />
-        {!disabled && (
-          <p className="text-xs text-muted-foreground mt-1">
-            <Youtube size={12} className="inline mr-1" />
-            Enter a YouTube URL to your demo video
-          </p>
+      <div className="flex flex-col space-y-2">
+        <Label htmlFor="videoUpload" className="text-sm font-medium">
+          Demo Video
+        </Label>
+        
+        {!demoVideoPath && (
+          <div className="mt-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || disabled || !user}
+                className="w-full justify-start"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading... {uploadProgress}%
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Demo Video
+                  </>
+                )}
+              </Button>
+              
+              <input
+                id="videoUpload"
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                accept="video/mp4,video/webm,video/ogg"
+                ref={fileInputRef}
+                disabled={uploading || disabled || !user}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Upload an MP4, WebM, or OGG video file (max 100MB)
+            </p>
+          </div>
+        )}
+        
+        {demoVideoPath && (
+          <div className="flex items-center mt-2">
+            <div className="mr-2">
+              <Video className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm">Video uploaded</p>
+              {!disabled && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs text-destructive"
+                  onClick={() => {
+                    onPathChange('');
+                    // Also attempt to delete the file from storage
+                    if (demoVideoPath) {
+                      supabase.storage
+                        .from('demo-videos')
+                        .remove([demoVideoPath])
+                        .then(({ error }) => {
+                          if (error) console.error("Error removing video:", error);
+                        });
+                    }
+                  }}
+                  disabled={uploading}
+                >
+                  Remove video
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </div>
       
-      {!disabled && (
-        <div>
-          <Label htmlFor="videoUpload" className="text-sm font-medium text-muted-foreground mb-1 block">
-            Or Upload Video File
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              ref={fileInputRef}
-              id="videoUpload"
-              type="file"
-              accept="video/mp4,video/webm,video/ogg"
-              onChange={handleFileUpload}
-              disabled={uploading || disabled}
-              className="flex-1"
-            />
-            {uploading && (
-              <div className="flex items-center gap-2">
-                <Loader2 size={16} className="animate-spin" />
-                <span className="text-sm">{uploadProgress}%</span>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            <Video size={12} className="inline mr-1" />
-            Upload a video file (MP4, WebM, OGG) up to 100MB
-          </p>
+      <div>
+        <Label htmlFor="demoUrl" className="text-sm font-medium">
+          Demo URL
+        </Label>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-2 items-center mt-1">
+          <Input
+            id="demoUrl"
+            value={demoUrl}
+            onChange={(e) => onVideoChange('demoUrl', e.target.value)}
+            placeholder="Enter a URL to your demo"
+            disabled={disabled}
+          />
         </div>
-      )}
+        <p className="text-xs text-muted-foreground mt-1">
+          <Link size={12} className="inline mr-1" />
+          Enter a URL to your live demo
+        </p>
+      </div>
       
-      {demoVideoPath && (
-        <div className="text-sm flex items-center text-accent">
-          <Video size={16} className="mr-1" />
-          <span>Video uploaded</span>
+      <div>
+        <Label htmlFor="demoVideo" className="text-sm font-medium">
+          YouTube Demo Video
+        </Label>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-2 items-center mt-1">
+          <Input
+            id="demoVideo"
+            value={demoVideo}
+            onChange={(e) => onVideoChange('demoVideo', e.target.value)}
+            placeholder="https://youtube.com/watch?v=..."
+            disabled={disabled || !!demoVideoPath}
+          />
+          
+          {demoVideo && !disabled && !demoVideoPath && getYoutubeIdFromUrl(demoVideo) && (
+            <div className="md:col-span-1 p-2 border rounded bg-muted/30">
+              <div className="aspect-video">
+                <iframe
+                  src={`https://www.youtube.com/embed/${getYoutubeIdFromUrl(demoVideo)}`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                ></iframe>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        <p className="text-xs text-muted-foreground mt-1">
+          <Youtube size={12} className="inline mr-1" />
+          Enter a YouTube URL with your product demo
+        </p>
+      </div>
     </div>
   );
 };

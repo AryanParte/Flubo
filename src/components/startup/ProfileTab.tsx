@@ -13,6 +13,9 @@ import { useFollowUser } from "@/hooks/useFollowUser";
 import { VideoUpload } from "./VideoUpload";
 import { VideoPlayer } from "./VideoPlayer";
 import { useProfile } from "@/context/ProfileContext";
+import { PitchdeckUpload } from "./PitchdeckUpload";
+import { Separator } from "@/components/ui/separator";
+import { PostsList } from "@/components/shared/PostsList";
 
 const emptyStartupProfile = {
   name: "",
@@ -27,6 +30,10 @@ const emptyStartupProfile = {
   demoUrl: "",
   demoVideo: "",
   demoVideoPath: "",
+  pitchdeckUrl: "",
+  pitchdeckPath: "",
+  pitchdeckFileType: "",
+  pitchdeckIsPublic: false,
   lookingForFunding: false,
   lookingForDesignPartner: false,
   fundraising: {
@@ -185,6 +192,10 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
         demoUrl: startupProfile?.demo_url || "",
         demoVideo: startupProfile?.demo_video || "",
         demoVideoPath: startupProfile?.demo_video_path || "",
+        pitchdeckUrl: startupProfile?.pitchdeck_url || "",
+        pitchdeckPath: startupProfile?.pitchdeck_path || "",
+        pitchdeckFileType: startupProfile?.pitchdeck_file_type || "",
+        pitchdeckIsPublic: startupProfile?.pitchdeck_is_public || false,
         lookingForFunding: startupProfile?.looking_for_funding || false,
         lookingForDesignPartner: startupProfile?.looking_for_design_partner || false,
         fundraising: {
@@ -306,6 +317,10 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
             demo_url: startup.demoUrl,
             demo_video: startup.demoVideo,
             demo_video_path: startup.demoVideoPath,
+            pitchdeck_url: startup.pitchdeckUrl,
+            pitchdeck_path: startup.pitchdeckPath,
+            pitchdeck_file_type: startup.pitchdeckFileType,
+            pitchdeck_is_public: startup.pitchdeckIsPublic,
             looking_for_funding: startup.lookingForFunding,
             looking_for_design_partner: startup.lookingForDesignPartner,
             target_amount: startup.fundraising.target,
@@ -394,6 +409,13 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
     setStartup(prev => ({
       ...prev,
       demoVideoPath: path
+    }));
+  };
+
+  const handlePitchdeckPathChange = (path: string) => {
+    setStartup(prev => ({
+      ...prev,
+      pitchdeckPath: path
     }));
   };
 
@@ -816,6 +838,23 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
               />
             </div>
           )}
+
+          <Separator className="my-4" />
+          
+          <PitchdeckUpload
+            pitchdeckUrl={startup.pitchdeckUrl}
+            pitchdeckPath={startup.pitchdeckPath}
+            pitchdeckFileType={startup.pitchdeckFileType}
+            pitchdeckIsPublic={startup.pitchdeckIsPublic}
+            onPitchdeckChange={(field, value) => {
+              setStartup(prev => ({
+                ...prev,
+                [field]: value
+              }));
+            }}
+            onPathChange={handlePitchdeckPathChange}
+            disabled={!editing}
+          />
         </div>
       </div>
 
@@ -993,6 +1032,11 @@ export const ProfileTab = ({ onShowFollowers, onShowFollowing }: ProfileTabProps
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="glass-card p-6 rounded-lg">
+        <h2 className="text-lg font-medium mb-4">User Posts</h2>
+        {profileId && <PostsList userId={profileId} />}
       </div>
     </div>
   );

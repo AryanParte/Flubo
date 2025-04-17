@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -154,7 +153,7 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
             <div>
               <h3 className="font-semibold text-xl flex items-center gap-1.5">
                 {profile.name}
-                <AccountVerificationBadge verified={profile.verified} />
+                <AccountVerificationBadge verified={profile.verified} userId={profile.id} />
               </h3>
               <p className="text-muted-foreground">{profile.user_type === "startup" ? "Business" : "Investor"}</p>
               

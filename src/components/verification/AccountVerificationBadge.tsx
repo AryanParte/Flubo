@@ -1,13 +1,14 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface AccountVerificationBadgeProps {
   verified?: boolean;
   showText?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
+  userId?: string;
 }
 
 export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> = ({
@@ -15,9 +16,41 @@ export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> =
   showText = true,
   size = "md",
   className,
+  userId
 }) => {
-  // If not verified, don't render anything
-  if (!verified) return null;
+  const [shouldShow, setShouldShow] = useState(verified);
+  
+  useEffect(() => {
+    // If userId is provided, check if it's the specific user to exclude
+    const checkUser = async () => {
+      if (!userId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', userId)
+          .single();
+          
+        if (error) {
+          console.error("Error checking user:", error);
+          return;
+        }
+        
+        // Don't show badge for user with email aryanp1117@gmail.com
+        if (data?.email === 'aryanp1117@gmail.com') {
+          setShouldShow(false);
+        }
+      } catch (error) {
+        console.error("Error in AccountVerificationBadge:", error);
+      }
+    };
+    
+    checkUser();
+  }, [userId]);
+  
+  // If not verified or it's the specific user, don't render anything
+  if (!shouldShow) return null;
   
   const sizeClasses = {
     sm: "h-3 w-3",

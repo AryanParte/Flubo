@@ -139,7 +139,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // If updating investor title or company, also update in investor_profiles if exists
+      // If updating investor title or company, also update in investor_preferences if exists
       if ((updates.company || updates.position) && profile.user_type === 'investor') {
         const { data: investorPrefs } = await supabase
           .from('investor_preferences')
@@ -148,19 +148,42 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           .maybeSingle();
         
         if (investorPrefs) {
-          const updates: any = {};
-          if (updates.company) updates.company = updates.company;
-          if (updates.position) updates.position = updates.position;
+          // Fix the variable shadowing bug - create a new object
+          const prefsUpdates: any = {};
+          if (updates.company) prefsUpdates.company = updates.company;
+          if (updates.position) prefsUpdates.position = updates.position;
           
           try {
             await supabase
               .from('investor_preferences')
-              .update(updates)
+              .update(prefsUpdates)
               .eq('user_id', user.id);
           } catch (err) {
             console.error('Error updating investor_preferences:', err);
           }
         }
+      }
+      
+      // After updating profile, trigger a refresh of posts that might display the old company name
+      try {
+        // Update posts table to trigger real-time updates for any posts by this user
+        const { data: userPosts } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(10); // Limit to recent posts for performance
+          
+        if (userPosts && userPosts.length > 0) {
+          // Just touch the updated_at field to trigger a real-time event
+          for (const post of userPosts) {
+            await supabase
+              .from('posts')
+              .update({ updated_at: new Date().toISOString() })
+              .eq('id', post.id);
+          }
+        }
+      } catch (err) {
+        console.error('Error refreshing posts data:', err);
       }
     } catch (error) {
       console.error('Error in updateProfile:', error);

@@ -1,4 +1,3 @@
-
 import { Startup } from "@/types/startup";
 import { SortOption } from "@/hooks/use-discover-companies";
 
@@ -19,6 +18,10 @@ export const enrichCompanyData = (companies: any[]): Startup[] => {
       demoUrl: company.demo_url || '#',
       demoVideo: company.demo_video || undefined,
       demoVideoPath: company.demo_video_path || undefined,
+      pitchdeckUrl: company.pitchdeck_url || undefined,
+      pitchdeckPath: company.pitchdeck_path || undefined,
+      pitchdeckFileType: company.pitchdeck_file_type || undefined,
+      pitchdeckIsPublic: company.pitchdeck_is_public || false,
       raisedAmount: company.raised_amount || undefined,
       foundedYear: company.founded || undefined,
       teamSize: company.employees ? parseInt(company.employees, 10) : undefined,

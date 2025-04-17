@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { 
   CalendarIcon, 
   Users, 
@@ -11,15 +10,20 @@ import {
   PlayCircle, 
   LineChart,
   Handshake,
-  X
+  X,
+  FileText
 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogClose
+  DialogClose,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Startup } from "@/types/startup";
+import { supabase } from "@/lib/supabase";
+import { PitchdeckViewer } from "@/components/startup/PitchdeckViewer";
 
 interface CompanyProfilePopupProps {
   company: Startup;
@@ -28,6 +32,8 @@ interface CompanyProfilePopupProps {
 }
 
 export const CompanyProfilePopup = ({ company, isOpen, onClose }: CompanyProfilePopupProps) => {
+  const [showPitchdeckModal, setShowPitchdeckModal] = useState(false);
+
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (url && url !== '#') {
@@ -150,7 +156,27 @@ export const CompanyProfilePopup = ({ company, isOpen, onClose }: CompanyProfile
             {/* External Links */}
             <div>
               <h4 className="text-sm font-medium mb-2">Links</h4>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
+                {/* Add Pitchdeck Button if available */}
+                {company.pitchdeckIsPublic && (company.pitchdeckUrl || company.pitchdeckPath) && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (company.pitchdeckUrl) {
+                        handleOpenLink(company.pitchdeckUrl, e);
+                      } else if (company.pitchdeckPath) {
+                        setShowPitchdeckModal(true);
+                      }
+                    }}
+                  >
+                    <FileText size={14} className="mr-1" />
+                    Pitch Deck
+                  </Button>
+                )}
+                
                 {company.demoUrl && company.demoUrl !== '#' && (
                   <Button 
                     variant="outline" 
@@ -179,6 +205,34 @@ export const CompanyProfilePopup = ({ company, isOpen, onClose }: CompanyProfile
           </div>
         </div>
       </DialogContent>
+
+      {/* Pitchdeck Preview Dialog */}
+      {company.pitchdeckPath && (
+        <Dialog open={showPitchdeckModal} onOpenChange={setShowPitchdeckModal}>
+          <DialogContent className="sm:max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-4 py-2">
+              <DialogTitle className="flex justify-between items-center">
+                <span>{company.name} - Pitch Deck</span>
+                <Button 
+                  variant="ghost" 
+                  className="h-8 w-8 p-0" 
+                  onClick={() => setShowPitchdeckModal(false)}
+                >
+                  <X size={16} />
+                </Button>
+              </DialogTitle>
+            </DialogHeader>
+            
+            {/* Replace iframe with enhanced PitchdeckViewer */}
+            <PitchdeckViewer 
+              filePath={company.pitchdeckPath}
+              fileName={company.name + " Pitch Deck"}
+              fileUrl={company.pitchdeckUrl}
+              onClose={() => setShowPitchdeckModal(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 };

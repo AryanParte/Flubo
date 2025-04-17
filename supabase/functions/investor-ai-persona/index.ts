@@ -70,6 +70,12 @@ serve(async (req) => {
                        q.question.trim().length > 0 &&
                        q.enabled !== false;
         
+        if (isValid) {
+          console.log(`Valid custom question: "${q.question.trim()}"`);
+        } else {
+          console.log(`Skipping invalid custom question:`, JSON.stringify(q));
+        }
+        
         return isValid;
       });
       
@@ -94,17 +100,9 @@ serve(async (req) => {
       }
     }
 
-    // Build the question sequence - CRITICAL: custom questions must come first
-    requiredQuestions = [];
-
-    // First add custom questions (if any)
-    if (hasCustomQuestions) {
-      requiredQuestions = [...customQuestions];
-      console.log(`Added ${customQuestions.length} custom questions to the sequence`);
-    }
-
-    // Then add default questions
-    requiredQuestions = [...requiredQuestions, ...defaultQuestions];
+    // CRITICAL FIX: Rebuild question sequence - ensure custom questions always come first
+    requiredQuestions = [...customQuestions, ...defaultQuestions];
+    
     console.log(`Final question sequence has ${requiredQuestions.length} questions (${customQuestions.length} custom + ${defaultQuestions.length} default)`);
 
     // Double check order by logging the final sequence
@@ -113,7 +111,7 @@ serve(async (req) => {
       console.log(`  ${idx+1}. ${q.isCustom ? "[CUSTOM]" : "[default]"} "${q.question}"`);
     });
 
-    // CRITICAL FIX: Check if the first few questions are custom as expected (if we have custom questions)
+    // Verify custom questions come first
     if (hasCustomQuestions && requiredQuestions.length >= customQuestions.length) {
       const firstFewQuestions = requiredQuestions.slice(0, customQuestions.length);
       const allCustomFirst = firstFewQuestions.every(q => q.isCustom === true);
@@ -135,6 +133,12 @@ serve(async (req) => {
     if (chatHistory && chatHistory.length > 0) {
       console.log(`Analyzing ${chatHistory.length} messages to determine asked questions`);
       
+      // CRITICAL FIX: First reset all questions to not asked state to avoid any stale state
+      requiredQuestions.forEach(q => {
+        q.asked = false;
+      });
+      askedQuestions = new Set();
+      
       for (const msg of chatHistory) {
         if (msg.sender_type === "ai") {
           for (const q of requiredQuestions) {
@@ -145,21 +149,18 @@ serve(async (req) => {
             const questionLower = q.question.toLowerCase().trim();
             const msgLower = msg.content.toLowerCase().trim();
             
-            // Use a more flexible matching criteria that works for both exact matches
-            // and cases where the AI might have slightly modified the question
-            // This is especially important for finding custom questions in the history
-            
-            // Check for exact match
+            // FIXED: Improve question matching with more reliable criteria
+            // 1. Check for exact match
             const isExactMatch = msgLower === questionLower;
             
-            // Check for substantial inclusion (80% of the question)
-            const questionWords = questionLower.split(/\s+/);
-            const matchThreshold = Math.max(3, Math.floor(questionWords.length * 0.8)); // At least 80% of words or 3 words
-            const wordMatches = questionWords.filter(word => msgLower.includes(word)).length;
-            const isSubstantialMatch = wordMatches >= matchThreshold;
-            
-            // Check if message contains the exact question string
+            // 2. Check if message contains the exact question string
             const isContainedMatch = msgLower.includes(questionLower);
+            
+            // 3. Check for substantial inclusion (80% of the question)
+            const questionWords = questionLower.split(/\s+/).filter(w => w.length > 3); // Only significant words
+            const substMatchThreshold = Math.max(2, Math.floor(questionWords.length * 0.7)); // Lower threshold to 70%
+            const wordMatches = questionWords.filter(word => msgLower.includes(word)).length;
+            const isSubstantialMatch = questionWords.length > 0 && wordMatches >= substMatchThreshold;
             
             if (isExactMatch || isContainedMatch || isSubstantialMatch) {
               console.log(`Message matches question "${q.question}" - marking as asked`);
@@ -172,15 +173,41 @@ serve(async (req) => {
         }
       }
       
+      // CRITICAL FIX: Special check for custom questions to ensure they're not skipped
+      if (hasCustomQuestions) {
+        const customQuestionsAsked = customQuestions.filter(q => q.asked).length;
+        if (customQuestionsAsked === 0) {
+          console.log("WARNING: No custom questions have been asked yet. Resetting all default questions to not asked state.");
+          
+          // If no custom questions have been asked, reset all default questions to ensure custom questions are asked first
+          requiredQuestions.forEach(q => {
+            if (!q.isCustom) {
+              q.asked = false;
+              if (askedQuestions.has(q.id)) {
+                askedQuestions.delete(q.id);
+              }
+            }
+          });
+        }
+      }
+      
       // Log current question status
       requiredQuestions.forEach(q => {
         console.log(`Question status: "${q.question}" - ${q.asked ? 'already asked' : 'not asked yet'} (${q.isCustom ? 'custom' : 'default'})`);
       });
     }
     
-    // Determine the next question to ask - ALWAYS use the first unanswered question in the list
-    // This preserves the order of questions as defined in the settings
-    const nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
+    // CRITICAL FIX: Determine the next question to ask, prioritizing custom questions
+    // Always use the first unanswered question in the list to preserve order
+    let nextQuestionToAsk = requiredQuestions.find(q => !q.asked);
+    
+    // If we have custom questions and none have been asked yet, force a custom question
+    if (hasCustomQuestions && !customQuestions.some(q => q.asked) && 
+        nextQuestionToAsk && !nextQuestionToAsk.isCustom) {
+      // Override with the first custom question regardless of sequence
+      nextQuestionToAsk = customQuestions.find(q => !q.asked) || nextQuestionToAsk;
+      console.log(`CRITICAL FIX: Forced next question to be a custom question: "${nextQuestionToAsk.question}"`);
+    }
     
     if (nextQuestionToAsk) {
       console.log(`Next question to ask: "${nextQuestionToAsk.question}" (isCustom: ${nextQuestionToAsk.isCustom})`);
@@ -194,6 +221,16 @@ serve(async (req) => {
     if ((!chatHistory || chatHistory.length === 0) && nextQuestionToAsk) {
       console.log("New conversation - returning first question directly:", nextQuestionToAsk.question);
       console.log(`Question is a ${nextQuestionToAsk.isCustom ? 'custom' : 'default'} question`);
+      
+      // CRITICAL FIX: For new conversations, make absolutely sure we start with a custom question if available
+      if (hasCustomQuestions && !nextQuestionToAsk.isCustom) {
+        const firstCustomQuestion = customQuestions.find(q => !q.asked);
+        if (firstCustomQuestion) {
+          console.log(`CRITICAL FIX: Forcing first message to be custom question: "${firstCustomQuestion.question}" instead of default question`);
+          nextQuestionToAsk = firstCustomQuestion;
+        }
+      }
+      
       // Return the first question directly without calling OpenAI
       return new Response(
         JSON.stringify({
@@ -204,7 +241,11 @@ serve(async (req) => {
           isQuestionPending: true,
           remainingQuestions: requiredQuestions.filter(q => !q.asked && q.id !== nextQuestionToAsk.id),
           askedQuestions: [nextQuestionToAsk.id],
-          questionIsCustom: nextQuestionToAsk.isCustom
+          questionIsCustom: nextQuestionToAsk.isCustom,
+          customQuestionsAsked: nextQuestionToAsk.isCustom ? 1 : 0,
+          totalCustomQuestions: customQuestions.length,
+          defaultQuestionsAsked: !nextQuestionToAsk.isCustom ? 1 : 0,
+          totalDefaultQuestions: defaultQuestions.length
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -230,6 +271,17 @@ serve(async (req) => {
       const questionStatus = q.asked ? ' (already asked)' : ' (not asked yet)';
       systemPrompt += `\n${idx+1}. [${questionType}] "${q.question}"${questionStatus}`;
     });
+    
+    // CRITICAL FIX: Add specific instructions about question priority
+    if (hasCustomQuestions) {
+      systemPrompt += `\n\nCRITICAL INSTRUCTION: You MUST prioritize asking CUSTOM questions before default questions.`;
+      systemPrompt += `\nCustom questions are the most important and should ALWAYS be asked first.`;
+      
+      // If no custom questions have been asked yet, emphasize this even more
+      if (!customQuestions.some(q => q.asked)) {
+        systemPrompt += `\n\nEXTREMELY IMPORTANT: You have not asked ANY custom questions yet. You MUST ask custom questions first!`;
+      }
+    }
     
     // Update system prompt to focus on asking the next unasked question
     if (nextQuestionToAsk) {
@@ -455,6 +507,15 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
       });
     }
     
+    // CRITICAL FIX: Check if there are remaining custom questions that need to be asked
+    const remainingCustomQuestions = customQuestions.filter(q => !q.asked);
+    const nextQuestionIsCustom = remainingCustomQuestions.length > 0;
+    
+    if (nextQuestionIsCustom) {
+      console.log(`IMPORTANT: ${remainingCustomQuestions.length} custom questions still need to be asked!`);
+      console.log(`Next custom question will be: "${remainingCustomQuestions[0].question}"`);
+    }
+    
     return new Response(
       JSON.stringify({
         response: aiResponse,
@@ -471,7 +532,10 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
         customQuestionsAsked,
         totalCustomQuestions,
         defaultQuestionsAsked,
-        totalDefaultQuestions
+        totalDefaultQuestions,
+        nextQuestionIsCustom,  // CRITICAL FIX: Add flag to indicate if next question is custom
+        hasCustomQuestions,    // CRITICAL FIX: Add flag to indicate if there are custom questions at all
+        remainingCustomCount: remainingCustomQuestions.length  // CRITICAL FIX: Add count of remaining custom questions
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -503,6 +567,15 @@ function allQuestionsAsked(questions) {
   
   console.log(`Default questions: ${askedDefaultQs}/${defaultQs.length} asked`);
   console.log(`Custom questions: ${askedCustomQs}/${customQs.length} asked`);
+  
+  // CRITICAL FIX: Check if we have custom questions and if any have been asked
+  const hasCustomQs = customQs.length > 0;
+  
+  // If we have custom questions but none have been asked, we can't consider all questions asked
+  if (hasCustomQs && askedCustomQs === 0) {
+    console.log("CRITICAL: Has custom questions but none have been asked yet - returning false");
+    return false;
+  }
   
   // List unanswered questions for debugging
   const unansweredQuestions = questions.filter(q => !q.asked);

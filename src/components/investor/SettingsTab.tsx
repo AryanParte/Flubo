@@ -84,7 +84,7 @@ const VerificationTab = () => {
               <div>
                 <h3 className="font-medium text-lg flex items-center">
                   Verified Account
-                  <AccountVerificationBadge verified size="md" />
+                  <AccountVerificationBadge verified size="md" userId={user?.id} />
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Your account was verified on {verifiedAt && new Date(verifiedAt).toLocaleDateString()} as an {verifiedType}

@@ -25,6 +25,14 @@ type Database = {
           image_url?: string | null;
         }
       }
+    },
+    Profiles: {
+      Row: {
+        id: string;
+        name: string | null;
+        user_type: string;
+        company: string | null;
+      }
     }
   }
 }
@@ -45,6 +53,16 @@ export function FeedTab() {
   const fetchPosts = useCallback(async (filter: string) => {
     setIsLoading(true);
     try {
+      // Define a more specific type for the query result
+      type PostWithProfile = PostType & {
+        profiles: {
+          id: string;
+          name: string | null;
+          user_type: string;
+          company: string | null;
+        } | null;
+      };
+
       let query = supabase
         .from('posts')
         .select(`
@@ -52,7 +70,8 @@ export function FeedTab() {
           profiles:user_id (
             id,
             name,
-            user_type
+            user_type,
+            company
           )
         `);
 
@@ -93,7 +112,9 @@ export function FeedTab() {
         return;
       }
 
-      setPosts(data || []);
+      // Cast the data to the more specific type
+      const typedData = data as PostWithProfile[];
+      setPosts(typedData || []);
     } catch (error) {
       console.error("Error in fetchPosts:", error);
     } finally {
@@ -884,6 +905,7 @@ export function FeedTab() {
                   id: post.user_id,
                   name: post.profiles?.name || "Unknown User",
                   role: post.profiles?.user_type || "User",
+                  company: post.profiles?.company || null,
                   avatar: "/placeholder.svg",
                 }}
                 content={post.content}
@@ -929,6 +951,7 @@ export function FeedTab() {
                   id: post.user_id,
                   name: post.profiles?.name || "Unknown User",
                   role: post.profiles?.user_type || "User",
+                  company: post.profiles?.company || null,
                   avatar: "/placeholder.svg",
                 }}
                 content={post.content}
@@ -979,6 +1002,7 @@ export function FeedTab() {
                   id: post.user_id,
                   name: post.profiles?.name || "Unknown User",
                   role: post.profiles?.user_type || "User",
+                  company: post.profiles?.company || null,
                   avatar: "/placeholder.svg",
                 }}
                 content={post.content}

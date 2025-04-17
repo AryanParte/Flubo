@@ -1,4 +1,3 @@
-
 export interface Startup {
   id: string;
   name: string;
@@ -14,6 +13,10 @@ export interface Startup {
   demoUrl?: string;
   demoVideo?: string;
   demoVideoPath?: string;
+  pitchdeckUrl?: string;
+  pitchdeckPath?: string;
+  pitchdeckFileType?: string;
+  pitchdeckIsPublic?: boolean;
   score?: number;
   raisedAmount?: string;
   lookingForFunding?: boolean;

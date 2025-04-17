@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { Home, MessageSquare, LogOut, Settings, UserCheck, Menu, X } from "lucide-react";
+import { Home, MessageSquare, LogOut, Settings, UserCheck, Menu, X, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +21,7 @@ export function Navbar() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -32,7 +32,7 @@ export function Navbar() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("name, user_type, verified")
+          .select("name, user_type, verified, email")
           .eq("id", user.id)
           .single();
 
@@ -44,7 +44,13 @@ export function Navbar() {
         if (data) {
           setUserName(data.name);
           setUserType(data.user_type);
-          setVerified(data.verified || false);
+          setUserEmail(data.email);
+          // Don't show verification badge for user with email aryanp1117@gmail.com
+          if (data.email === "aryanp1117@gmail.com") {
+            setVerified(false);
+          } else {
+            setVerified(data.verified || false);
+          }
         }
       } catch (error) {
         console.error("Error in fetchUserProfile:", error);
@@ -136,6 +142,19 @@ export function Navbar() {
                 >
                   <MessageSquare size={20} />
                 </NavLink>
+                <NavLink
+                  to={getProfilePath()}
+                  className={({ isActive }) =>
+                    `p-2 rounded-md flex items-center justify-center transition-colors ${
+                      isActive
+                        ? "text-accent bg-accent/10"
+                        : "text-foreground/70 hover:text-foreground hover:bg-accent/5"
+                    }`
+                  }
+                  title="Profile"
+                >
+                  <User size={20} />
+                </NavLink>
               </>
             ) : (
               <>
@@ -201,7 +220,7 @@ export function Navbar() {
                       </Avatar>
                       {verified && (
                         <div className="absolute bottom-0 right-0">
-                          <AccountVerificationBadge verified={true} size="sm" />
+                          <AccountVerificationBadge verified={true} size="sm" userId={user.id} />
                         </div>
                       )}
                     </Button>
@@ -209,7 +228,7 @@ export function Navbar() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel className="flex items-center gap-2">
                       <span>{userName || user.email}</span>
-                      {verified && <AccountVerificationBadge verified={true} size="sm" />}
+                      {verified && <AccountVerificationBadge verified={true} size="sm" userId={user.id} />}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
@@ -277,6 +296,14 @@ export function Navbar() {
                 >
                   <MessageSquare size={20} />
                   <span className="text-xs mt-1">Messages</span>
+                </Link>
+                <Link
+                  to={getProfilePath()}
+                  className="flex flex-col items-center p-2 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/5"
+                  onClick={toggleMenu}
+                >
+                  <User size={20} />
+                  <span className="text-xs mt-1">Profile</span>
                 </Link>
                 
                 {!verified && (

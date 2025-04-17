@@ -95,7 +95,7 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold">{investor.name}</h3>
-                {investor.verified && <AccountVerificationBadge verified />}
+                {investor.verified && <AccountVerificationBadge verified userId={investor.id} />}
               </div>
               
               <p className="text-muted-foreground mb-3">{investor.role} at {investor.company}</p>
@@ -161,8 +161,10 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
       </Card>
 
       <Dialog open={chatDialogOpen} onOpenChange={setChatDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0 bg-background border-border" 
-          onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent 
+          className="sm:max-w-[800px] h-[80vh] max-h-[80vh] overflow-hidden flex flex-col p-0 gap-0 bg-background border-border" 
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <DialogTitle>Chat with {investor.name}'s AI Persona</DialogTitle>
