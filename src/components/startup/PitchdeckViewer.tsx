@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, ZoomIn, ZoomOut, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase-client-helper";
 
 interface PitchdeckViewerProps {
   filePath: string;
@@ -25,39 +27,54 @@ export const PitchdeckViewer: React.FC<PitchdeckViewerProps> = ({
   const [viewerType, setViewerType] = useState<'pdf' | 'pptx' | 'external'>('pdf');
 
   useEffect(() => {
-    if (fileUrl) {
-      // Using external URL
-      setViewerUrl(fileUrl);
-      setViewerType('external');
-      setLoading(false);
-      return;
-    }
+    const loadDocument = async () => {
+      try {
+        setLoading(true);
+        
+        if (fileUrl) {
+          // Using external URL
+          setViewerUrl(fileUrl);
+          setViewerType('external');
+          setLoading(false);
+          return;
+        }
 
-    if (!filePath) {
-      setError("No file path provided");
-      setLoading(false);
-      return;
-    }
+        if (!filePath) {
+          setError("No file path provided");
+          setLoading(false);
+          return;
+        }
 
-    const fileExt = filePath.split('.').pop()?.toLowerCase();
-    
-    // Get the public URL from Supabase storage
-    const { data } = supabase.storage.from('pitchdecks').getPublicUrl(filePath);
-    const publicUrl = data.publicUrl;
+        console.log("Loading pitchdeck from path:", filePath);
+        const fileExt = filePath.split('.').pop()?.toLowerCase();
+        
+        // Get the public URL from Supabase storage
+        const client = getSupabaseClient();
+        const { data } = client.storage.from('pitchdecks').getPublicUrl(filePath);
+        const publicUrl = data.publicUrl;
+        console.log("Public URL:", publicUrl);
 
-    if (fileExt === 'pdf') {
-      setViewerType('pdf');
-      setViewerUrl(`${publicUrl}#page=${currentPage}`);
-    } else if (fileExt === 'pptx' || fileExt === 'ppt') {
-      setViewerType('pptx');
-      // For PowerPoint files, we'll use the Microsoft Office Online Viewer
-      const encodedUrl = encodeURIComponent(publicUrl);
-      setViewerUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`);
-    } else {
-      setError("Unsupported file type");
-    }
+        if (fileExt === 'pdf') {
+          setViewerType('pdf');
+          // For PDF files, use PDF.js or direct embed with page parameter
+          setViewerUrl(`${publicUrl}#page=${currentPage}`);
+        } else if (fileExt === 'pptx' || fileExt === 'ppt') {
+          setViewerType('pptx');
+          // For PowerPoint files, use the Microsoft Office Online Viewer
+          const encodedUrl = encodeURIComponent(publicUrl);
+          setViewerUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`);
+        } else {
+          setError("Unsupported file type");
+        }
+      } catch (err) {
+        console.error("Error loading document:", err);
+        setError(err instanceof Error ? err.message : "Failed to load document");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setLoading(false);
+    loadDocument();
   }, [filePath, fileUrl, currentPage]);
 
   // Handle next/previous page navigation (only works for PDFs)
@@ -78,7 +95,7 @@ export const PitchdeckViewer: React.FC<PitchdeckViewerProps> = ({
   const zoomOut = () => setZoom(Math.max(zoom - 25, 50));
 
   // Handle document load events (for PDF to get page count)
-  const handleDocumentLoad = (event: any) => {
+  const handleDocumentLoad = (event: React.SyntheticEvent<HTMLIFrameElement>) => {
     try {
       // Try to access the iframe's content to get page count for PDFs
       const iframe = event.target as HTMLIFrameElement;
@@ -202,4 +219,4 @@ export const PitchdeckViewer: React.FC<PitchdeckViewerProps> = ({
       </div>
     </div>
   );
-}; 
+};

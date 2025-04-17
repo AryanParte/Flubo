@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -345,6 +344,8 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
         throw new Error("You must be logged in to update privacy settings");
       }
 
+      console.log("Updating pitchdeck visibility to:", isPublic);
+
       // Update the visibility in the database
       const { error: updateError } = await supabase
         .from('startup_profiles')
@@ -355,6 +356,7 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
         .eq('id', session.user.id);
         
       if (updateError) {
+        console.error("Error updating pitchdeck visibility:", updateError);
         throw updateError;
       }
       
@@ -378,7 +380,7 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
   };
 
   // Handle opening preview
-  const handleOpenPreview = async () => {
+  const handleOpenPreview = () => {
     if (pitchdeckPath) {
       setPreviewOpen(true);
     } else if (pitchdeckUrl) {
@@ -447,7 +449,7 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
 
   // Update the icon in the display based on file type
   const getFileIcon = () => {
-    if (pitchdeckFileType.includes('powerpoint')) {
+    if (pitchdeckFileType && pitchdeckFileType.includes('powerpoint')) {
       return <FileText className="h-5 w-5 text-orange-500" />;
     }
     return <FileText className="h-5 w-5 text-primary" />;
