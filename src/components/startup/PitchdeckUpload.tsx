@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Upload, FileText, Link, Eye, EyeOff, ExternalLink, Trash } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase-client-helper";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PitchdeckViewer } from "./PitchdeckViewer";
@@ -220,7 +221,11 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
           if (uploadError) {
             console.error(`Upload attempt ${attempts} failed:`, uploadError);
             console.error("Error message:", uploadError.message);
-            setDebugInfo(`Upload error: ${uploadError.message}`);
+            
+            // Fix: Use correct error properties
+            if (uploadError.message) {
+              setDebugInfo(`Upload error: ${uploadError.message}`);
+            }
             
             lastError = uploadError;
             if (attempts === maxAttempts) {
@@ -271,7 +276,8 @@ export const PitchdeckUpload: React.FC<PitchdeckUploadProps> = ({
       onPitchdeckChange('pitchdeckUrl', '');
       
       // Get the URL to the uploaded file for potential public sharing
-      const { data: urlData } = supabase.storage
+      const client = getSupabaseClient();
+      const { data: urlData } = client.storage
         .from('pitchdecks')
         .getPublicUrl(filePath);
       
