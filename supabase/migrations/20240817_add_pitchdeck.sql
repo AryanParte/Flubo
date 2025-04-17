@@ -1,3 +1,4 @@
+
 -- Add pitchdeck fields to startup_profiles table
 ALTER TABLE public.startup_profiles 
 ADD COLUMN IF NOT EXISTS pitchdeck_url TEXT,

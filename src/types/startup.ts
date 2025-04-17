@@ -1,3 +1,4 @@
+
 export interface Startup {
   id: string;
   name: string;
@@ -22,6 +23,7 @@ export interface Startup {
   lookingForFunding?: boolean;
   lookingForDesignPartner?: boolean;
   stealthMode?: boolean;
+  verified?: boolean;
   
   // AI match specific fields
   chatId?: string;
