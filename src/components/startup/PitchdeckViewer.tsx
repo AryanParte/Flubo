@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, ZoomIn, ZoomOut, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { getSupabaseClient } from "@/lib/supabase-client-helper";
 
 interface PitchdeckViewerProps {
@@ -48,23 +47,34 @@ export const PitchdeckViewer: React.FC<PitchdeckViewerProps> = ({
         console.log("Loading pitchdeck from path:", filePath);
         const fileExt = filePath.split('.').pop()?.toLowerCase();
         
-        // Get the public URL from Supabase storage
+        // Get the public URL from Supabase storage using the helper
         const client = getSupabaseClient();
-        const { data } = client.storage.from('pitchdecks').getPublicUrl(filePath);
-        const publicUrl = data.publicUrl;
-        console.log("Public URL:", publicUrl);
+        
+        try {
+          const { data } = client.storage.from('pitchdecks').getPublicUrl(filePath);
+          
+          if (!data || !data.publicUrl) {
+            throw new Error("Failed to get public URL for file");
+          }
+          
+          const publicUrl = data.publicUrl;
+          console.log("Public URL:", publicUrl);
 
-        if (fileExt === 'pdf') {
-          setViewerType('pdf');
-          // For PDF files, use PDF.js or direct embed with page parameter
-          setViewerUrl(`${publicUrl}#page=${currentPage}`);
-        } else if (fileExt === 'pptx' || fileExt === 'ppt') {
-          setViewerType('pptx');
-          // For PowerPoint files, use the Microsoft Office Online Viewer
-          const encodedUrl = encodeURIComponent(publicUrl);
-          setViewerUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`);
-        } else {
-          setError("Unsupported file type");
+          if (fileExt === 'pdf') {
+            setViewerType('pdf');
+            // For PDF files, use direct embed with page parameter
+            setViewerUrl(`${publicUrl}#page=${currentPage}`);
+          } else if (fileExt === 'pptx' || fileExt === 'ppt') {
+            setViewerType('pptx');
+            // For PowerPoint files, use the Microsoft Office Online Viewer
+            const encodedUrl = encodeURIComponent(publicUrl);
+            setViewerUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`);
+          } else {
+            setError(`Unsupported file type: ${fileExt}`);
+          }
+        } catch (err) {
+          console.error("Error getting public URL:", err);
+          setError("Failed to get file URL");
         }
       } catch (err) {
         console.error("Error loading document:", err);
