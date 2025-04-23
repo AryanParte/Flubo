@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,12 +101,10 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                 <h3 className="text-lg font-semibold">{investor.name}</h3>
                 
                 {/* Original verification badge */}
-                {investor.verified && (
-                  <AccountVerificationBadge 
-                    verified={investor.verified} 
-                    userId={investor.id} 
-                  />
-                )}
+                <AccountVerificationBadge 
+                  verified={investor?.verified} 
+                  userId={investor?.id} 
+                />
                 
                 {/* Temporary hardcoded verification badge for testing */}
                 {investor.verified && (
