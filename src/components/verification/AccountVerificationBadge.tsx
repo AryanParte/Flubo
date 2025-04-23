@@ -13,45 +13,42 @@ interface AccountVerificationBadgeProps {
 }
 
 export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> = ({
-  verified = true,
+  verified = false,  // Default to false if not explicitly set
   showText = true,
   size = "md",
   className,
   userId
 }) => {
-  const [shouldShow, setShouldShow] = useState(verified);
+  const [isVerified, setIsVerified] = useState(verified);
   
   useEffect(() => {
-    // If userId is provided, check if it's the specific user to exclude
-    const checkUser = async () => {
-      if (!userId) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', userId)
-          .single();
+    const checkVerificationStatus = async () => {
+      if (userId) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('verified')
+            .eq('id', userId)
+            .single();
           
-        if (error) {
-          console.error("Error checking user:", error);
-          return;
+          if (data) {
+            setIsVerified(data.verified ?? false);
+          }
+          
+          if (error) {
+            console.error("Error checking verification status:", error);
+          }
+        } catch (error) {
+          console.error("Unexpected error checking verification:", error);
         }
-        
-        // Don't show badge for user with email aryanp1117@gmail.com
-        if (data?.email === 'aryanp1117@gmail.com') {
-          setShouldShow(false);
-        }
-      } catch (error) {
-        console.error("Error in AccountVerificationBadge:", error);
       }
     };
     
-    checkUser();
+    checkVerificationStatus();
   }, [userId]);
   
-  // If not verified or it's the specific user, don't render anything
-  if (!shouldShow) return null;
+  // Don't render anything if not verified
+  if (!isVerified) return null;
   
   const sizeClasses = {
     sm: "h-3 w-3",
