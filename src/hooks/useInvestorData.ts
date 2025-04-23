@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -92,7 +93,7 @@ export const useInvestorData = () => {
       // Fetch all profiles with user_type = 'investor'
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, name, email, company, position, user_type')
+        .select('id, name, email, company, position, user_type, verified, avatar_url')
         .eq('user_type', 'investor');
       
       if (profilesError) throw profilesError;
@@ -135,6 +136,9 @@ export const useInvestorData = () => {
         // Get AI chat match score if it exists
         const aiMatchScore = aiMatchScoresMap.get(investor.id);
         
+        // Log each investor's verification status
+        console.log(`Fetched investor ${investor.name} (${investor.id}) verified:`, investor.verified);
+        
         return {
           id: investor.id,
           name: investor.name || 'Unknown Investor',
@@ -154,7 +158,9 @@ export const useInvestorData = () => {
             : preferences?.min_investment
               ? `${preferences.min_investment}+`
               : undefined,
-          match_score: aiMatchScore || null
+          match_score: aiMatchScore || null,
+          verified: investor.verified || false,
+          avatar_url: investor.avatar_url
         };
       }) || [];
       

@@ -83,6 +83,8 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
         setProfile({ ...profileData, ...additionalData });
         
         await loadFollowData(userId);
+        
+        console.log('ProfilePreview - User verified?', userId, profileData.name, profileData.verified);
       } catch (error) {
         console.error("Error in fetchProfileData:", error);
       } finally {

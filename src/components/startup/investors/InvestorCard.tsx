@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +45,9 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [matchSummary, setMatchSummary] = useState<string | null>(null);
+  
+  // Log verification status for debugging
+  console.log('InvestorCard - Investor verified?', investor.id, investor.name, investor.verified);
   
   const handleStartChat = () => {
     setChatDialogOpen(true);
@@ -95,7 +99,7 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold">{investor.name}</h3>
-                {investor.verified && <AccountVerificationBadge verified userId={investor.id} />}
+                {investor.verified && <AccountVerificationBadge verified={investor.verified} userId={investor.id} />}
               </div>
               
               <p className="text-muted-foreground mb-3">{investor.role} at {investor.company}</p>

@@ -25,13 +25,16 @@ export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> =
     const checkVerificationStatus = async () => {
       if (userId) {
         try {
+          console.log(`AccountVerificationBadge: Checking verification for user ${userId}, initial verified state:`, verified);
+          
           const { data, error } = await supabase
             .from('profiles')
-            .select('verified')
+            .select('verified, email')
             .eq('id', userId)
             .single();
           
           if (data) {
+            console.log(`AccountVerificationBadge: User ${userId} verification from DB:`, data.verified, "Email:", data.email);
             setIsVerified(data.verified ?? false);
           }
           
@@ -41,14 +44,23 @@ export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> =
         } catch (error) {
           console.error("Unexpected error checking verification:", error);
         }
+      } else {
+        // If userId is not provided, use the passed prop
+        console.log(`AccountVerificationBadge: No userId provided, using passed verified prop:`, verified);
+        setIsVerified(verified);
       }
     };
     
     checkVerificationStatus();
-  }, [userId]);
+  }, [userId, verified]);
   
   // Don't render anything if not verified
-  if (!isVerified) return null;
+  if (!isVerified) {
+    console.log(`AccountVerificationBadge: Not rendering badge for user ${userId || 'unknown'} as isVerified is:`, isVerified);
+    return null;
+  }
+  
+  console.log(`AccountVerificationBadge: Rendering badge for user ${userId || 'unknown'}`);
   
   const sizeClasses = {
     sm: "h-3 w-3",

@@ -35,6 +35,17 @@ export const InvestorList = ({
   const [activeTab, setActiveTab] = useState<string>("all");
   const [displayedInvestors, setDisplayedInvestors] = useState(filteredInvestors);
 
+  useEffect(() => {
+    // Log verification status of all investors
+    console.log('InvestorList - All investors verification status:', 
+      filteredInvestors.map(inv => ({ 
+        id: inv.id, 
+        name: inv.name, 
+        verified: inv.verified 
+      }))
+    );
+  }, [filteredInvestors]);
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     
@@ -69,10 +80,16 @@ export const InvestorList = ({
     );
   }
   
-  const updatedDisplayedInvestors = displayedInvestors.map(investor => ({
-    ...investor,
-    verified: investor.verified ?? false
-  }));
+  // Ensure the verified property is properly set
+  const updatedDisplayedInvestors = displayedInvestors.map(investor => {
+    // Log each investor's verification status
+    console.log(`Investor ${investor.name} (${investor.id}) verified:`, investor.verified);
+    
+    return {
+      ...investor,
+      verified: investor.verified ?? false
+    };
+  });
   
   return (
     <div className="space-y-6">

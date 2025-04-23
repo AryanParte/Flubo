@@ -33,6 +33,11 @@ export const SharedPostPreview = ({
     navigate(`/post/${postId}`);
   };
   
+  // Add console log to check verification status
+  if (author) {
+    console.log('SharedPostPreview - Author verified?', author.id, author.name, author.verified);
+  }
+  
   return (
     <Card 
       className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${compact ? 'mt-1' : 'mt-2'}`}
@@ -53,6 +58,7 @@ export const SharedPostPreview = ({
                 verified={author.verified} 
                 userId={author.id}
                 size="sm" 
+                showText={false}
               />
             )}
           </div>
