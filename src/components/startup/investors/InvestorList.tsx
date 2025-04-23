@@ -1,10 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Search, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorCard } from "./InvestorCard";
 import { EmptyState } from "./EmptyState";
-import { useInvestorData } from "../../../../hooks/useInvestorData";
+import { useInvestorData } from "@/hooks/useInvestorData";
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
 interface InvestorListProps {
