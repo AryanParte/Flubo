@@ -1,11 +1,11 @@
-
 import { useEffect, useState } from "react";
 import { Search, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorCard } from "./InvestorCard";
 import { EmptyState } from "./EmptyState";
-import { useInvestorData } from "../../../hooks/useInvestorData";
+import { useInvestorData } from "../../../../hooks/useInvestorData";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
 interface InvestorListProps {
   showSearch?: boolean;
@@ -37,7 +37,6 @@ export const InvestorList = ({
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     
-    // Filter investors based on tab selection
     if (value === "all") {
       setDisplayedInvestors(filteredInvestors);
     } else if (value === "angel") {
@@ -56,13 +55,10 @@ export const InvestorList = ({
     }
   };
   
-  // Update displayed investors when filtered investors change
   useEffect(() => {
-    // Maintain current tab filter when search results change
     handleTabChange(activeTab);
   }, [filteredInvestors]);
   
-  // If loading and not refreshing, show loading state
   if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -71,6 +67,11 @@ export const InvestorList = ({
       </div>
     );
   }
+  
+  const updatedDisplayedInvestors = displayedInvestors.map(investor => ({
+    ...investor,
+    verified: investor.verified ?? false
+  }));
   
   return (
     <div className="space-y-6">
@@ -114,12 +115,15 @@ export const InvestorList = ({
           </Tabs>
         )}
         
-        {displayedInvestors.length > 0 ? (
+        {updatedDisplayedInvestors.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayedInvestors.map((investor) => (
+            {updatedDisplayedInvestors.map((investor) => (
               <InvestorCard 
                 key={investor.id} 
-                investor={investor} 
+                investor={{
+                  ...investor,
+                  verified: investor.verified
+                }} 
                 onShowFollowers={onShowFollowers}
                 onShowFollowing={onShowFollowing}
               />

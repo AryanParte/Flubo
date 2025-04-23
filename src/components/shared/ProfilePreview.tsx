@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 import { 
   Calendar, 
   Mail, 
@@ -20,7 +21,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useFollowUser } from "@/hooks/useFollowUser";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
 interface ProfilePreviewProps {
   userId: string;
@@ -44,7 +44,6 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
     const fetchProfileData = async () => {
       setLoading(true);
       try {
-        // Fetch basic profile data
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -56,10 +55,8 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
           return;
         }
 
-        // Check user type and fetch additional data
         let additionalData = {};
         if (profileData.user_type === "investor") {
-          // Fetch investor preferences
           const { data: investorPrefs, error: prefsError } = await supabase
             .from("investor_preferences")
             .select("*")
@@ -85,7 +82,6 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
 
         setProfile({ ...profileData, ...additionalData });
         
-        // Load follow data
         await loadFollowData(userId);
       } catch (error) {
         console.error("Error in fetchProfileData:", error);
@@ -153,7 +149,10 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
             <div>
               <h3 className="font-semibold text-xl flex items-center gap-1.5">
                 {profile.name}
-                <AccountVerificationBadge verified={profile.verified} userId={profile.id} />
+                <AccountVerificationBadge 
+                  verified={profile.verified} 
+                  userId={profile.id} 
+                />
               </h3>
               <p className="text-muted-foreground">{profile.user_type === "startup" ? "Business" : "Investor"}</p>
               
@@ -231,10 +230,8 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
         </CardFooter>
       </Card>
       
-      {/* Additional Investor Information */}
       {isInvestor && (
         <>
-          {/* Investment Criteria */}
           <Card className="w-full">
             <CardContent className="p-6">
               <h3 className="font-semibold text-lg mb-4">Investment Criteria</h3>
@@ -273,7 +270,6 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
             </CardContent>
           </Card>
           
-          {/* Investment Portfolio */}
           <Card className="w-full">
             <CardContent className="p-6">
               <h3 className="font-semibold text-lg mb-4">Investment Portfolio</h3>
@@ -295,7 +291,6 @@ export function ProfilePreview({ userId }: ProfilePreviewProps) {
             </CardContent>
           </Card>
           
-          {/* Investment Preferences */}
           <Card className="w-full">
             <CardContent className="p-6">
               <h3 className="font-semibold text-lg mb-4">Investment Preferences</h3>
