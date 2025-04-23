@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { UserCheck } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
@@ -54,6 +54,9 @@ export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> =
     checkVerificationStatus();
   }, [userId, verified]);
   
+  // Add additional logging to debug rendering
+  console.log(`AccountVerificationBadge: Will render? isVerified=${isVerified}`);
+  
   // Don't render anything if not verified
   if (!isVerified) {
     console.log(`AccountVerificationBadge: Not rendering badge for user ${userId || 'unknown'} as isVerified is:`, isVerified);
@@ -74,10 +77,11 @@ export const AccountVerificationBadge: React.FC<AccountVerificationBadgeProps> =
     lg: "text-base",
   };
   
+  // Use a simpler badge design to ensure visibility
   return (
     <div className={cn("inline-flex items-center gap-1", className)}>
-      <div className="bg-accent/10 p-0.5 rounded-full flex items-center justify-center">
-        <UserCheck className={cn("text-accent", sizeClasses[size])} />
+      <div className="bg-blue-500 p-0.5 rounded-full flex items-center justify-center">
+        <Check className={cn("text-white", sizeClasses[size])} />
       </div>
       {showText && (
         <span className={cn("text-muted-foreground font-medium", textClasses[size])}>

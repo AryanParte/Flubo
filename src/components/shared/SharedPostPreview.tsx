@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Check } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { AccountVerificationBadge } from "@/components/verification/AccountVerificationBadge";
 
@@ -53,6 +53,8 @@ export const SharedPostPreview = ({
           </Avatar>
           <div className="flex items-center space-x-1">
             <span className="text-xs font-medium">{author.name}</span>
+            
+            {/* Original verification badge */}
             {author.verified && (
               <AccountVerificationBadge 
                 verified={author.verified} 
@@ -60,6 +62,17 @@ export const SharedPostPreview = ({
                 size="sm" 
                 showText={false}
               />
+            )}
+            
+            {/* Temporary hardcoded verification badge for testing */}
+            {author.verified && (
+              <div className="inline-flex items-center" title="Verified Account">
+                <div className="bg-blue-500 p-0.5 rounded-full flex items-center justify-center">
+                  <Check className="h-3 w-3 text-white" />
+                </div>
+                {/* Unicode check mark as alternative */}
+                <span className="ml-1 text-blue-500 text-xs">✓</span>
+              </div>
             )}
           </div>
         </div>

@@ -11,7 +11,8 @@ import {
   DollarSign, 
   Briefcase, 
   ArrowLeft,
-  X 
+  X,
+  Check 
 } from "lucide-react";
 import { type Investor } from "@/types/investor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -99,7 +100,23 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold">{investor.name}</h3>
-                {investor.verified && <AccountVerificationBadge verified={investor.verified} userId={investor.id} />}
+                
+                {/* Original verification badge */}
+                {investor.verified && (
+                  <AccountVerificationBadge 
+                    verified={investor.verified} 
+                    userId={investor.id} 
+                  />
+                )}
+                
+                {/* Temporary hardcoded verification badge for testing */}
+                {investor.verified && (
+                  <div className="inline-flex items-center ml-1" title="Verified Account">
+                    <div className="bg-blue-500 p-0.5 rounded-full flex items-center justify-center">
+                      <Check className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                )}
               </div>
               
               <p className="text-muted-foreground mb-3">{investor.role} at {investor.company}</p>
