@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +10,6 @@ import {
   DollarSign, 
   Briefcase, 
   ArrowLeft,
-  X,
   Check,
   Sparkle
 } from "lucide-react";
@@ -182,9 +180,6 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                 Chat with {investor.name}'s AI Persona
                 <Sparkle size={14} className="text-purple-500 ml-1" />
               </DialogTitle>
-              <Button variant="ghost" size="icon" onClick={handleCloseChat} className="h-8 w-8">
-                <X size={18} />
-              </Button>
             </div>
             <DialogDescription>
               This is a conversational AI assistant powered by OpenAI that simulates how {investor.name} would evaluate your startup.
