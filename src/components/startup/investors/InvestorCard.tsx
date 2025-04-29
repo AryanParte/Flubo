@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,8 +11,7 @@ import {
   Briefcase, 
   ArrowLeft,
   X,
-  Check,
-  Sparkles 
+  Check 
 } from "lucide-react";
 import { type Investor } from "@/types/investor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -102,6 +100,7 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold">{investor.name}</h3>
                 
+                {/* Original verification badge */}
                 <AccountVerificationBadge 
                   verified={investor?.verified} 
                   userId={investor?.id} 
@@ -171,7 +170,7 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                   onClick={handleStartChat}
                 >
                   <MessageSquare size={16} />
-                  <span className="flex items-center gap-1">Chat with AI assistant <span className="text-xs opacity-80 flex items-center"><Sparkles size={12} className="mr-1" /> Powered by OpenAI</span></span>
+                  <span>Chat with AI assistant</span>
                 </Button>
               </div>
             </div>
@@ -191,10 +190,8 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                 <X size={18} />
               </Button>
             </div>
-            <DialogDescription className="flex items-center gap-1">
-              <span>This is a simulated conversation with {investor.name} powered by</span>
-              <Sparkles size={16} className="text-yellow-500" />
-              <span className="font-medium">OpenAI GPT</span>
+            <DialogDescription>
+              This is a simulated conversation with {investor.name} powered by AI.
             </DialogDescription>
           </DialogHeader>
           
