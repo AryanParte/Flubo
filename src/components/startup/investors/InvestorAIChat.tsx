@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Loader2 } from "lucide-react";
-import { ArrowLeft } from "lucide-react";
+import { Loader2, Sparkle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getSupabaseClient } from "@/lib/supabase-client-helper";
 
@@ -34,14 +33,20 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const savedChatId = useRef<string | null>(null);
   
-  // Track custom questions progress in the conversation
-  const [questionProgress, setQuestionProgress] = useState<{
+  // Track conversation progress
+  const [conversationProgress, setConversationProgress] = useState<{
     customQuestionsAsked: number;
     totalCustomQuestions: number;
-    defaultQuestionsAsked: number;
-    totalDefaultQuestions: number;
-    nextQuestionIsCustom: boolean;
-  } | null>(null);
+    topicsCovered: string[];
+    topicsRemaining: string[];
+    allTopicsCovered: boolean;
+  }>({
+    customQuestionsAsked: 0,
+    totalCustomQuestions: 0,
+    topicsCovered: [],
+    topicsRemaining: [],
+    allTopicsCovered: false
+  });
   
   useEffect(() => {
     const fetchExistingChat = async () => {
@@ -105,16 +110,21 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             
             setMessages(formattedMessages);
             
+            // If last message was from AI and chat is marked completed, double-check
             if (formattedMessages.length > 0 && 
                 formattedMessages[formattedMessages.length - 1].sender_type === "ai" &&
                 existingChat.completed) {
-              console.log("Last message is from AI, chat should not be completed");
-              await supabase
-                .from('ai_persona_chats')
-                .update({ completed: false })
-                .eq('id', existingChat.id);
-              
-              setChatCompleted(false);
+              // Check if this appears to be a question (ends with ?)
+              const lastMsg = formattedMessages[formattedMessages.length - 1].content;
+              if (lastMsg.trim().endsWith('?')) {
+                console.log("Last message is from AI and contains a question, chat should not be completed");
+                await supabase
+                  .from('ai_persona_chats')
+                  .update({ completed: false })
+                  .eq('id', existingChat.id);
+                
+                setChatCompleted(false);
+              }
             }
           }
         }
@@ -134,52 +144,11 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
     }
   }, [messages]);
   
-  // Debug function to check if custom questions are being asked
-  const checkCustomQuestionsProgress = useCallback((response: any) => {
-    if (response && typeof response === 'object') {
-      const customQuestionsAsked = response.customQuestionsAsked || 0;
-      const totalCustomQuestions = response.totalCustomQuestions || 0;
-      const defaultQuestionsAsked = response.defaultQuestionsAsked || 0;
-      const totalDefaultQuestions = response.totalDefaultQuestions || 0;
-      const nextQuestionIsCustom = response.remainingQuestions?.length > 0 ? 
-        response.remainingQuestions[0]?.isCustom : false;
-        
-      setQuestionProgress({
-        customQuestionsAsked,
-        totalCustomQuestions,
-        defaultQuestionsAsked,
-        totalDefaultQuestions,
-        nextQuestionIsCustom
-      });
-      
-      console.log("Question progress:", {
-        custom: `${customQuestionsAsked}/${totalCustomQuestions}`,
-        default: `${defaultQuestionsAsked}/${totalDefaultQuestions}`,
-        nextIsCustom: nextQuestionIsCustom
-      });
-      
-      return totalCustomQuestions > 0 && customQuestionsAsked > 0;
-    }
-    return false;
-  }, []);
-  
   // Efficiently prepare persona settings
   const preparePersonaSettings = useCallback(async (investorId: string) => {
     console.log(`Fetching persona settings for investor ${investorId}`);
     
-    // FIX: First verify this investor explicitly by checking if they exist in the settings table
-    const { count, error: countError } = await supabase
-      .from('investor_ai_persona_settings')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', investorId);
-    
-    if (countError) {
-      console.error("Error checking if investor has persona settings:", countError.message);
-    } else {
-      console.log(`Found ${count} persona settings records for investor ${investorId}`);
-    }
-    
-    // Now fetch the full settings
+    // Fetch the full settings
     const { data: personaSettings, error: settingsError } = await supabase
       .from('investor_ai_persona_settings')
       .select('*')
@@ -193,29 +162,23 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
     
     // Check if we found persona settings
     if (!personaSettings) {
-      // This investor doesn't have custom questions configured
-      console.error(`NO PERSONA SETTINGS FOUND for investor ${investorId}. They need to configure custom questions in settings.`);
+      console.log(`No persona settings found for investor ${investorId}`);
       return null;
     }
     
     console.log("Found persona settings with ID:", personaSettings.id);
-    console.log("Raw personaSettings:", JSON.stringify(personaSettings));
-    console.log("Custom questions count before processing:", personaSettings?.custom_questions?.length || 0);
-    
-    if (!personaSettings.custom_questions || personaSettings.custom_questions.length === 0) {
-      console.warn("Investor has settings but NO CUSTOM QUESTIONS configured");
-    }
+    console.log("Custom questions count:", personaSettings?.custom_questions?.length || 0);
     
     // Create a deep clone to avoid modifying the original
     const settingsCopy = JSON.parse(JSON.stringify(personaSettings));
     
-    // Process custom questions - CRITICAL FIX: Ensure custom questions are properly formatted
+    // Process custom questions - ensure they are properly formatted
     if (settingsCopy.custom_questions) {
       if (!Array.isArray(settingsCopy.custom_questions)) {
         console.warn("Custom questions is not an array, fixing");
         settingsCopy.custom_questions = [];
       } else {
-        // CRITICAL FIX: Ensure we only keep valid, enabled questions with the correct format
+        // Ensure we only keep valid questions with the correct format
         const validQuestions = settingsCopy.custom_questions
           .filter(q => (
             q && 
@@ -233,10 +196,7 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         settingsCopy.custom_questions = validQuestions;
         
         if (validQuestions.length > 0) {
-          console.log(`FOUND ${validQuestions.length} VALID CUSTOM QUESTIONS FOR THIS INVESTOR:`, 
-            validQuestions.map(q => q.question));
-        } else {
-          console.warn("NO VALID CUSTOM QUESTIONS found for this investor after filtering");
+          console.log(`Found ${validQuestions.length} valid custom questions`);
         }
       }
     }
@@ -300,89 +260,10 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
           content: messageText,
         });
       
-      // Check if this is a brand new chat with no messages and we have custom questions
-      // If so, we'll handle it directly to ensure custom questions are asked first
-      const isNewChat = messages.length === 0;
-      const hasCustomQuestions = personaSettings?.custom_questions && personaSettings.custom_questions.length > 0;
-      
-      if (isNewChat && hasCustomQuestions) {
-        console.log("New chat with custom questions - taking direct control");
-        
-        // Get the first custom question
-        const firstCustomQuestion = personaSettings.custom_questions[0].question;
-        console.log("Directly using first custom question:", firstCustomQuestion);
-        
-        // Create the AI response manually
-        const aiResponse: Message = {
-          id: crypto.randomUUID(),
-          sender_type: "ai",
-          content: firstCustomQuestion,
-          timestamp: new Date().toISOString(),
-        };
-        
-        // Save the response to the database
-        await supabase
-          .from('ai_persona_messages')
-          .insert({
-            chat_id: currentChatId,
-            sender_type: "ai",
-            content: firstCustomQuestion,
-          });
-        
-        // Update the UI
-        setMessages(prev => [...prev, aiResponse]);
-        
-        // Set question progress
-        setQuestionProgress({
-          customQuestionsAsked: 1,
-          totalCustomQuestions: personaSettings.custom_questions.length,
-          defaultQuestionsAsked: 0,
-          totalDefaultQuestions: 5, // Default question count
-          nextQuestionIsCustom: personaSettings.custom_questions.length > 1
-        });
-        
-        // Scroll to bottom and finish
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-        
-        setIsSending(false);
-        return;
-      }
-      
-      // Log persona settings to help debug
-      if (personaSettings && personaSettings.custom_questions && personaSettings.custom_questions.length > 0) {
-        console.log("IMPORTANT: Sending persona settings with custom questions:", 
-          personaSettings.custom_questions.map(q => q.question));
-      } else {
-        console.log("No custom questions available in persona settings");
-      }
-      
-      console.log('Preparing to call AI persona function', {
-        messageLength: messageText.length,
-        chatHistoryLength: messages.length,
-        hasPersonaSettings: !!personaSettings,
-        customQuestionsCount: personaSettings?.custom_questions?.length || 0
-      });
-      
       // Call the edge function
       const functionUrl = "https://vsxnjnvwtgehagxbhdzh.supabase.co/functions/v1/investor-ai-persona";
       
-      // Prepare the payload with additional flags to force custom questions if they exist
-      
-      // CRITICAL FIX: Ensure we're passing persona settings correctly and emphasizing custom questions
-      // Extract just the custom questions to be extra clear
-      const customQuestions = personaSettings?.custom_questions && personaSettings.custom_questions.length > 0 
-        ? personaSettings.custom_questions 
-        : null;
-        
-      if (customQuestions) {
-        console.log("CRITICAL: Found custom questions to include in payload:", 
-          customQuestions.map(q => q.question));
-      } else {
-        console.warn("No custom questions available to send in payload");
-      }
-      
+      // Prepare the payload
       const payload = {
         message: messageText,
         chatHistory: messages,
@@ -392,21 +273,8 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         investorName: investorName,
         startupInfo: startupData,
         chatId: currentChatId,
-        personaSettings: personaSettings,
-        // Force flags to ensure custom questions are prioritized
-        forceCustomQuestions: hasCustomQuestions,
-        prioritizeCustomQuestions: true,
-        // CRITICAL FIX: Add explicit custom_questions field for redundancy
-        custom_questions: customQuestions,
-        debug: true
+        personaSettings: personaSettings
       };
-      
-      console.log("Sending payload with custom question flags:", {
-        forceCustomQuestions: hasCustomQuestions,
-        prioritizeCustomQuestions: true,
-        customQuestionsCount: customQuestions?.length || 0,
-        includesFullPersonaSettings: !!personaSettings
-      });
       
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -429,122 +297,22 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         throw new Error(`API call failed: ${response.status} - ${errorText}`);
       }
 
-      let data;
-      try {
-        data = await response.json();
-        console.log('Received AI response:', data.response);
-        
-        // Enhanced logging of Edge Function response
-        console.log('Edge Function response details:', {
-          hasCustomQuestions: data.hasCustomQuestions,
-          customQuestionsCount: data.customQuestionsCount,
-          customQuestionsAsked: data.customQuestionsAsked,
-          totalCustomQuestions: data.totalCustomQuestions,
-          nextQuestionIsCustom: data.nextQuestionIsCustom,
-          remainingCustomCount: data.remainingCustomCount,
-          isQuestionPending: data.isQuestionPending
-        });
-        
-        // Detailed logging of remaining questions
-        if (data.remainingQuestions && data.remainingQuestions.length > 0) {
-          console.log("Remaining questions from Edge Function:");
-          data.remainingQuestions.slice(0, 3).forEach((q, idx) => {
-            console.log(`  ${idx+1}. "${q.question}" (isCustom: ${q.isCustom})`);
-          });
-        }
-        
-        // Log important information about custom questions
-        if (data.customQuestionsCount > 0) {
-          console.log(`AI reports custom questions: ${data.customQuestionsAsked}/${data.totalCustomQuestions} asked`);
-          if (data.remainingQuestions && data.remainingQuestions.length > 0) {
-            console.log("Next question from AI:", data.remainingQuestions[0].question);
-            console.log("Is next question custom:", data.remainingQuestions[0].isCustom);
-          }
-        } else {
-          console.log("No custom questions reported by Edge Function - using default questions only");
-        }
-      } catch (parseError) {
-        console.error('JSON parsing error:', {
-          error: parseError
-        });
-        throw new Error('Failed to parse API response');
-      }
+      const data = await response.json();
+      console.log('Received AI response:', data);
       
-      // Check if custom questions are being asked
-      const customQuestionsWorking = checkCustomQuestionsProgress(data);
-      console.log(`Custom questions working: ${customQuestionsWorking}`);
-      
-      let aiResponseContent = data.response;
-      
-      // Handle the case where the Edge Function isn't correctly handling custom questions
-      // If we have custom questions but they're not being asked, take control
-      if (personaSettings?.custom_questions && personaSettings.custom_questions.length > 0) {
-        // Calculate how many custom questions have been asked so far
-        const customQuestionsAsked = messages.filter(m => 
-          m.sender_type === 'ai' && 
-          personaSettings.custom_questions.some(q => 
-            m.content.includes(q.question)
-          )
-        ).length;
-        
-        const totalCustomQuestions = personaSettings.custom_questions.length;
-        
-        console.log(`MANUAL TRACKING: ${customQuestionsAsked}/${totalCustomQuestions} custom questions asked so far`);
-        console.log("Custom questions from settings:", personaSettings.custom_questions.map(q => q.question));
-        
-        // Check if the AI response contains a custom question
-        const currentResponseContainsCustomQuestion = personaSettings.custom_questions.some(q => 
-          aiResponseContent.includes(q.question)
-        );
-        
-        console.log(`Current AI response contains custom question: ${currentResponseContainsCustomQuestion}`);
-        
-        // CRITICAL FIX: Always force custom questions to be asked first until all are asked
-        // If we haven't asked all custom questions, check if the next one is being asked
-        if (customQuestionsAsked < totalCustomQuestions) {
-          // If the current response doesn't contain the next custom question, force it
-          if (!currentResponseContainsCustomQuestion) {
-            // Get the next custom question that hasn't been asked yet
-            const askedQuestionTexts = messages
-              .filter(m => m.sender_type === 'ai')
-              .map(m => m.content);
-            
-            // Find the next unanswered custom question
-            const nextCustomQuestion = personaSettings.custom_questions.find(q => 
-              !askedQuestionTexts.some(text => text.includes(q.question))
-            );
-            
-            if (nextCustomQuestion) {
-              console.log(`FORCIBLY OVERRIDING with next custom question: "${nextCustomQuestion.question}"`);
-              
-              // Replace AI response with the custom question
-              aiResponseContent = `Thank you for sharing that information. ${nextCustomQuestion.question}`;
-              
-              // Update progress tracking
-              setQuestionProgress({
-                customQuestionsAsked: customQuestionsAsked + 1,
-                totalCustomQuestions: totalCustomQuestions,
-                defaultQuestionsAsked: data.defaultQuestionsAsked || 0,
-                totalDefaultQuestions: data.totalDefaultQuestions || 5,
-                nextQuestionIsCustom: customQuestionsAsked + 1 < totalCustomQuestions
-              });
-              
-              console.log("OVERRIDE SUCCESSFUL - Using custom question instead of Edge Function response");
-            } else {
-              console.warn("Could not find next unanswered custom question - something is wrong with tracking");
-            }
-          } else {
-            console.log("Edge Function correctly included a custom question - no need to override");
-          }
-        } else {
-          console.log(`All ${totalCustomQuestions} custom questions have been asked, moving to default questions`);
-        }
-      }
+      // Update conversation progress tracking
+      setConversationProgress({
+        customQuestionsAsked: data.customQuestionsAsked || 0,
+        totalCustomQuestions: data.totalCustomQuestions || 0,
+        topicsCovered: data.topicsCovered || [],
+        topicsRemaining: data.topicsRemaining || [],
+        allTopicsCovered: data.allTopicsCovered || false
+      });
       
       const aiResponse: Message = {
         id: crypto.randomUUID(),
         sender_type: "ai",
-        content: aiResponseContent,
+        content: data.response,
         timestamp: new Date().toISOString(),
       };
       
@@ -556,38 +324,12 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         .insert({
           chat_id: currentChatId,
           sender_type: "ai",
-          content: aiResponseContent,
+          content: data.response,
         });
       
-      // Check if chat is complete
-      let shouldMarkComplete = data.matchScore !== null && 
-        typeof data.matchScore !== 'undefined' && 
-        !aiResponseContent.trim().endsWith('?') &&
-        !data.isQuestionPending;
-      
-      // Make sure all custom questions have been asked before marking as complete
-      if (shouldMarkComplete && personaSettings?.custom_questions && personaSettings.custom_questions.length > 0) {
-        // Check if all custom questions have been asked
-        const allMessages = [...messages, aiResponse];
-        const customQuestionsAsked = allMessages.filter(m => 
-          m.sender_type === 'ai' && 
-          personaSettings.custom_questions.some(q => 
-            m.content.includes(q.question)
-          )
-        ).length;
-        
-        const totalCustomQuestions = personaSettings.custom_questions.length;
-        
-        if (customQuestionsAsked < totalCustomQuestions) {
-          console.log(`Cannot mark chat as complete - only ${customQuestionsAsked}/${totalCustomQuestions} custom questions asked`);
-          shouldMarkComplete = false;
-        } else {
-          console.log(`All ${customQuestionsAsked}/${totalCustomQuestions} custom questions have been asked, can proceed to completion`);
-        }
-      }
-      
-      if (shouldMarkComplete) {
-        console.log("All questions have been asked, marking chat as complete");
+      // Check if chat is complete (has match score)
+      if (data.matchScore !== null && data.matchSummary) {
+        console.log("Match score generated, marking chat as complete");
         await supabase
           .from('ai_persona_chats')
           .update({
@@ -602,22 +344,8 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
         if (onComplete && user.id === investorId) {
           onComplete(data.matchScore, data.matchSummary);
         }
-      } else if (data.isQuestionPending) {
-        // Log that there are still questions to be asked
-        console.log("Questions are still pending, chat continues");
-        
-        // If there was a previous completion, revert it
-        if (chatCompleted) {
-          console.log("Reverting previous chat completion - questions still remain");
-          setChatCompleted(false);
-          
-          await supabase
-            .from('ai_persona_chats')
-            .update({
-              completed: false
-            })
-            .eq('id', currentChatId);
-        }
+      } else if (data.allTopicsCovered) {
+        console.log("All topics covered but no match score yet");
       }
       
       // Scroll to bottom of chat
@@ -637,263 +365,24 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
     }
   };
   
-  // Debug function to check table structure and permissions
-  const handleDiagnostics = async () => {
-    try {
-      // First try to list tables to check if the table exists
-      const client = getSupabaseClient();
-      
-      // Check schema version without running a query (safer)
-      console.log("Attempting to diagnose persona settings table issues");
-      console.log("Database connection info:", {
-        url: client.supabaseUrl,
-        hasAuth: !!client.auth,
-      });
-      
-      // Check if we can access any data from the table
-      const { data: testQuery, error: testError } = await supabase
-        .from('investor_ai_persona_settings')
-        .select('id')
-        .limit(1);
-        
-      if (testError) {
-        console.error("Error accessing persona settings table:", testError);
-        
-        // Try a direct insert to test permissions
-        toast({
-          title: "Table Access Error",
-          description: `Error: ${testError.message}. Will try direct insert.`,
-          variant: "destructive"
-        });
-      } else {
-        console.log("Successfully accessed persona settings table:", testQuery);
-        toast({
-          title: "Table Access Success",
-          description: "Can access the investor_ai_persona_settings table"
-        });
-      }
-      
-      // Check if other investors have settings
-      const { data: otherSettings, error: otherError } = await supabase
-        .from('investor_ai_persona_settings')
-        .select('user_id, id')
-        .neq('user_id', investorId)
-        .limit(5);
-        
-      if (otherError) {
-        console.error("Error checking other investors:", otherError);
-      } else if (otherSettings && otherSettings.length > 0) {
-        console.log(`Found ${otherSettings.length} other investors with settings:`, otherSettings);
-        toast({
-          title: "Other Investors Found",
-          description: `Found ${otherSettings.length} other investors with settings`
-        });
-      } else {
-        console.log("No other investors have settings configured");
-        toast({
-          title: "No Other Investors",
-          description: "No other investors have settings configured"
-        });
-      }
-    } catch (err) {
-      console.error("Error in diagnostic check:", err);
-      toast({
-        title: "Diagnostic Error",
-        description: "Failed to run diagnostics. See console for details.",
-        variant: "destructive",
-      });
-    }
-  };
-  
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center space-x-4">
           <div>
-            <h2 className="text-lg font-semibold">{investorName}</h2>
-            {questionProgress && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {questionProgress.totalCustomQuestions > 0 ? (
-                  <>
-                    <span>
-                      Custom questions: {questionProgress.customQuestionsAsked}/{questionProgress.totalCustomQuestions}
-                    </span>
-                    {questionProgress.customQuestionsAsked > 0 ? (
-                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20">
-                        Custom questions active
-                      </Badge>
-                    ) : questionProgress.nextQuestionIsCustom ? (
-                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 animate-pulse">
-                        Next question is custom
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">
-                        Waiting for custom questions
-                      </Badge>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center">
-                    <Badge variant="outline" className="text-xs">
-                      Using default questions
-                    </Badge>
-                    {!isLoading && process.env.NODE_ENV !== 'production' && (
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs ml-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300"
-                      >
-                        Custom questions missing from DB
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <h2 className="text-lg font-semibold flex items-center gap-1">
+              {investorName} <Sparkle size={14} className="text-purple-500" />
+            </h2>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>AI-powered conversation</span>
+              <Badge variant="outline" className="text-xs bg-purple-100/50 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800/50">
+                OpenAI GPT
+              </Badge>
+            </div>
           </div>
         </div>
       </div>
-      {/* Debug panel - only visible during development */}
-      {process.env.NODE_ENV !== 'production' && (
-        <div className="text-xs border-b border-dashed p-2 bg-muted/10">
-          <details>
-            <summary className="cursor-pointer font-medium">Debug Information</summary>
-            <div className="pt-2 pl-2 space-y-1">
-              <p>Investor ID: {investorId}</p>
-              <p>Chat ID: {chatId || 'Not created yet'}</p>
-              <p>Messages count: {messages.length}</p>
-              <p>
-                Custom questions: {questionProgress?.customQuestionsAsked || 0}/{questionProgress?.totalCustomQuestions || 0} 
-                {questionProgress?.nextQuestionIsCustom && ' (next is custom)'}
-              </p>
-              <p>
-                Default questions: {questionProgress?.defaultQuestionsAsked || 0}/{questionProgress?.totalDefaultQuestions || 0}
-              </p>
-              
-              {/* Quick check button to verify custom questions */}
-              <div className="mt-2 pt-2 border-t border-dashed">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={async () => {
-                    try {
-                      const settings = await preparePersonaSettings(investorId);
-                      if (settings?.custom_questions?.length > 0) {
-                        toast({
-                          title: "Custom Questions Found",
-                          description: `Found ${settings.custom_questions.length} custom questions for this investor`,
-                        });
-                        console.log("Investor custom questions:", settings.custom_questions);
-                      } else {
-                        toast({
-                          title: "No Custom Questions",
-                          description: "This investor has no custom questions configured",
-                          variant: "destructive",
-                        });
-                      }
-                    } catch (err) {
-                      console.error("Error checking custom questions:", err);
-                      toast({
-                        title: "Error",
-                        description: "Failed to check custom questions",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className="w-full text-xs"
-                >
-                  Check Custom Questions
-                </Button>
-                
-                {/* Diagnostic button to check table structure and permissions */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleDiagnostics}
-                  className="w-full text-xs mt-2"
-                >
-                  Run Table Diagnostics
-                </Button>
-                
-                {/* EMERGENCY FIX: Add button to force-create persona settings for this investor */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={async () => {
-                    try {
-                      // Check if settings exist
-                      const { count } = await supabase
-                        .from('investor_ai_persona_settings')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('user_id', investorId);
-                      
-                      if (count && count > 0) {
-                        toast({
-                          title: "Settings Already Exist",
-                          description: "Persona settings already exist for this investor. Will force update with debug questions."
-                        });
-                      }
-                      
-                      // Define the custom questions we know exist in the UI
-                      const forceCustomQuestions = [
-                        {
-                          id: crypto.randomUUID(),
-                          question: "Have you done any market research?",
-                          enabled: true
-                        },
-                        {
-                          id: crypto.randomUUID(),
-                          question: "What would you do with your first 100k?",
-                          enabled: true
-                        }
-                      ];
-                      
-                      // Create or update the settings
-                      const { error } = await supabase
-                        .from('investor_ai_persona_settings')
-                        .upsert({
-                          user_id: investorId,
-                          custom_questions: forceCustomQuestions,
-                          system_prompt: "You are an AI simulation of an investor interviewing startup founders.",
-                          created_at: new Date().toISOString(),
-                          updated_at: new Date().toISOString()
-                        });
-                        
-                      if (error) {
-                        console.error("Error creating persona settings:", error);
-                        throw error;
-                      }
-                      
-                      toast({
-                        title: "Custom Questions Fixed",
-                        description: "Successfully synchronized custom questions from UI to database",
-                      });
-                      
-                      // Verify settings were created
-                      const { data: verifyData } = await supabase
-                        .from('investor_ai_persona_settings')
-                        .select('*')
-                        .eq('user_id', investorId)
-                        .single();
-                        
-                      console.log("Verified persona settings:", verifyData);
-                    } catch (err) {
-                      console.error("Error fixing custom questions:", err);
-                      toast({
-                        title: "Error",
-                        description: "Failed to fix custom questions",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className="w-full text-xs mt-2 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50"
-                >
-                  FIX: Sync UI Questions to Database
-                </Button>
-              </div>
-            </div>
-          </details>
-        </div>
-      )}
+      
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -920,23 +409,20 @@ export const InvestorAIChat = ({ investorId, investorName, onBack, onComplete }:
             ))}
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-8 space-y-4">
-                <p>Start the conversation by asking a question or introducing your startup.</p>
-                {!isLoading && (
-                  <div className="text-xs bg-accent/5 p-4 rounded-md mx-auto max-w-md border border-border">
-                    <p className="font-medium mb-2">How this conversation works:</p>
-                    <ul className="text-left list-disc pl-4 space-y-1">
-                      <li>The AI will ask you specific questions about your startup</li>
-                      {questionProgress?.totalCustomQuestions > 0 ? (
-                        <li>
-                          This investor has <strong className="text-primary">{questionProgress.totalCustomQuestions} custom questions</strong> that will be asked first
-                        </li>
-                      ) : (
-                        <li>This conversation will use the default standard questions</li>
-                      )}
-                      <li>After answering all questions, you'll get a match score</li>
-                    </ul>
-                  </div>
-                )}
+                <p>Start the conversation by introducing your startup.</p>
+                <div className="text-xs bg-accent/5 p-4 rounded-md mx-auto max-w-md border border-border">
+                  <p className="font-medium mb-2">How this conversation works:</p>
+                  <ul className="text-left list-disc pl-4 space-y-1">
+                    <li>This is a natural AI conversation with {investorName}'s AI persona</li>
+                    <li>The AI will ask you questions to understand your startup</li>
+                    {conversationProgress.totalCustomQuestions > 0 && (
+                      <li>
+                        This investor has <strong className="text-primary">{conversationProgress.totalCustomQuestions} custom questions</strong> they'd like to discuss
+                      </li>
+                    )}
+                    <li>After the conversation, you'll get an investor match score</li>
+                  </ul>
+                </div>
               </div>
             )}
             

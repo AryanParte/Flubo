@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,8 @@ import {
   Briefcase, 
   ArrowLeft,
   X,
-  Check 
+  Check,
+  Sparkle
 } from "lucide-react";
 import { type Investor } from "@/types/investor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,7 +56,6 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
   };
   
   const handleCloseChat = () => {
-    // Only close if user is an investor or if explicitly confirmed
     setChatDialogOpen(false);
   };
   
@@ -65,7 +66,6 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
       setMatchSummary(summary);
       setChatDialogOpen(false);
     }
-    // For startups, we'll keep the dialog open and show a message within the chat component
   };
   
   // Determine if we should show match information (only for investors)
@@ -100,20 +100,11 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold">{investor.name}</h3>
                 
-                {/* Original verification badge */}
+                {/* Verification badge */}
                 <AccountVerificationBadge 
                   verified={investor?.verified} 
                   userId={investor?.id} 
                 />
-                
-                {/* Temporary hardcoded verification badge for testing */}
-                {investor.verified && (
-                  <div className="inline-flex items-center ml-1" title="Verified Account">
-                    <div className="bg-blue-500 p-0.5 rounded-full flex items-center justify-center">
-                      <Check className="h-4 w-4 text-white" />
-                    </div>
-                  </div>
-                )}
               </div>
               
               <p className="text-muted-foreground mb-3">{investor.role} at {investor.company}</p>
@@ -170,7 +161,9 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
                   onClick={handleStartChat}
                 >
                   <MessageSquare size={16} />
-                  <span>Chat with AI assistant</span>
+                  <span className="flex items-center gap-1">
+                    Chat with AI Assistant <Sparkle size={14} className="text-purple-400 ml-1" />
+                  </span>
                 </Button>
               </div>
             </div>
@@ -185,13 +178,16 @@ export const InvestorCard: React.FC<InvestorCardProps> = ({
         >
           <DialogHeader className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <DialogTitle>Chat with {investor.name}'s AI Persona</DialogTitle>
+              <DialogTitle className="flex items-center gap-1">
+                Chat with {investor.name}'s AI Persona
+                <Sparkle size={14} className="text-purple-500 ml-1" />
+              </DialogTitle>
               <Button variant="ghost" size="icon" onClick={handleCloseChat} className="h-8 w-8">
                 <X size={18} />
               </Button>
             </div>
             <DialogDescription>
-              This is a simulated conversation with {investor.name} powered by AI.
+              This is a conversational AI assistant powered by OpenAI that simulates how {investor.name} would evaluate your startup.
             </DialogDescription>
           </DialogHeader>
           
