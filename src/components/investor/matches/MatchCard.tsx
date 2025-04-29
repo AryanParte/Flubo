@@ -40,6 +40,37 @@ export const MatchCard = ({
     }
   };
 
+  // Format the match summary with section breaks if it appears to have sections
+  const formatMatchSummary = (summary?: string) => {
+    if (!summary) return null;
+    
+    // Check if the summary contains section headers (all caps with colon)
+    const hasSections = /[A-Z]{2,}:/.test(summary);
+    
+    if (hasSections) {
+      // Split by section headers and then recombine with proper styling
+      return summary.split(/([A-Z]{2,}:)/).map((part, i) => {
+        if (i % 2 === 1) { // This is a section header
+          return (
+            <div key={i} className="font-semibold text-[#4BDA7C] mt-2 mb-1">
+              {part}
+            </div>
+          );
+        } else if (part.trim()) { // This is content
+          return (
+            <div key={i} className="mb-2">
+              {part}
+            </div>
+          );
+        }
+        return null;
+      });
+    } else {
+      // Just return the plain summary if no sections detected
+      return <div>{summary}</div>;
+    }
+  };
+
   return (
     <div 
       className="rounded-lg overflow-hidden flex flex-col bg-[#0F1620] border border-[#1E2A3B] animate-fade-in"
@@ -68,10 +99,13 @@ export const MatchCard = ({
         
         <p className="text-sm text-gray-300 mb-4">{startup.tagline || 'No description available'}</p>
         
-        {/* Match summary if available */}
+        {/* Enhanced match summary display */}
         {matchSummary && (
-          <div className="mb-4 p-3 bg-[#1F2A3B] rounded-md">
-            <p className="text-sm text-gray-300">{matchSummary}</p>
+          <div className="mb-4 p-3 bg-[#1F2A3B] rounded-md overflow-y-auto max-h-64">
+            <h4 className="text-sm font-medium text-[#4BDA7C] mb-2">Match Analysis</h4>
+            <div className="text-sm text-gray-300">
+              {formatMatchSummary(matchSummary)}
+            </div>
           </div>
         )}
         

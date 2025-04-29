@@ -71,7 +71,7 @@ export const MatchesTab = () => {
           if (chat.startup_id) {
             const { data: profileData, error: profileError } = await supabase
               .from('startup_profiles')
-              .select('stage, location, industry, bio, raised_amount, tagline, looking_for_funding, looking_for_design_partner')
+              .select('stage, location, industry, bio, raised_amount, tagline, looking_for_funding, looking_for_design_partner, website')
               .eq('id', chat.startup_id)
               .maybeSingle();
               
@@ -102,9 +102,11 @@ export const MatchesTab = () => {
             bio: startupProfileData?.bio || defaultStartup.bio,
             raisedAmount: startupProfileData?.raised_amount || defaultStartup.raisedAmount,
             tagline: startupProfileData?.tagline || defaultStartup.tagline,
+            website: startupProfileData?.website || null,
+            websiteUrl: startupProfileData?.website || null,
             lookingForFunding: startupProfileData?.looking_for_funding || false,
             lookingForDesignPartner: startupProfileData?.looking_for_design_partner || false,
-            matchSummary: chat.summary || "No summary available",
+            matchSummary: chat.summary || "No detailed analysis available yet.",
             chatId: chat.id,
             matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
           };
@@ -423,8 +425,36 @@ export const MatchesTab = () => {
               
               <div className="p-6">
                 <div className="mb-6">
-                  <h4 className="font-medium mb-2">Match Summary</h4>
-                  <p className="text-muted-foreground">{aiMatches[currentMatchIndex]?.matchSummary}</p>
+                  <h4 className="font-medium mb-2">Match Analysis</h4>
+                  <div className="text-muted-foreground max-h-60 overflow-y-auto bg-secondary/10 p-4 rounded-md">
+                    {(() => {
+                      const summary = aiMatches[currentMatchIndex]?.matchSummary;
+                      if (!summary) return <p>No detailed analysis available.</p>;
+                      
+                      const hasSections = /[A-Z]{2,}:/.test(summary);
+                      
+                      if (hasSections) {
+                        return summary.split(/([A-Z]{2,}:)/).map((part, i) => {
+                          if (i % 2 === 1) {
+                            return (
+                              <h5 key={i} className="font-medium text-primary mt-3 mb-1">
+                                {part}
+                              </h5>
+                            );
+                          } else if (part.trim()) {
+                            return (
+                              <p key={i} className="mb-2">
+                                {part}
+                              </p>
+                            );
+                          }
+                          return null;
+                        });
+                      } else {
+                        return <p>{summary}</p>;
+                      }
+                    })()}
+                  </div>
                 </div>
                 
                 <div className="mb-6">
@@ -584,6 +614,8 @@ export const MatchesTab = () => {
                 index={index}
                 onRequestDemo={handleRequestDemo}
                 onIgnore={handleIgnoreStartup}
+                matchScore={startup.score}
+                matchSummary={startup.matchSummary}
               />
             ))}
           </div>

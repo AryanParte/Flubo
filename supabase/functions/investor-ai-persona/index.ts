@@ -312,22 +312,42 @@ Remember your primary goal is to gather information about the startup in a natur
     
     // Only calculate match score if ALL important topics have been covered
     // and there's been enough back-and-forth in the conversation
-    // This logic is similar to before but simplified
     if (allTopicsCovered && chatHistory && chatHistory.length > 8) {
       console.log("All important topics have been covered, generating match score...");
       
+      // Extract key conversation insights from the chat history
+      const startupResponses = chatHistory
+        .filter(msg => msg.sender_type === "startup")
+        .map(msg => msg.content)
+        .join("\n\n");
+      
       const scoringPrompt = `
-Based on the conversation between the startup and investor, evaluate how well the startup matches the investor's preferences.
-Here is the investor's profile:
-${JSON.stringify(investorPreferences || "General investor with no specific preferences")}
+I need a detailed investment match analysis based on a conversation between a startup founder and an investor.
 
-Here is the startup's information:
+STARTUP INFORMATION:
 ${JSON.stringify(startupInfo || "Information gathered only from conversation")}
 
-Provide:
-1. A match score from 0-100 where 100 is a perfect match
-2. A 2-3 sentence summary of why the startup might be interesting to this investor
-Output format: {"score": number, "summary": "text explanation"} - JSON format only`;
+CONVERSATION HIGHLIGHTS:
+${startupResponses}
+
+INVESTOR PREFERENCES:
+${JSON.stringify(investorPreferences || "General investor with no specific preferences")}
+
+Please provide:
+
+1. A match score from 0-100 where 100 is a perfect match.
+2. A detailed match summary with the following sections:
+   - BUSINESS SUMMARY: Brief overview of what the startup does
+   - KEY STRENGTHS: 2-3 bullet points on what makes this opportunity compelling
+   - ALIGNMENT: How well this aligns with the investor's interests/preferences
+   - POTENTIAL CONCERNS: Any areas that might need further clarification
+   - RECOMMENDATION: Whether this appears to be a good investment opportunity
+
+Format your response EXACTLY as a JSON object with these fields:
+{
+  "score": number,
+  "summary": "detailed multi-paragraph summary with the sections above"
+}`;
 
       const scoringResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -341,8 +361,8 @@ Output format: {"score": number, "summary": "text explanation"} - JSON format on
             { role: "system", content: "You are an AI that evaluates startup-investor fit based on conversations. Output only JSON." },
             { role: "user", content: scoringPrompt }
           ],
-          temperature: 0.3,
-          max_tokens: 500,
+          temperature: 0.7,
+          max_tokens: 1000,
         }),
       });
 
