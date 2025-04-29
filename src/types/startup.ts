@@ -29,6 +29,7 @@ export interface Startup {
   chatId?: string;
   matchStatus?: 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored';
   matchSummary?: string;
+  companyDescription?: string;  // Adding the company description property
   
   // Additional fields needed
   createdAt?: string;
