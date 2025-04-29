@@ -48,34 +48,48 @@ serve(async (req) => {
       subscriptions: {}
     };
     
-    // Enable REPLICA IDENTITY FULL for each table
+    // Try to directly set REPLICA IDENTITY FULL for tables
     for (const table of tablesToEnable) {
       try {
+        // First try to directly execute SQL statement (more likely to work since we've created execute_sql)
         const { error } = await supabase.rpc(
           'execute_sql',
           { query: `ALTER TABLE public.${table} REPLICA IDENTITY FULL;` }
         );
         
         if (error) {
-          console.log(`Could not set REPLICA IDENTITY for ${table} using RPC`, error);
+          console.log(`Could not set REPLICA IDENTITY for ${table} using RPC:`, error);
           
-          // Try direct query as fallback (might work for some scenarios)
+          // Try direct query as fallback
           try {
-            await supabase.from(table).select('id').limit(1);
-            console.log(`Attempted fallback for ${table}`);
-            results.replicaIdentity[table] = 'attempted_fallback';
+            const directQuery = `ALTER TABLE public.${table} REPLICA IDENTITY FULL;`;
+            const { data: directResult, error: directError } = await supabase.rpc(
+              'execute_sql',
+              { query: directQuery }
+            );
+            
+            if (directError) {
+              console.error(`Direct SQL for REPLICA IDENTITY on ${table} failed:`, directError);
+              results.replicaIdentity[table] = 'direct_failed';
+            } else {
+              console.log(`Set REPLICA IDENTITY for ${table} using direct SQL`);
+              results.replicaIdentity[table] = 'direct_success';
+            }
           } catch (e) {
-            console.error(`Fallback for ${table} failed:`, e);
-            results.replicaIdentity[table] = 'failed';
+            console.error(`All attempts to set REPLICA IDENTITY for ${table} failed:`, e);
+            results.replicaIdentity[table] = 'all_failed';
           }
         } else {
-          console.log(`Set REPLICA IDENTITY FULL for ${table}`);
-          results.replicaIdentity[table] = 'success';
+          console.log(`Set REPLICA IDENTITY FULL for ${table} using RPC`);
+          results.replicaIdentity[table] = 'rpc_success';
         }
       } catch (e) {
         console.error(`Error setting REPLICA IDENTITY for ${table}:`, e);
         results.replicaIdentity[table] = 'error';
       }
+      
+      // Add a small delay between operations to prevent overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     // Create publication if it doesn't exist
@@ -100,19 +114,38 @@ serve(async (req) => {
     // Add tables to publication
     for (const table of tablesToEnable) {
       try {
+        // First try to add table normally
         const { error } = await supabase.rpc(
           'execute_sql',
           { query: `ALTER PUBLICATION supabase_realtime ADD TABLE public.${table};` }
         );
         
         if (error) {
-          // Ignore if table is already in publication
-          if (error.message.includes('already in publication')) {
+          // Check if error indicates table is already in publication
+          if (error.message && error.message.includes('already in publication')) {
             console.log(`${table} is already in publication`);
             results.publication[table] = 'already_exists';
           } else {
-            console.log(`Could not add ${table} to publication`, error);
-            results.publication[table] = 'failed';
+            console.log(`Could not add ${table} to publication:`, error);
+            
+            // Try an alternative approach - drop and re-add
+            try {
+              await supabase.rpc(
+                'execute_sql',
+                { query: `DROP PUBLICATION IF EXISTS supabase_realtime;` }
+              );
+              
+              await supabase.rpc(
+                'execute_sql',
+                { query: `CREATE PUBLICATION supabase_realtime FOR TABLE ${tablesToEnable.map(t => `public.${t}`).join(', ')};` }
+              );
+              
+              console.log(`Recreation approach for publication with ${table} succeeded`);
+              results.publication[table] = 'recreated';
+            } catch (recreateError) {
+              console.error(`Recreation approach for ${table} failed:`, recreateError);
+              results.publication[table] = 'recreation_failed';
+            }
           }
         } else {
           console.log(`Added ${table} to supabase_realtime publication`);
@@ -122,6 +155,9 @@ serve(async (req) => {
         console.error(`Error adding ${table} to publication:`, e);
         results.publication[table] = 'error';
       }
+      
+      // Add a small delay between operations
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     // Create realtime channels

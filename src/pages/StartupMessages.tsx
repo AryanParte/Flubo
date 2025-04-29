@@ -6,12 +6,14 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { MessagesTab } from "@/components/startup/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
-import { initializeRealtime } from "@/services/message-service";
+import { initializeRealtime, checkRealtimeStatus } from "@/services/message-service";
+import { toast } from "@/components/ui/use-toast";
 
 const StartupMessages = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [realtimeInitialized, setRealtimeInitialized] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -20,19 +22,38 @@ const StartupMessages = () => {
       setLoading(false);
       
       // Initialize realtime when we load the messages page
-      if (user) {
+      if (user && !realtimeInitialized) {
         console.log("Startup user loaded:", user.id);
+        setRealtimeInitialized(true);
         
+        // First check the realtime status
+        checkRealtimeStatus()
+          .then(status => {
+            console.log("Current realtime status:", status);
+          })
+          .catch(err => {
+            console.error("Error checking realtime status:", err);
+          });
+        
+        // Then initialize realtime
         initializeRealtime()
           .then(result => {
             console.log("Realtime initialization completed:", result);
+            if (result.success) {
+              toast({
+                title: "Realtime Messaging Enabled",
+                description: "You'll now receive messages in real-time without page reloads",
+              });
+            } else {
+              console.error("Realtime initialization failed:", result.error);
+            }
           })
           .catch(err => {
             console.error("Error during realtime initialization:", err);
           });
       }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, realtimeInitialized]);
 
   if (authLoading || loading) {
     return (

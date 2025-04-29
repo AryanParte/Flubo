@@ -851,6 +851,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      execute_sql: {
+        Args: { query: string }
+        Returns: undefined
+      }
       get_followers_count: {
         Args: { user_id: string }
         Returns: number

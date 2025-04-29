@@ -6,12 +6,14 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { MessagesTab } from "@/components/investor/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
-import { initializeRealtime } from "@/services/message-service";
+import { initializeRealtime, checkRealtimeStatus } from "@/services/message-service";
+import { toast } from "@/components/ui/use-toast";
 
 const InvestorMessages = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [realtimeInitialized, setRealtimeInitialized] = useState(false);
 
   useEffect(() => {
     // Redirect if not authenticated and auth check is complete
@@ -20,21 +22,39 @@ const InvestorMessages = () => {
     } else if (!authLoading) {
       setLoading(false);
       
-      // Log user details for debugging
-      if (user) {
+      // Initialize realtime when we load the messages page
+      if (user && !realtimeInitialized) {
         console.log("Investor user loaded:", user.id);
+        setRealtimeInitialized(true);
         
-        // Initialize realtime for messages
+        // Check the current realtime status
+        checkRealtimeStatus()
+          .then(status => {
+            console.log("Current realtime status:", status);
+          })
+          .catch(err => {
+            console.error("Error checking realtime status:", err);
+          });
+        
+        // Initialize realtime functionality
         initializeRealtime()
           .then(result => {
             console.log("Realtime initialization completed:", result);
+            if (result.success) {
+              toast({
+                title: "Realtime Messaging Enabled",
+                description: "You'll now receive messages in real-time without page reloads",
+              });
+            } else {
+              console.error("Realtime initialization failed:", result.error);
+            }
           })
           .catch(err => {
             console.error("Error during realtime initialization:", err);
           });
       }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, realtimeInitialized]);
 
   if (authLoading || loading) {
     return (

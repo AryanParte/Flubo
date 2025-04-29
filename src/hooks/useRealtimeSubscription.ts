@@ -12,9 +12,13 @@ export function useRealtimeSubscription<T>(
   filter?: string
 ) {
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const callbackRef = useRef(callback);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_DELAY_MS = 2000;
   const subscriptionIdRef = useRef<string>(`${table}_${Math.random().toString(36).substring(2, 9)}`);
 
   // Update the callback ref when the callback changes
@@ -74,9 +78,12 @@ export function useRealtimeSubscription<T>(
     // Subscribe to the channel with better logging and reconnection logic
     newChannel.subscribe((status) => {
       console.log(`Realtime subscription status for ${table} (${subscriptionIdRef.current}):`, status);
+      setStatus(status);
       
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Successfully subscribed to real-time updates for ${table}`);
+        // Reset reconnect attempts on successful connection
+        reconnectAttemptsRef.current = 0;
         
         // Clear any pending reconnect timeout
         if (reconnectTimeoutRef.current) {
@@ -85,27 +92,34 @@ export function useRealtimeSubscription<T>(
         }
       }
       
-      if (status === 'TIMED_OUT') {
-        console.log(`Subscription timed out for ${table}, reconnecting...`);
-        // Attempt to resubscribe after timeout
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          if (channelRef.current === newChannel) {
-            console.log(`Attempting to resubscribe for ${table} after timeout`);
-            newChannel.subscribe();
-          }
-        }, 2000);
-      }
-      
-      if (status === 'CHANNEL_ERROR') {
-        console.error(`Channel error for ${table}`);
+      if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+        console.log(`Subscription ${status} for ${table}, attempting to reconnect...`);
         
-        // Attempt to recreate channel after error
+        // Clear any existing timeout
+        if (reconnectTimeoutRef.current) {
+          window.clearTimeout(reconnectTimeoutRef.current);
+        }
+        
+        // Check if we've exceeded max reconnect attempts
+        if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+          console.error(`Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached for ${table}.`);
+          return;
+        }
+        
+        // Increment the reconnect attempts counter
+        reconnectAttemptsRef.current += 1;
+        
+        // Attempt to resubscribe after timeout with exponential backoff
+        const delay = RECONNECT_DELAY_MS * Math.pow(1.5, reconnectAttemptsRef.current - 1);
+        console.log(`Attempting reconnect #${reconnectAttemptsRef.current} in ${delay}ms`);
+        
         reconnectTimeoutRef.current = window.setTimeout(() => {
+          console.log(`Executing reconnect attempt #${reconnectAttemptsRef.current} for ${table}`);
           if (channelRef.current === newChannel) {
-            console.log(`Attempting to recreate channel for ${table} after error`);
+            console.log(`Recreating channel for ${table} after connection issue`);
             createChannel();
           }
-        }, 5000);
+        }, delay);
       }
     });
     
@@ -135,5 +149,5 @@ export function useRealtimeSubscription<T>(
     };
   }, [table, createChannel]);
 
-  return channel;
+  return { channel, status };
 }

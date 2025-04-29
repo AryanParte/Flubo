@@ -2,6 +2,7 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { createStartupInvestorConnection } from "./company-discovery-service";
+import { executeSQL } from "@/lib/db-utils";
 
 export const sendMessage = async (
   senderId: string,
@@ -173,8 +174,26 @@ export const initializeRealtime = async () => {
   try {
     console.log("Initializing realtime functionality for messages");
     
-    // First try to use the database functions
+    // First try to verify and set the replica identity using db-utils
     try {
+      // Ensure messages table has REPLICA IDENTITY FULL
+      await executeSQL("ALTER TABLE public.messages REPLICA IDENTITY FULL;");
+      console.log("Successfully set REPLICA IDENTITY FULL for messages table via executeSQL");
+      
+      // Create or update the publication
+      await executeSQL(`
+        CREATE PUBLICATION IF NOT EXISTS supabase_realtime;
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+      `);
+      console.log("Added messages table to publication via executeSQL");
+    } catch (e) {
+      console.warn("Direct SQL execution attempt failed:", e);
+    }
+    
+    // Then try the database functions
+    try {
+      console.log("Trying to use database functions for realtime setup...");
+      
       const { error: replicaError } = await ((supabase.rpc as any)(
         'set_messages_replica_identity', 
         {}, 
@@ -202,17 +221,19 @@ export const initializeRealtime = async () => {
       console.error("Error calling database functions:", e);
     }
     
-    // Then call the edge function as a backup
+    // Finally call the edge function as a comprehensive approach
     try {
+      console.log("Calling edge function to ensure realtime is configured properly...");
+      
       const { data, error } = await supabase.functions.invoke('enable-realtime');
       
       if (error) {
         console.log("Edge Function for realtime returned an error:", error);
+        return { success: false, error };
       } else {
         console.log("Edge Function realtime initialization response:", data);
+        return { success: true, data };
       }
-      
-      return { success: true, data };
     } catch (e) {
       console.error("Error calling realtime edge function:", e);
       return { success: false, error: e };
@@ -220,5 +241,54 @@ export const initializeRealtime = async () => {
   } catch (error) {
     console.error("Error in initializeRealtime function:", error);
     return { success: false, error };
+  }
+};
+
+// Add debugging functions to help diagnose issues
+export const checkRealtimeStatus = async () => {
+  try {
+    // Check message table replica identity
+    const { data: replicaStatus, error: replicaError } = await supabase.rpc(
+      'execute_sql',
+      { 
+        query: `
+        SELECT relreplident 
+        FROM pg_class 
+        WHERE oid = 'public.messages'::regclass;
+        `
+      }
+    );
+    
+    if (replicaError) {
+      console.error("Error checking replica identity:", replicaError);
+    } else {
+      console.log("Messages table replica identity status:", replicaStatus);
+    }
+    
+    // Check publication status
+    const { data: pubStatus, error: pubError } = await supabase.rpc(
+      'execute_sql',
+      { 
+        query: `
+        SELECT * FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'messages';
+        `
+      }
+    );
+    
+    if (pubError) {
+      console.error("Error checking publication status:", pubError);
+    } else {
+      console.log("Messages table publication status:", pubStatus);
+    }
+    
+    return {
+      replicaIdentity: replicaStatus,
+      publication: pubStatus
+    };
+  } catch (error) {
+    console.error("Error checking realtime status:", error);
+    return { error };
   }
 };
