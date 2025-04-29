@@ -66,6 +66,7 @@ export const saveInvestorPreferences = async (
 
 /**
  * Gets investor match information from AI chats
+ * Enhanced to include more complete startup information including company description from AI conversations
  */
 export const getInvestorAIMatches = async (investorId: string) => {
   try {
@@ -82,7 +83,8 @@ export const getInvestorAIMatches = async (investorId: string) => {
           name,
           email,
           company
-        )
+        ),
+        ai_persona_messages(content, sender_type)
       `)
       .eq('investor_id', investorId)
       .eq('completed', true)
@@ -90,7 +92,38 @@ export const getInvestorAIMatches = async (investorId: string) => {
       
     if (error) throw error;
     
-    return { success: true, data };
+    // Process the data to extract company descriptions from the messages
+    const enhancedData = data?.map(chat => {
+      // Extract potential company descriptions from AI/startup conversation
+      let companyDescription = "";
+      
+      if (chat.ai_persona_messages && chat.ai_persona_messages.length > 0) {
+        // Extract company description from startup messages
+        const startupMessages = chat.ai_persona_messages
+          .filter(msg => msg.sender_type === 'startup')
+          .map(msg => msg.content);
+        
+        // Look for company description in the first few startup messages
+        // These typically contain intro/pitch information
+        if (startupMessages.length > 0) {
+          const firstFewMessages = startupMessages.slice(0, 3).join(" ");
+          
+          // Extract 1-2 sentences that likely describe the company
+          // This is a simple extraction - we could use AI to improve this in the future
+          const sentences = firstFewMessages.split(/[.!?]+/).filter(s => s.trim().length > 20);
+          if (sentences.length > 0) {
+            companyDescription = sentences.slice(0, 2).join(". ") + ".";
+          }
+        }
+      }
+      
+      return {
+        ...chat,
+        company_description: companyDescription
+      };
+    });
+    
+    return { success: true, data: enhancedData };
   } catch (error) {
     console.error("Error fetching investor AI matches:", error);
     return { success: false, error, data: [] };
@@ -106,7 +139,7 @@ export const fetchStartupsWithWebsiteData = async (startupIds: string[]) => {
   try {
     const { data, error } = await supabase
       .from('startup_profiles')
-      .select('id, name, website, websiteUrl')
+      .select('id, name, website, websiteUrl, bio, tagline')
       .in('id', startupIds);
       
     if (error) {

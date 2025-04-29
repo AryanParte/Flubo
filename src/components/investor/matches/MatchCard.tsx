@@ -1,3 +1,4 @@
+
 import React from "react";
 import { ThumbsUp, ThumbsDown, MessageSquare, ExternalLink, Briefcase, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,9 @@ export const MatchCard = ({
   
   // Use the provided match score or the startup score if available
   const score = matchScore !== undefined ? matchScore : (startup.score || 0);
+  
+  // Get the best available description for the company
+  const companyDescription = startup.companyDescription || startup.bio || startup.tagline || "No description available";
   
   const handleOpenLink = (url: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -122,7 +126,7 @@ export const MatchCard = ({
           <span>{startup.location || 'Unknown Location'}</span>
         </div>
         
-        <p className="text-sm text-gray-300 mb-4">{startup.tagline || 'No description available'}</p>
+        <p className="text-sm text-gray-300 mb-4">{companyDescription}</p>
         
         {/* Enhanced match summary display */}
         {matchSummary && (

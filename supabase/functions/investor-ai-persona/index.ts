@@ -363,13 +363,13 @@ Based on this information, provide:
 1. A match score from 0-100 where 100 is a perfect match between the investor's preferences and the startup.
 
 2. A detailed match analysis with these specific sections:
-   - BUSINESS SUMMARY: Brief overview of what the startup does and its core value proposition
+   - BUSINESS SUMMARY: Brief overview of what the startup does and its core value proposition (2-3 sentences)
    - KEY STRENGTHS: 3-5 specific highlights and competitive advantages identified from the conversation
    - ALIGNMENT WITH INVESTOR: How well this startup aligns with the investor's preferences or general investment criteria
    - POTENTIAL CONCERNS: Areas that might need further clarification or potential risks
    - INVESTMENT POTENTIAL: Assessment of why this might be a good investment opportunity
 
-Include specific details from the conversation that support your analysis. Be balanced and objective.
+Be sure to include specific details and quotes from the conversation that support your analysis. Be balanced and objective.
 
 Format your response EXACTLY as a JSON object with these fields:
 {

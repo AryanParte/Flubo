@@ -42,6 +42,10 @@ export const MatchesTab = () => {
             email,
             company,
             position
+          ),
+          ai_persona_messages (
+            content, 
+            sender_type
           )
         `)
         .eq('investor_id', user?.id)
@@ -66,6 +70,32 @@ export const MatchesTab = () => {
           };
           
           const profileData = chat.profiles;
+          
+          let companyDescription = "";
+          if (chat.ai_persona_messages && chat.ai_persona_messages.length > 0) {
+            const startupMessages = chat.ai_persona_messages
+              .filter(msg => msg.sender_type === 'startup')
+              .map(msg => msg.content);
+            
+            if (startupMessages.length > 0) {
+              const firstFewMessages = startupMessages.slice(0, 3).join(" ");
+              
+              const sentences = firstFewMessages.split(/[.!?]+/).filter(s => s.trim().length > 20);
+              if (sentences.length > 0) {
+                companyDescription = sentences.slice(0, 2).join(". ") + ".";
+              }
+            }
+          }
+          
+          if (!companyDescription && chat.summary) {
+            const summary = chat.summary;
+            if (summary.includes("BUSINESS SUMMARY:")) {
+              const businessSummaryMatch = summary.match(/BUSINESS SUMMARY:(.*?)(?=[A-Z\s]+:|$)/s);
+              if (businessSummaryMatch && businessSummaryMatch[1]) {
+                companyDescription = businessSummaryMatch[1].trim();
+              }
+            }
+          }
           
           let startupProfileData = null;
           if (chat.startup_id) {
@@ -108,7 +138,8 @@ export const MatchesTab = () => {
             lookingForDesignPartner: startupProfileData?.looking_for_design_partner || false,
             matchSummary: chat.summary || "No detailed analysis available yet.",
             chatId: chat.id,
-            matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored')
+            matchStatus: (status as 'new' | 'viewed' | 'followed' | 'requested_demo' | 'ignored'),
+            companyDescription: companyDescription || null
           };
         }));
         
@@ -459,7 +490,11 @@ export const MatchesTab = () => {
                 
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">About {aiMatches[currentMatchIndex]?.name}</h4>
-                  <p className="text-muted-foreground mb-3">{aiMatches[currentMatchIndex]?.bio || aiMatches[currentMatchIndex]?.tagline}</p>
+                  <p className="text-muted-foreground mb-3">
+                    {aiMatches[currentMatchIndex]?.companyDescription || 
+                     aiMatches[currentMatchIndex]?.bio || 
+                     aiMatches[currentMatchIndex]?.tagline}
+                  </p>
                   
                   <div className="flex items-center text-sm mb-2">
                     <div className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground mr-2">
