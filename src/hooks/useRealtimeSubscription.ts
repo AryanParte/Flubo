@@ -14,6 +14,7 @@ export function useRealtimeSubscription<T>(
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
   const callbackRef = useRef(callback);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   const subscriptionIdRef = useRef<string>(`${table}_${Math.random().toString(36).substring(2, 9)}`);
 
   // Update the callback ref when the callback changes
@@ -21,8 +22,16 @@ export function useRealtimeSubscription<T>(
     callbackRef.current = callback;
   }, [callback]);
 
-  const createChannelIfNeeded = useCallback(() => {
-    if (channelRef.current) return;
+  const createChannel = useCallback(() => {
+    if (channelRef.current) {
+      console.log(`Removing existing channel for ${table}`);
+      try {
+        supabase.removeChannel(channelRef.current);
+      } catch (e) {
+        console.error(`Error removing channel for ${table}:`, e);
+      }
+      channelRef.current = null;
+    }
     
     // Create a unique channel name with a stable ID that won't change on re-renders
     const channelName = `public:${table}:${subscriptionIdRef.current}`;
@@ -45,12 +54,6 @@ export function useRealtimeSubscription<T>(
           console.log(`Realtime ${event} event for ${table}:`, payload);
           if (callbackRef.current) {
             try {
-              console.log(`Calling callback for ${event} event with payload:`, {
-                new: payload.new,
-                old: payload.old,
-                eventType: event
-              });
-              
               callbackRef.current({
                 new: payload.new as T,
                 old: payload.old as T,
@@ -74,13 +77,20 @@ export function useRealtimeSubscription<T>(
       
       if (status === 'SUBSCRIBED') {
         console.log(`✅ Successfully subscribed to real-time updates for ${table}`);
+        
+        // Clear any pending reconnect timeout
+        if (reconnectTimeoutRef.current) {
+          window.clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
       }
       
       if (status === 'TIMED_OUT') {
         console.log(`Subscription timed out for ${table}, reconnecting...`);
         // Attempt to resubscribe after timeout
-        setTimeout(() => {
+        reconnectTimeoutRef.current = window.setTimeout(() => {
           if (channelRef.current === newChannel) {
+            console.log(`Attempting to resubscribe for ${table} after timeout`);
             newChannel.subscribe();
           }
         }, 2000);
@@ -90,32 +100,40 @@ export function useRealtimeSubscription<T>(
         console.error(`Channel error for ${table}`);
         
         // Attempt to recreate channel after error
-        setTimeout(() => {
+        reconnectTimeoutRef.current = window.setTimeout(() => {
           if (channelRef.current === newChannel) {
-            console.log(`Attempting to reconnect channel for ${table}`);
-            supabase.removeChannel(newChannel);
-            channelRef.current = null;
-            createChannelIfNeeded();
+            console.log(`Attempting to recreate channel for ${table} after error`);
+            createChannel();
           }
         }, 5000);
       }
     });
     
     setChannel(newChannel);
+    return newChannel;
   }, [table, events, filter]);
 
   useEffect(() => {
-    createChannelIfNeeded();
+    const channel = createChannel();
 
-    // Improved cleanup on unmount
+    // Clean up on unmount
     return () => {
       console.log(`Removing realtime channel for ${table} (${subscriptionIdRef.current})`);
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        try {
+          supabase.removeChannel(channelRef.current);
+        } catch (e) {
+          console.error(`Error removing channel for ${table}:`, e);
+        }
         channelRef.current = null;
       }
     };
-  }, [table, createChannelIfNeeded]);
+  }, [table, createChannel]);
 
   return channel;
 }

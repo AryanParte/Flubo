@@ -6,7 +6,7 @@ import { MinimalFooter } from "@/components/layout/MinimalFooter";
 import { MessagesTab } from "@/components/investor/MessagesTab";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { initializeRealtime } from "@/services/message-service";
 
 const InvestorMessages = () => {
   const { user, loading: authLoading } = useAuth();
@@ -25,50 +25,13 @@ const InvestorMessages = () => {
         console.log("Investor user loaded:", user.id);
         
         // Initialize realtime for messages
-        const initializeRealtime = async () => {
-          try {
-            console.log("Initializing realtime for investor messages");
-            
-            // Use 'as any' to bypass TypeScript's function name validation
-            const { error: replicaError } = await ((supabase.rpc as any)(
-              'set_messages_replica_identity', 
-              {}, 
-              { count: 'exact' }
-            ));
-              
-            if (replicaError) {
-              console.log("Note: Error setting replica identity:", replicaError);
-            }
-            
-            const { error: enableError } = await ((supabase.rpc as any)(
-              'enable_realtime_for_messages', 
-              {}, 
-              { count: 'exact' }
-            ));
-              
-            if (enableError) {
-              console.log("Note: Error enabling realtime:", enableError);
-            }
-            
-            // Attempt to enable realtime via the Edge Function as a backup
-            supabase.functions.invoke('enable-realtime')
-              .then(({ data, error }) => {
-                if (error) {
-                  console.log("Note: Edge Function for realtime returned an error, but messages should still work:", error);
-                } else {
-                  console.log("Realtime initialization response:", data);
-                }
-              })
-              .catch(err => {
-                console.log("Error calling realtime function (continuing anyway):", err);
-              });
-            
-          } catch (error) {
-            console.error("Error in initializeRealtime function:", error);
-          }
-        };
-        
-        initializeRealtime();
+        initializeRealtime()
+          .then(result => {
+            console.log("Realtime initialization completed:", result);
+          })
+          .catch(err => {
+            console.error("Error during realtime initialization:", err);
+          });
       }
     }
   }, [user, authLoading, navigate]);

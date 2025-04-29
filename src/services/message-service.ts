@@ -26,19 +26,21 @@ export const sendMessage = async (
     }
     
     // Send the message
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .insert({
         sender_id: senderId,
         recipient_id: recipientId,
         content
-      });
+      })
+      .select(); // Add select to return the inserted row
     
     if (error) {
       throw error;
     }
     
-    return { success: true };
+    console.log("Message sent successfully:", data);
+    return { success: true, message: data?.[0] };
   } catch (error) {
     console.error('Error sending message:', error);
     toast({
@@ -63,12 +65,12 @@ export const getConversations = async (userId: string) => {
         recipient_id,
         sent_at,
         read_at,
-        sender:sender_id(id, name, avatar_url),
-        recipient:recipient_id(id, name, avatar_url)
+        sender:sender_id(id, name, avatar_url, user_type),
+        recipient:recipient_id(id, name, avatar_url, user_type)
       `)
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .order('sent_at', { ascending: false })
-      .limit(50);
+      .limit(100);
     
     if (error) {
       throw error;
@@ -88,10 +90,21 @@ export const getConversations = async (userId: string) => {
           id: otherPersonId,
           name: otherPerson?.name || 'Unknown',
           avatar_url: otherPerson?.avatar_url,
+          user_type: otherPerson?.user_type || 'unknown',
           last_message: message.content,
           last_message_time: message.sent_at,
           unread: !isUserSender && !message.read_at ? 1 : 0
         });
+      } else if (new Date(message.sent_at) > new Date(conversationsMap.get(otherPersonId).last_message_time)) {
+        // Update last message info if this is more recent
+        const convo = conversationsMap.get(otherPersonId);
+        convo.last_message = message.content;
+        convo.last_message_time = message.sent_at;
+        
+        // Increment unread counter if this is an incoming unread message
+        if (!isUserSender && !message.read_at) {
+          convo.unread += 1;
+        }
       }
     });
     
@@ -113,8 +126,7 @@ export const getMessages = async (userId: string, otherId: string) => {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-      .or(`sender_id.eq.${otherId},recipient_id.eq.${otherId}`)
+      .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${userId})`)
       .order('sent_at', { ascending: true });
     
     if (error) {
@@ -136,20 +148,77 @@ export const getMessages = async (userId: string, otherId: string) => {
 export const markMessagesAsRead = async (userId: string, senderId: string) => {
   try {
     // Mark all messages from the sender to the user as read
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .update({ read_at: new Date().toISOString() })
       .eq('recipient_id', userId)
       .eq('sender_id', senderId)
-      .is('read_at', null);
+      .is('read_at', null)
+      .select();
     
     if (error) {
       throw error;
     }
     
-    return { success: true };
+    console.log(`Marked ${data?.length || 0} messages as read`);
+    return { success: true, count: data?.length || 0 };
   } catch (error) {
     console.error('Error marking messages as read:', error);
+    return { success: false, error };
+  }
+};
+
+// Helper function to initialize realtime for messages
+export const initializeRealtime = async () => {
+  try {
+    console.log("Initializing realtime functionality for messages");
+    
+    // First try to use the database functions
+    try {
+      const { error: replicaError } = await ((supabase.rpc as any)(
+        'set_messages_replica_identity', 
+        {}, 
+        { count: 'exact' }
+      ));
+        
+      if (replicaError) {
+        console.log("Note: Error setting replica identity via RPC:", replicaError);
+      } else {
+        console.log("Successfully set REPLICA IDENTITY via RPC");
+      }
+      
+      const { error: enableError } = await ((supabase.rpc as any)(
+        'enable_realtime_for_messages', 
+        {}, 
+        { count: 'exact' }
+      ));
+        
+      if (enableError) {
+        console.log("Note: Error enabling realtime via RPC:", enableError);
+      } else {
+        console.log("Successfully enabled realtime via RPC");
+      }
+    } catch (e) {
+      console.error("Error calling database functions:", e);
+    }
+    
+    // Then call the edge function as a backup
+    try {
+      const { data, error } = await supabase.functions.invoke('enable-realtime');
+      
+      if (error) {
+        console.log("Edge Function for realtime returned an error:", error);
+      } else {
+        console.log("Edge Function realtime initialization response:", data);
+      }
+      
+      return { success: true, data };
+    } catch (e) {
+      console.error("Error calling realtime edge function:", e);
+      return { success: false, error: e };
+    }
+  } catch (error) {
+    console.error("Error in initializeRealtime function:", error);
     return { success: false, error };
   }
 };

@@ -27,9 +27,13 @@ enabled = true
 
 [realtime]
 enabled = true
+webhook_config = {}
 
 [functions.verification-payment]
 verify_jwt = true
 
 [functions.verification-webhook]
+verify_jwt = false
+
+[functions.enable-realtime]
 verify_jwt = false
