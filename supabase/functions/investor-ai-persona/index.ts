@@ -30,6 +30,8 @@ serve(async (req) => {
 
     console.log(`Processing message from startup ${startupId} to investor persona ${investorId}`);
     console.log(`Persona settings received:`, personaSettings ? JSON.stringify(personaSettings, null, 2) : 'no');
+    console.log(`Investor preferences:`, investorPreferences ? JSON.stringify(investorPreferences, null, 2) : 'no specific preferences');
+    console.log(`Startup info:`, startupInfo ? JSON.stringify(startupInfo, null, 2) : 'limited startup info available');
     
     if (!openAIApiKey) {
       throw new Error("OpenAI API key is missing. Please set the OPENAI_API_KEY environment variable.");
@@ -312,7 +314,7 @@ Remember your primary goal is to gather information about the startup in a natur
     
     // Only calculate match score if ALL important topics have been covered
     // and there's been enough back-and-forth in the conversation
-    if (allTopicsCovered && chatHistory && chatHistory.length > 8) {
+    if (allTopicsCovered && chatHistory && chatHistory.length > 6) {
       console.log("All important topics have been covered, generating match score...");
       
       // Extract key conversation insights from the chat history
@@ -320,35 +322,62 @@ Remember your primary goal is to gather information about the startup in a natur
         .filter(msg => msg.sender_type === "startup")
         .map(msg => msg.content)
         .join("\n\n");
+
+      // Extract key conversation insights - also gather important exchanges
+      const significantExchanges = [];
+      if (chatHistory && chatHistory.length > 2) {
+        for (let i = 0; i < chatHistory.length - 1; i++) {
+          if (chatHistory[i].sender_type === "ai" && chatHistory[i+1].sender_type === "startup") {
+            // This is a Q&A pair
+            significantExchanges.push({
+              question: chatHistory[i].content,
+              answer: chatHistory[i+1].content
+            });
+          }
+        }
+      }
       
+      // Format the significant exchanges for the prompt
+      const formattedExchanges = significantExchanges
+        .map(exchange => `Q: ${exchange.question}\nA: ${exchange.answer}`)
+        .join("\n\n");
+      
+      // Create a more detailed, industry-specific prompt for the scoring model
       const scoringPrompt = `
-I need a detailed investment match analysis based on a conversation between a startup founder and an investor.
-
-STARTUP INFORMATION:
-${JSON.stringify(startupInfo || "Information gathered only from conversation")}
-
-CONVERSATION HIGHLIGHTS:
-${startupResponses}
+Generate a comprehensive investment match analysis between a startup and an investor based on their conversation.
 
 INVESTOR PREFERENCES:
-${JSON.stringify(investorPreferences || "General investor with no specific preferences")}
+${JSON.stringify(investorPreferences || { note: "No specific investment preferences provided" }, null, 2)}
 
-Please provide:
+STARTUP INFORMATION:
+${JSON.stringify(startupInfo || { note: "Limited information from profile" }, null, 2)}
 
-1. A match score from 0-100 where 100 is a perfect match.
-2. A detailed match summary with the following sections:
-   - BUSINESS SUMMARY: Brief overview of what the startup does
-   - KEY STRENGTHS: 2-3 bullet points on what makes this opportunity compelling
-   - ALIGNMENT: How well this aligns with the investor's interests/preferences
-   - POTENTIAL CONCERNS: Any areas that might need further clarification
-   - RECOMMENDATION: Whether this appears to be a good investment opportunity
+KEY CONVERSATION EXCHANGES:
+${formattedExchanges}
+
+ADDITIONAL STARTUP RESPONSES:
+${startupResponses}
+
+Based on this information, provide:
+
+1. A match score from 0-100 where 100 is a perfect match between the investor's preferences and the startup.
+
+2. A detailed match analysis with these specific sections:
+   - BUSINESS SUMMARY: Brief overview of what the startup does and its core value proposition
+   - KEY STRENGTHS: 3-5 specific highlights and competitive advantages identified from the conversation
+   - ALIGNMENT WITH INVESTOR: How well this startup aligns with the investor's preferences or general investment criteria
+   - POTENTIAL CONCERNS: Areas that might need further clarification or potential risks
+   - INVESTMENT POTENTIAL: Assessment of why this might be a good investment opportunity
+
+Include specific details from the conversation that support your analysis. Be balanced and objective.
 
 Format your response EXACTLY as a JSON object with these fields:
 {
   "score": number,
-  "summary": "detailed multi-paragraph summary with the sections above"
+  "summary": "detailed multi-paragraph analysis with all the sections above clearly labeled"
 }`;
 
+      // Use a more powerful model for the analysis
       const scoringResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -356,30 +385,39 @@ Format your response EXACTLY as a JSON object with these fields:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "gpt-4o", // Using the full model for better analysis
           messages: [
-            { role: "system", content: "You are an AI that evaluates startup-investor fit based on conversations. Output only JSON." },
+            { role: "system", content: "You are an expert startup investment analyst who provides detailed match assessments between startups and investors based on their conversations. Output only valid JSON with the requested structure." },
             { role: "user", content: scoringPrompt }
           ],
-          temperature: 0.7,
-          max_tokens: 1000,
+          temperature: 0.4, // Lower temperature for more consistent output
+          max_tokens: 1500,
+          response_format: { type: "json_object" } // Enforce JSON format
         }),
       });
 
       if (scoringResponse.ok) {
-        const scoringData = await scoringResponse.json();
         try {
+          const scoringData = await scoringResponse.json();
           const scoreContent = scoringData.choices[0].message.content;
-          const jsonMatch = scoreContent.match(/\{.*\}/s);
+          console.log("Raw scoring response:", scoreContent);
           
-          if (jsonMatch) {
-            const scoreObject = JSON.parse(jsonMatch[0]);
-            matchScore = scoreObject.score;
-            matchSummary = scoreObject.summary;
-          }
+          // Parse the JSON response
+          const scoreObject = JSON.parse(scoreContent);
+          matchScore = scoreObject.score;
+          matchSummary = scoreObject.summary;
+          
+          console.log(`Generated match score: ${matchScore}`);
+          console.log(`Generated summary length: ${matchSummary?.length || 0} characters`);
         } catch (error) {
           console.error("Error parsing match score:", error);
+          matchScore = 65; // Fallback score
+          matchSummary = "Error generating detailed match analysis. Please review the conversation manually.";
         }
+      } else {
+        console.error("Error from OpenAI scoring API:", await scoringResponse.text());
+        matchScore = 60; // Fallback score
+        matchSummary = "Unable to generate match analysis due to API error. Please review the conversation manually.";
       }
     }
 

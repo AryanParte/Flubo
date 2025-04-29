@@ -1,4 +1,3 @@
-
 import React from "react";
 import { ThumbsUp, ThumbsDown, MessageSquare, ExternalLink, Briefcase, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,34 +39,60 @@ export const MatchCard = ({
     }
   };
 
-  // Format the match summary with section breaks if it appears to have sections
+  // Enhanced formatting for match summaries with section detection and styling
   const formatMatchSummary = (summary?: string) => {
     if (!summary) return null;
     
-    // Check if the summary contains section headers (all caps with colon)
-    const hasSections = /[A-Z]{2,}:/.test(summary);
+    // Check for specific section headers (all caps words followed by colon)
+    const sectionHeaderRegex = /([A-Z\s]{2,}:)/g;
+    const hasSections = sectionHeaderRegex.test(summary);
     
     if (hasSections) {
-      // Split by section headers and then recombine with proper styling
-      return summary.split(/([A-Z]{2,}:)/).map((part, i) => {
-        if (i % 2 === 1) { // This is a section header
-          return (
-            <div key={i} className="font-semibold text-[#4BDA7C] mt-2 mb-1">
+      // Split by section headers while keeping the headers
+      const parts = summary.split(sectionHeaderRegex);
+      const formattedParts = [];
+      
+      // Process each part
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        
+        // Skip empty parts
+        if (!part || !part.trim()) continue;
+        
+        // Check if this part is a header (matches our regex)
+        if (sectionHeaderRegex.test(part + ':')) {
+          formattedParts.push(
+            <div key={i} className="font-semibold text-[#4BDA7C] mt-3 mb-1">
               {part}
             </div>
           );
-        } else if (part.trim()) { // This is content
-          return (
-            <div key={i} className="mb-2">
+        } else {
+          // This is content
+          formattedParts.push(
+            <div key={i} className="mb-2 text-sm text-gray-300">
               {part}
             </div>
           );
         }
-        return null;
-      });
+      }
+      
+      return <div className="space-y-1">{formattedParts}</div>;
     } else {
-      // Just return the plain summary if no sections detected
-      return <div>{summary}</div>;
+      // If no sections detected, try to add paragraph breaks
+      const paragraphs = summary.split(/\n+/).filter(p => p.trim());
+      
+      if (paragraphs.length > 1) {
+        return (
+          <div className="space-y-2">
+            {paragraphs.map((p, idx) => (
+              <div key={idx} className="text-sm text-gray-300">{p}</div>
+            ))}
+          </div>
+        );
+      } else {
+        // Just return the plain summary if no formatting needed
+        return <div className="text-sm text-gray-300">{summary}</div>;
+      }
     }
   };
 
